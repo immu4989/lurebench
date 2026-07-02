@@ -1,0 +1,24 @@
+{
+  "n": 19853,
+  "n_fraud": 7411,
+  "n_benign": 12442,
+  "fraud_ratio": 0.3733,
+  "n_ai": 0,
+  "n_human": 19853,
+  "ai_ratio": 0.0,
+  "by_typology": {
+    "benign": 12442,
+    "phishing": 7411
+  },
+  "by_source": {
+    "human": 19853
+  },
+  "by_generator": {},
+  "by_language": {
+    "en": 19853
+  },
+  "cells": {
+    "benign|human|na|en": 12442,
+    "phishing|human|na|en": 7411
+  }
+}

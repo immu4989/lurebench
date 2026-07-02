@@ -4,15 +4,25 @@ Each dataset LureBench ingests or maps to is listed here with its license and
 citation. Sources whose license forbids redistribution are **pointer-only**: the
 build reads a locally-downloaded copy and never re-hosts the raw text.
 
-Confirm every license against the upstream page before release — the notes below
-record what was observed during the prior-art scan and must be re-verified.
+Confirm every license against the upstream page before release. Rows marked
+**VERIFIED** were checked on 2026-07-02; the rest still need confirmation.
+
+## Ingested (verified clean)
+
+| Source | Coverage | Provenance | License | Status |
+|---|---|---|---|---|
+| David-Egea/phishing-texts (HF Hub) | ~20k emails, phishing + benign, EN | human | **MIT — VERIFIED** | ingested → `phishtext` shard (build script in `scripts/`) |
+
+Note on transitive provenance: this HF dataset re-hosts classic human corpora
+(Enron-style benign + a phishing corpus) under an MIT declaration. We use it under
+that declared license with attribution and record the caveat here.
 
 ## AI-generated / mixed phishing corpora
 
 | Source | Coverage | Provenance | Redistribute? | Citation |
 |---|---|---|---|---|
 | Greco et al., Human-LLM Phishing/Legit (Kaggle) | ~4k emails, EN | human + AI (ChatGPT, WormGPT) | verify Kaggle terms | Greco, Desolda, Esposito, Carelli, *David vs. Goliath*, ITASEC 2024 |
-| e-PhishGen / E-PhishLLM | phishing + legit, EN + IT | AI | check repo LICENSE | Pajola et al., *E-PhishGen*, ACM AISec 2025 |
+| e-PhishGen / E-PhishLLM | phishing + legit, EN + IT | AI | **NO LICENSE (all rights reserved) — VERIFIED; do NOT redistribute, reference only** | Pajola et al., *E-PhishGen*, ACM AISec 2025 |
 | DataPhish / PhishingSpamDataSet | ~12k emails, phishing/spam/legit | human + AI (multi-model) | check repo LICENSE | arXiv 2511.21448 |
 | GPT-o1 Cialdini-labeled phishing | ~2,995 emails, persuasion-labeled | AI (GPT-o1) | verify | MDPI *Computers* 14(12):523 |
 
@@ -28,7 +38,7 @@ record what was observed during the prior-art scan and must be re-verified.
 |---|---|---|---|---|
 | Nazario phishing corpus | human phishing | human | pointer-only, verify | J. Nazario phishing corpus |
 | Nigerian Fraudulent ("419") | advance-fee fraud | human | verify | public 419 corpus |
-| SpamAssassin public corpus | spam + ham | human | Apache-friendly, verify | apache.org/old/publiccorpus |
+| SpamAssassin public corpus | spam + ham | human | **"Copyright remains with original senders", no redistribution grant — VERIFIED; local use only** | apache.org/old/publiccorpus |
 | Enron email (ham) | benign email | human | public | Klimt & Yang, 2004 |
 | PhishTank | reported phishing URLs/text | human | API terms apply | phishtank.org |
 
