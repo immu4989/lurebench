@@ -10,6 +10,9 @@ from typing import List
 from .detectors import available, get_detector
 from .harness import Report, run
 from .ingest import available as ingest_available
+from .generate import GenerationSpec, generate_records, screen
+from .generate import available as gen_available
+from .generate import get_generator
 from .hub import assemble, push
 from .ingest import dedupe, get_adapter
 from .leaderboard import evaluate_detectors, render_markdown, write_json
@@ -81,6 +84,37 @@ def _parse_splits(pairs: List[str]) -> dict:
         name, path = pair.split("=", 1)
         splits[name.strip()] = path.strip()
     return splits
+
+
+def _cmd_generate(args: argparse.Namespace) -> int:
+    gen_kwargs = {}
+    if args.engine == "anthropic" and args.model:
+        gen_kwargs["model"] = args.model
+    try:
+        generator = get_generator(args.engine, **gen_kwargs)
+    except (ImportError, RuntimeError, KeyError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        print(f"  available engines: {gen_available()}", file=sys.stderr)
+        return 1
+
+    label = args.generator_id or (args.model if args.engine == "anthropic" else "template-v0")
+    spec = GenerationSpec(
+        typology=args.typology,
+        channel=args.channel,
+        language=args.language,
+        persuasion=args.persuasion or [],
+        persona=args.persona or "",
+        generator=label,
+    )
+    records = generate_records(generator, spec, args.n)
+    clean, flagged = screen(records)
+
+    save_jsonl(clean + flagged, args.out)
+    print(f"generated {len(records)} records → {args.out}")
+    print(f"  {len(clean)} pending human review, {len(flagged)} auto-flagged for attention")
+    print("  NOTE: all records are review-pending. Approve them (set meta.review='approved')")
+    print("  before promoting into a shard — nothing here is shard-ready yet.")
+    return 0
 
 
 def _cmd_publish(args: argparse.Namespace) -> int:
@@ -192,6 +226,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_pub.add_argument("--push", action="store_true", help="upload to the Hub (needs 'hub' extra + auth)")
     p_pub.add_argument("--public", action="store_true", help="create a public repo (default: private)")
     p_pub.set_defaults(func=_cmd_publish)
+
+    p_gen = sub.add_parser("generate", help="controlled generation of synthetic AI lures (review-pending)")
+    p_gen.add_argument("--typology", "-t", required=True, choices=["phishing", "bec", "romance", "pig_butchering"])
+    p_gen.add_argument("--n", type=int, default=10, help="number of records to generate")
+    p_gen.add_argument("--engine", "-e", default="template", help=f"one of {gen_available()}")
+    p_gen.add_argument("--model", default="claude-opus-4-8", help="model id for the anthropic engine")
+    p_gen.add_argument("--generator-id", default=None, help="provenance label stamped on records")
+    p_gen.add_argument("--channel", default="email")
+    p_gen.add_argument("--language", default="en")
+    p_gen.add_argument("--persona", default=None, help="non-identifying scenario seed")
+    p_gen.add_argument("--persuasion", action="append", help="persuasion tag (repeatable)")
+    p_gen.add_argument("--out", "-o", required=True, help="staging JSONL path (review-pending)")
+    p_gen.set_defaults(func=_cmd_generate)
 
     return parser
 
