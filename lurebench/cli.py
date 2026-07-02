@@ -5,18 +5,41 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import List
 
 from .detectors import available, get_detector
 from .harness import Report, run
-from .schema import load_jsonl
+from .ingest import available as ingest_available
+from .ingest import dedupe, get_adapter
+from .schema import load_jsonl, save_jsonl
 
 
 def _cmd_detectors(_: argparse.Namespace) -> int:
     print("Registered detectors:")
     for name in available():
         print(f"  - {name}")
+    return 0
+
+
+def _cmd_ingest(args: argparse.Namespace) -> int:
+    kwargs = {}
+    if args.generator:
+        kwargs["generator"] = args.generator
+    try:
+        adapter = get_adapter(args.adapter, **kwargs)
+    except (KeyError, TypeError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        print(f"  available adapters: {ingest_available()}", file=sys.stderr)
+        return 1
+
+    records = list(adapter.parse(args.input))
+    if args.dedupe:
+        before = len(records)
+        records = dedupe(records)
+        print(f"deduped {before} -> {len(records)} records", file=sys.stderr)
+
+    save_jsonl(records, args.out)
+    print(f"wrote {len(records)} records to {args.out} (source={adapter.source_id})")
     return 0
 
 
@@ -76,6 +99,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_det = sub.add_parser("detectors", help="list registered detectors")
     p_det.set_defaults(func=_cmd_detectors)
+
+    p_ing = sub.add_parser("ingest", help="normalize an external corpus into LureBench JSONL")
+    p_ing.add_argument("--adapter", "-a", required=True, help=f"one of {ingest_available()}")
+    p_ing.add_argument("--input", "-i", required=True, help="path to the downloaded source file")
+    p_ing.add_argument("--out", "-o", required=True, help="output JSONL path")
+    p_ing.add_argument("--generator", default=None, help="generator id to stamp on AI records")
+    p_ing.add_argument("--dedupe", action="store_true", help="drop normalized-text duplicates")
+    p_ing.set_defaults(func=_cmd_ingest)
 
     return parser
 
