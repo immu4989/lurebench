@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+title: "LureBench: A Benchmark and Evaluation Harness for Detecting AI-Generated Fraud Lures"
+message: "If you use LureBench, please cite it."
+type: software
+authors:
+  - family-names: Ahamed
+    given-names: Imran
+repository-code: "https://github.com/immu4989/lurebench"
+version: 0.1.0
+license: Apache-2.0
+keywords:
+  - fraud detection
+  - phishing
+  - large language models
+  - machine-generated text detection
+  - AI security

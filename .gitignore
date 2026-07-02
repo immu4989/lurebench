@@ -1,0 +1,18 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+*.log
+# Large / restricted data artifacts are never committed; see DATA.md.
+data/full/
+data/restricted/
+*.parquet
