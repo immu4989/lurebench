@@ -34,8 +34,9 @@ dependencies = []   # the core harness and heuristic baseline run dependency-fre
 binoculars = ["torch>=2.0", "transformers>=4.38"]
 llamaguard = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26"]
 openai = ["openai>=1.0"]
+hub = ["huggingface_hub>=0.23"]
 dev = ["pytest>=7", "ruff>=0.4"]
-all = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26", "openai>=1.0"]
+all = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26", "openai>=1.0", "huggingface_hub>=0.23"]
 
 [project.scripts]
 lurebench = "lurebench.cli:main"

@@ -10,7 +10,10 @@ from typing import List
 from .detectors import available, get_detector
 from .harness import Report, run
 from .ingest import available as ingest_available
+from .hub import assemble, push
 from .ingest import dedupe, get_adapter
+from .leaderboard import evaluate_detectors, render_markdown, write_json
+from .manifest import build_manifest, check_balance
 from .schema import load_jsonl, save_jsonl
 
 
@@ -43,6 +46,67 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_leaderboard(args: argparse.Namespace) -> int:
+    dataset = load_jsonl(args.dataset)
+    names = args.detector or available()
+    results = evaluate_detectors(dataset, names, threshold=args.threshold)
+    markdown = render_markdown(results, dataset_label=args.dataset, n_records=len(dataset))
+
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(markdown)
+        print(f"wrote leaderboard to {args.out}")
+    else:
+        print(markdown)
+    if args.json:
+        write_json(results, args.json)
+        print(f"wrote results JSON to {args.json}")
+    return 0
+
+
+def _cmd_manifest(args: argparse.Namespace) -> int:
+    dataset = load_jsonl(args.dataset)
+    manifest = build_manifest(dataset)
+    print(json.dumps(manifest, indent=2))
+    for warning in check_balance(manifest):
+        print(f"! balance: {warning}", file=sys.stderr)
+    return 0
+
+
+def _parse_splits(pairs: List[str]) -> dict:
+    splits = {}
+    for pair in pairs:
+        if "=" not in pair:
+            raise ValueError(f"--split expects name=path, got {pair!r}")
+        name, path = pair.split("=", 1)
+        splits[name.strip()] = path.strip()
+    return splits
+
+
+def _cmd_publish(args: argparse.Namespace) -> int:
+    try:
+        splits = _parse_splits(args.split)
+    except ValueError as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+
+    result = assemble(splits, out_dir=args.out, repo_id=args.repo, version=args.version)
+    print(f"assembled {result['manifest']['n']} records into {result['out_dir']}")
+    for warning in result["warnings"]:
+        print(f"! balance: {warning}", file=sys.stderr)
+
+    if args.push:
+        try:
+            url = push(args.out, args.repo, private=not args.public)
+        except Exception as exc:  # noqa: BLE001
+            print(f"! push failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            return 1
+        print(f"pushed to {url}")
+    else:
+        print("(dry run — pass --push to upload to the Hugging Face Hub)")
+    return 0
+
+
 def _cmd_eval(args: argparse.Namespace) -> int:
     dataset = load_jsonl(args.dataset)
     names: List[str] = args.detector or ["heuristic-v0"]
@@ -51,10 +115,10 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     for name in names:
         try:
             detector = get_detector(name)
-        except (ImportError, RuntimeError, KeyError) as exc:
-            print(f"! skipping {name}: {exc}", file=sys.stderr)
+            reports.append(run(detector, dataset, threshold=args.threshold, task=args.task))
+        except Exception as exc:  # noqa: BLE001 - one detector must not abort the run
+            print(f"! skipping {name}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        reports.append(run(detector, dataset, threshold=args.threshold, task=args.task))
 
     if not reports:
         print("No detector could be run.", file=sys.stderr)
@@ -107,6 +171,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_ing.add_argument("--generator", default=None, help="generator id to stamp on AI records")
     p_ing.add_argument("--dedupe", action="store_true", help="drop normalized-text duplicates")
     p_ing.set_defaults(func=_cmd_ingest)
+
+    p_lb = sub.add_parser("leaderboard", help="run detectors and render a leaderboard")
+    p_lb.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
+    p_lb.add_argument("--detector", "-m", action="append", help="detector name (repeatable); default: all")
+    p_lb.add_argument("--threshold", type=float, default=0.5)
+    p_lb.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
+    p_lb.add_argument("--json", default=None, help="also write results JSON here")
+    p_lb.set_defaults(func=_cmd_leaderboard)
+
+    p_man = sub.add_parser("manifest", help="print the composition manifest for a dataset")
+    p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
+    p_man.set_defaults(func=_cmd_manifest)
+
+    p_pub = sub.add_parser("publish", help="assemble a Hub-ready dataset dir (and optionally push)")
+    p_pub.add_argument("--split", "-s", action="append", required=True, help="name=path (repeatable)")
+    p_pub.add_argument("--repo", "-r", required=True, help="Hub dataset repo id, e.g. lurebench/core")
+    p_pub.add_argument("--out", "-o", required=True, help="local output directory to assemble into")
+    p_pub.add_argument("--version", default="v1")
+    p_pub.add_argument("--push", action="store_true", help="upload to the Hub (needs 'hub' extra + auth)")
+    p_pub.add_argument("--public", action="store_true", help="create a public repo (default: private)")
+    p_pub.set_defaults(func=_cmd_publish)
 
     return parser
 

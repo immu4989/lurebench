@@ -1,30 +1,23 @@
 # Leaderboard
 
-Results are reported per task. **MCC is the headline metric** — it is robust to
-the class imbalance typical of fraud corpora. TPR (detection rate) and FPR are
-reported alongside because a fraud detector is only useful at a tolerable
-false-positive rate.
+MCC is the headline metric. Detection rate (recall) and FPR matter because a fraud detector is only useful at a tolerable false-positive rate.
 
-Numbers below are from the `data/samples/` smoke shard (16 records) and exist to
-show the report format. **They are not benchmark results** — the real shards land
-on the Hugging Face Hub.
+_Generated from **data/samples/lures.jsonl** (16 records)._
 
 ## Task: `fraud` (lure vs. benign)
 
-| Detector | MCC | TPR | FPR | F1 | AUC | Notes |
-|---|---|---|---|---|---|---|
-| `heuristic-v0` | _run locally_ | | | | | dependency-free floor |
-| `llama-guard-3` | _tbd_ | | | | | content-safety baseline |
-| `openai-moderation` | _tbd_ | | | | | moderation-API baseline |
+| Detector | MCC | TPR | FPR | F1 | AUC |
+|---|---|---|---|---|---|
+| `heuristic-v0` | 0.878 | 0.900 | 0.000 | 0.947 | 1.000 |
 
-## Task: `provenance` (AI vs. human)
+### Detection rate by fraud typology
 
-| Detector | MCC | TPR | FPR | F1 | AUC | Notes |
-|---|---|---|---|---|---|---|
-| `binoculars` | _tbd_ | | | | | zero-shot MGT detector |
+| Detector | `phishing` | `bec` | `romance` | `pig_butchering` |
+|---|---|---|---|---|
+| `heuristic-v0` | 1.000 | 1.000 | 0.000 | 1.000 |
 
-Reproduce the floor:
+## Not run
 
-```bash
-lurebench eval -d data/samples/lures.jsonl -m heuristic-v0 --json
-```
+- `binoculars`: ImportError: BinocularsDetector requires the 'binoculars' package.
+- `llama-guard-3`: OSError: You are trying to access a gated repo.
+- `openai-moderation`: ImportError: OpenAIModerationDetector requires the 'openai' extra.
