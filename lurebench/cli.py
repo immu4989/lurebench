@@ -114,6 +114,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
         persuasion=args.persuasion or [],
         persona=args.persona or "",
         generator=label,
+        hard=args.hard,
     )
     records = generate_records(generator, spec, args.n)
     clean, flagged = screen(records)
@@ -277,6 +278,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--language", default="en")
     p_gen.add_argument("--persona", default=None, help="non-identifying scenario seed")
     p_gen.add_argument("--persuasion", action="append", help="persuasion tag (repeatable)")
+    p_gen.add_argument("--hard", action="store_true", help="subtler, more varied lures (no stock spam markers)")
     p_gen.add_argument("--out", "-o", required=True, help="staging JSONL path (review-pending)")
     p_gen.set_defaults(func=_cmd_generate)
 

@@ -23,7 +23,7 @@ import urllib.error
 import urllib.request
 from typing import List, Optional
 
-from .base import SYSTEM_PROMPT, GenerationSpec, Generator, build_user_prompt
+from .base import GenerationSpec, Generator, build_user_prompt, system_prompt_for
 
 
 class OpenAICompatibleGenerator(Generator):
@@ -135,19 +135,21 @@ class OpenAICompatibleGenerator(Generator):
         spec.validate()
         self.stats = {"attempted": 0, "ok": 0, "rate_limited": 0,
                       "content_filter": 0, "http_error": 0, "empty": 0}
-        payload_base = {
-            "model": self.model,
-            "max_tokens": self.max_tokens,
-            "temperature": self.temperature,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": build_user_prompt(spec)},
-            ],
-        }
+        system = system_prompt_for(spec)
         out: List[str] = []
-        for _ in range(n):
+        for i in range(n):
             self.stats["attempted"] += 1
-            text = self._one(dict(payload_base))
+            payload = {
+                "model": self.model,
+                "max_tokens": self.max_tokens,
+                "temperature": self.temperature,
+                "messages": [
+                    {"role": "system", "content": system},
+                    # Per-call prompt: in hard mode this rotates through varied angles.
+                    {"role": "user", "content": build_user_prompt(spec, i)},
+                ],
+            }
+            text = self._one(payload)
             if text:
                 out.append(text)
         return out

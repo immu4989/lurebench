@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import SYSTEM_PROMPT, GenerationSpec, Generator, build_user_prompt
+from .base import GenerationSpec, Generator, build_user_prompt, system_prompt_for
 
 # Defaults to the current most-capable Opus-tier model. Any model works; note that
 # Claude Fable 5 runs cyber safety classifiers and may decline more often — set
@@ -40,14 +40,15 @@ class AnthropicGenerator(Generator):
 
     def generate(self, spec: GenerationSpec, n: int) -> List[str]:
         spec.validate()
+        system = system_prompt_for(spec)
         out: List[str] = []
-        for _ in range(n):
+        for i in range(n):
             try:
                 resp = self._client.messages.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
-                    system=SYSTEM_PROMPT,
-                    messages=[{"role": "user", "content": build_user_prompt(spec)}],
+                    system=system,
+                    messages=[{"role": "user", "content": build_user_prompt(spec, i)}],
                 )
             except self._anthropic.APIStatusError:
                 # Transient/API errors: skip this item rather than aborting the batch.

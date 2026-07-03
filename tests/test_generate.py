@@ -63,6 +63,24 @@ def test_promote_only_returns_approved():
     assert [r.id for r in promote([pending, approved])] == ["a"]
 
 
+def test_hard_mode_varies_prompt_and_system():
+    from lurebench.generate.base import build_user_prompt, system_prompt_for, SYSTEM_PROMPT, SYSTEM_PROMPT_HARD
+
+    soft = GenerationSpec(typology="phishing", hard=False)
+    hard = GenerationSpec(typology="phishing", hard=True)
+    assert system_prompt_for(soft) == SYSTEM_PROMPT
+    assert system_prompt_for(hard) == SYSTEM_PROMPT_HARD
+    # Hard mode rotates through distinct angles across call indices.
+    p0 = build_user_prompt(hard, 0)
+    p1 = build_user_prompt(hard, 1)
+    assert p0 != p1
+    assert "understated" in p0  # hard-mode style instruction present
+    # Soft mode ignores the index (stable prompt).
+    assert build_user_prompt(soft, 0) == build_user_prompt(soft, 1)
+    # hard flag is recorded in provenance meta.
+    assert hard.as_meta()["hard"] is True
+
+
 def test_registry_and_lazy_engine():
     assert "template" in available()
     assert "anthropic" in available()

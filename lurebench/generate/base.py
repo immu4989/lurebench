@@ -42,6 +42,9 @@ class GenerationSpec:
     persuasion: List[str] = field(default_factory=list)
     persona: str = ""
     generator: str = "template-v0"
+    # Hard mode: subtler, more varied lures that don't lean on stock spam markers —
+    # closer to how real fraud actually reads. Rotates through per-typology angles.
+    hard: bool = False
 
     def validate(self) -> None:
         if self.typology not in GENERATABLE:
@@ -57,6 +60,7 @@ class GenerationSpec:
             "persona": self.persona,
             "persuasion": list(self.persuasion),
             "generator": self.generator,
+            "hard": self.hard,
         }
 
 
@@ -74,13 +78,93 @@ SYSTEM_PROMPT = (
 )
 
 
-def build_user_prompt(spec: "GenerationSpec") -> str:
-    persona = spec.persona or "a generic, unremarkable scenario"
+# Hard-mode system prompt: reflect how real-world fraud actually reads (often calm,
+# brief, and plausible) rather than obvious spam. Same defensive guardrails as v1.
+SYSTEM_PROMPT_HARD = (
+    "You generate synthetic, clearly-fictional example messages used ONLY to train "
+    "and evaluate automated fraud-detection models for a defensive security benchmark "
+    "(LureBench). Write REALISTIC, VARIED examples that reflect how real fraud actually "
+    "reads — frequently calm, brief, and mundane rather than obviously alarming.\n"
+    "- Do NOT rely on stock phishing/spam markers. Avoid opening with 'Urgent:', avoid "
+    "stacking urgency + authority + payment-demand language, avoid ALL-CAPS alarms and "
+    "'verify your account immediately' clichés. Persuasion should come from context and "
+    "plausibility, not alarm words.\n"
+    "- Vary tone, length, and structure across messages: some short and casual, some "
+    "formal, some conversational. Not every message needs a subject line.\n"
+    "- Hard rules (unchanged): use <<link>> for any URL and <<contact>> for any "
+    "phone/handle/email; never a real or realistic URL, address, phone, or payment "
+    "detail; never name a real person, company, bank, or government body — generic roles "
+    "only; no operational instructions or malware.\n"
+    "- Output ONLY the message text — no preamble, no explanation, no quotes."
+)
+
+# Per-typology angle pools for hard mode. Rotating by call index gives intra-cell
+# variety so 50 lures aren't near-duplicates. Each angle steers toward a subtle,
+# non-templated scenario rather than a keyword-stuffed alarm.
+_HARD_ANGLES = {
+    "phishing": [
+        "a brief note that a shared document needs a quick sign-in to view",
+        "a low-key notice that a routine subscription payment didn't go through",
+        "a short internal-sounding message about updating saved delivery details",
+        "a calm follow-up asking to re-confirm access after a routine system change",
+        "a plain notification that a file is ready to download from a workspace",
+        "a mundane request to reactivate a dormant account before it's archived",
+        "a quiet heads-up about a mismatch on a recent order that needs confirming",
+        "a routine-sounding HR or benefits form that needs completing this week",
+    ],
+    "bec": [
+        "a casual note from a manager asking to quietly set up a new payee",
+        "a brief message referencing an offline conversation about redirecting a payment",
+        "a short, friendly ask to update banking details for an existing supplier",
+        "a low-urgency request to prepare a transfer 'when you get a moment'",
+        "a plausible follow-up on an invoice the recipient is expected to recognise",
+        "a calm message from 'a partner' confirming new remittance details",
+        "a brief request to confirm the account before a scheduled quarterly payment",
+        "a mundane forward of a payment instruction with a light personal aside",
+    ],
+    "romance": [
+        "a warm everyday message that gently mentions a small financial worry",
+        "a caring check-in that drifts toward needing a little help this month",
+        "a hopeful note about future plans that hinges on a minor setback",
+        "a low-key message about a travel or paperwork snag, no dramatics",
+        "a tender message asking for discretion about a private difficulty",
+        "a casual chat that mentions a stalled transfer they're waiting on",
+        "an affectionate note framing a request as 'just until things clear up'",
+        "a relaxed message building trust before any ask, mostly small talk",
+    ],
+    "pig_butchering": [
+        "a friendly reconnect that mentions a hobby, no investment talk yet",
+        "a casual message sharing a modest, plausible-sounding financial win",
+        "a low-pressure invite to 'take a look, no rush' at an opportunity",
+        "a warm note offering to explain something they seem curious about",
+        "a relaxed message positioning the sender as an experienced peer",
+        "a mundane check-in that lightly references steady returns over time",
+        "a patient message suggesting starting small 'only if it feels right'",
+        "a friendly message that builds rapport and defers the ask entirely",
+    ],
+}
+
+
+def _angle(spec: "GenerationSpec", index: int) -> str:
+    pool = _HARD_ANGLES.get(spec.typology)
+    if spec.hard and pool:
+        return pool[index % len(pool)]
+    return spec.persona or "a generic, unremarkable scenario"
+
+
+def system_prompt_for(spec: "GenerationSpec") -> str:
+    return SYSTEM_PROMPT_HARD if spec.hard else SYSTEM_PROMPT
+
+
+def build_user_prompt(spec: "GenerationSpec", index: int = 0) -> str:
+    scenario = _angle(spec, index)
     persuasion = ", ".join(spec.persuasion) if spec.persuasion else "any plausible angle"
+    style = " Vary the tone and length; keep it plausible and understated." if spec.hard else ""
     return (
         f"Write one synthetic {spec.typology.replace('_', ' ')} lure delivered over "
-        f"{spec.channel} in {spec.language}. Scenario seed: {persona}. "
-        f"Persuasion emphasis: {persuasion}. Remember the placeholder and no-real-entity rules."
+        f"{spec.channel} in {spec.language}. Scenario: {scenario}. "
+        f"Persuasion emphasis: {persuasion}.{style} "
+        f"Remember the placeholder and no-real-entity rules."
     )
 
 
