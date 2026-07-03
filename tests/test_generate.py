@@ -117,6 +117,47 @@ def test_openai_compat_generate_stubbed(monkeypatch):
     assert all(r.generator == "kimi-k2.6" and r.source == "ai" for r in records)
 
 
+def test_openai_compat_retries_429_then_succeeds(monkeypatch):
+    import urllib.error
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    gen = get_generator("deepseek")
+    gen.retry_base = 0.0  # no real sleeping in tests
+
+    seq = {"n": 0}
+
+    def flaky_post(payload):
+        seq["n"] += 1
+        if seq["n"] == 1:  # first attempt: rate limited
+            raise urllib.error.HTTPError(gen.endpoint, 429, "rate", hdrs=None, fp=None)
+        return {"choices": [{"finish_reason": "stop",
+                             "message": {"content": "Confirm at <<link>>."}}]}
+
+    monkeypatch.setattr(gen, "_post", flaky_post)
+    spec = GenerationSpec(typology="phishing", generator="deepseek-v4-pro")
+    records = generate_records(gen, spec, 1)
+    assert len(records) == 1
+    assert gen.stats["ok"] == 1 and gen.stats["rate_limited"] == 0  # retry absorbed the 429
+
+
+def test_openai_compat_counts_exhausted_rate_limit(monkeypatch):
+    import urllib.error
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    gen = get_generator("deepseek")
+    gen.retry_base = 0.0
+    gen.max_retries = 2
+
+    def always_429(payload):
+        raise urllib.error.HTTPError(gen.endpoint, 429, "rate", hdrs=None, fp=None)
+
+    monkeypatch.setattr(gen, "_post", always_429)
+    spec = GenerationSpec(typology="bec", generator="deepseek-v4-pro")
+    records = generate_records(gen, spec, 3)
+    assert records == []
+    assert gen.stats["rate_limited"] == 3  # visible, not silent
+
+
 def test_openai_compat_skips_content_filter(monkeypatch):
     from lurebench.generate import OpenAICompatibleGenerator
 

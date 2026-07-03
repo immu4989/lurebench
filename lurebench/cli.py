@@ -117,6 +117,11 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     clean, flagged = screen(records)
 
     save_jsonl(clean + flagged, args.out)
+    stats = getattr(generator, "stats", None)
+    if stats:
+        print(f"  calls: {stats['attempted']} attempted, {stats['ok']} ok, "
+              f"{stats['rate_limited']} rate-limited, {stats['content_filter']} filtered, "
+              f"{stats['empty']} empty, {stats['http_error']} errored")
     print(f"generated {len(records)} records → {args.out}")
     print(f"  {len(clean)} pending human review, {len(flagged)} auto-flagged for attention")
     print("  NOTE: all records are review-pending. Approve them (set meta.review='approved')")

@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
-from typing import List
+from typing import List, Optional
 
 from .base import SYSTEM_PROMPT, GenerationSpec, Generator, build_user_prompt
 
@@ -36,6 +37,9 @@ class OpenAICompatibleGenerator(Generator):
         max_tokens: int = 1024,
         temperature: float = 1.0,
         timeout: float = 60.0,
+        max_retries: int = 5,
+        retry_base: float = 2.0,
+        max_delay: float = 30.0,
     ) -> None:
         if not base_url or not model or not api_key_env:
             raise ValueError("base_url, model, and api_key_env are all required")
@@ -47,6 +51,12 @@ class OpenAICompatibleGenerator(Generator):
         # Anthropic engine, these providers accept it.
         self.temperature = temperature
         self.timeout = timeout
+        # Retry/backoff for rate limits (429) and server errors (5xx).
+        self.max_retries = max_retries
+        self.retry_base = retry_base
+        self.max_delay = max_delay
+        # Per-batch outcome counters, reset at the start of each generate().
+        self.stats: dict = {}
 
         self._api_key = os.environ.get(api_key_env)
         if not self._api_key:
@@ -75,16 +85,49 @@ class OpenAICompatibleGenerator(Generator):
         choices = response.get("choices") or []
         if not choices:
             return ""
-        choice = choices[0]
-        # Skip provider-side content filtering rather than treating it as output.
-        if choice.get("finish_reason") == "content_filter":
-            return ""
-        message = choice.get("message") or {}
+        message = choices[0].get("message") or {}
         content = message.get("content")
         return content.strip() if isinstance(content, str) else ""
 
+    def _one(self, payload: dict) -> Optional[str]:
+        """Return one lure text, or None. Retries 429/5xx with backoff; updates stats."""
+        delay = self.retry_base
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self._post(payload)
+            except urllib.error.HTTPError as exc:
+                retryable = exc.code == 429 or exc.code >= 500
+                if retryable and attempt < self.max_retries:
+                    retry_after = exc.headers.get("Retry-After") if exc.headers else None
+                    try:
+                        wait = float(retry_after) if retry_after else delay
+                    except ValueError:
+                        wait = delay
+                    time.sleep(min(wait, self.max_delay))
+                    delay *= 2
+                    continue
+                self.stats["rate_limited" if exc.code == 429 else "http_error"] += 1
+                return None
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+                self.stats["http_error"] += 1
+                return None
+
+            choice = (response.get("choices") or [{}])[0]
+            if choice.get("finish_reason") == "content_filter":
+                self.stats["content_filter"] += 1
+                return None
+            text = self._extract(response)
+            if text:
+                self.stats["ok"] += 1
+                return text
+            self.stats["empty"] += 1
+            return None
+        return None
+
     def generate(self, spec: GenerationSpec, n: int) -> List[str]:
         spec.validate()
+        self.stats = {"attempted": 0, "ok": 0, "rate_limited": 0,
+                      "content_filter": 0, "http_error": 0, "empty": 0}
         payload_base = {
             "model": self.model,
             "max_tokens": self.max_tokens,
@@ -96,12 +139,8 @@ class OpenAICompatibleGenerator(Generator):
         }
         out: List[str] = []
         for _ in range(n):
-            try:
-                response = self._post(dict(payload_base))
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-                # Network / transient errors: skip this item, keep the batch going.
-                continue
-            text = self._extract(response)
+            self.stats["attempted"] += 1
+            text = self._one(dict(payload_base))
             if text:
                 out.append(text)
         return out
