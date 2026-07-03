@@ -18,7 +18,8 @@ env/
 !.env.example
 *.key
 secrets/
-# Large / restricted data artifacts are never committed; see DATA.md.
+# Generated staging (review-pending lures) and large/restricted data — never committed.
+staging/
 data/full/
 data/restricted/
 *.parquet
