@@ -80,6 +80,25 @@ pip install "lurebench[llamaguard]"    # content-safety baseline (gated model)
 pip install "lurebench[openai]"        # moderation-API baseline (needs OPENAI_API_KEY)
 ```
 
+## Generating the AI class
+
+Cleanly-licensed public data covers human-written phishing well, but AI-generated lures (and BEC / romance / pig-butchering) are scarce — so LureBench generates them under a controlled protocol (see [docs/SHARD_SPEC.md](docs/SHARD_SPEC.md)). Generation runs through a single OpenAI-compatible engine with presets for common providers, plus a dependency-free template engine that needs no key:
+
+```bash
+# Offline template baseline (no API key)
+lurebench generate --typology bec --n 20 --engine template --out staging.jsonl
+
+# Any OpenAI-compatible provider via preset (uses that provider's own key)
+export DEEPSEEK_API_KEY=...
+lurebench generate --typology phishing --n 50 --engine deepseek --out staging.jsonl
+
+# Or a custom endpoint
+lurebench generate --typology romance --n 50 --engine openai-compat \
+  --base-url https://api.example.com/v1 --model some-model --api-key-env SOME_KEY --out staging.jsonl
+```
+
+Presets: `deepseek`, `qwen`, `glm`, `kimi`, `mistral` (and `anthropic` for the aligned-model contrast). Using several generators is the point — the leaderboard's per-generator slice shows where detectors fail on one model's output but not another's. Every generated record is defanged, provenance-logged, and lands `review: pending`; nothing enters a shard until a human approves it.
+
 ## Demand signals
 
 LureBench targets a threat that U.S. regulators and law enforcement have named explicitly:
@@ -94,7 +113,7 @@ LureBench covers **text** lures. Audio and video deepfake fraud are well served 
 
 ## Responsible use
 
-This is a defensive research project. The corpus exists to train and evaluate detectors. Samples are defanged, and the repository does not provide tooling to generate or deliver working fraud campaigns. See [DATA.md](DATA.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+This is a defensive research project. The corpus exists to train and evaluate detectors. Controlled generation produces **defanged, clearly-synthetic, review-gated** detector-training text — it does not personalize lures to real targets, embed working links or payment rails, or deliver anything. All generated records are held `review: pending` behind a human-approval gate. See [DATA.md](DATA.md), [docs/SHARD_SPEC.md](docs/SHARD_SPEC.md), and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 

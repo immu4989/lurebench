@@ -88,16 +88,22 @@ def _parse_splits(pairs: List[str]) -> dict:
 
 def _cmd_generate(args: argparse.Namespace) -> int:
     gen_kwargs = {}
-    if args.engine == "anthropic" and args.model:
+    if args.engine != "template" and args.model:
         gen_kwargs["model"] = args.model
+    if args.engine == "openai-compat":
+        if not args.base_url or not args.api_key_env:
+            print("! engine 'openai-compat' requires --base-url and --api-key-env", file=sys.stderr)
+            return 1
+        gen_kwargs["base_url"] = args.base_url
+        gen_kwargs["api_key_env"] = args.api_key_env
     try:
         generator = get_generator(args.engine, **gen_kwargs)
-    except (ImportError, RuntimeError, KeyError) as exc:
+    except (ImportError, RuntimeError, KeyError, ValueError) as exc:
         print(f"! {exc}", file=sys.stderr)
         print(f"  available engines: {gen_available()}", file=sys.stderr)
         return 1
 
-    label = args.generator_id or (args.model if args.engine == "anthropic" else "template-v0")
+    label = args.generator_id or getattr(generator, "model", None) or args.engine
     spec = GenerationSpec(
         typology=args.typology,
         channel=args.channel,
@@ -231,7 +237,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--typology", "-t", required=True, choices=["phishing", "bec", "romance", "pig_butchering"])
     p_gen.add_argument("--n", type=int, default=10, help="number of records to generate")
     p_gen.add_argument("--engine", "-e", default="template", help=f"one of {gen_available()}")
-    p_gen.add_argument("--model", default="claude-opus-4-8", help="model id for the anthropic engine")
+    p_gen.add_argument("--model", default=None, help="model id (defaults per engine/provider preset)")
+    p_gen.add_argument("--base-url", default=None, help="required for engine 'openai-compat'")
+    p_gen.add_argument("--api-key-env", default=None, help="env var holding the provider key (openai-compat)")
     p_gen.add_argument("--generator-id", default=None, help="provenance label stamped on records")
     p_gen.add_argument("--channel", default="email")
     p_gen.add_argument("--language", default="en")

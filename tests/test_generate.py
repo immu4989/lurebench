@@ -66,6 +66,64 @@ def test_promote_only_returns_approved():
 def test_registry_and_lazy_engine():
     assert "template" in available()
     assert "anthropic" in available()
+    assert "openai-compat" in available()
+    for provider in ("deepseek", "qwen", "glm", "kimi", "mistral"):
+        assert provider in available()
     assert isinstance(get_generator("template"), TemplateGenerator)
     with pytest.raises(KeyError):
         get_generator("does-not-exist")
+
+
+def test_openai_compat_requires_key(monkeypatch):
+    from lurebench.generate import OpenAICompatibleGenerator
+
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    with pytest.raises(RuntimeError):
+        OpenAICompatibleGenerator(base_url="https://api.deepseek.com",
+                                  model="deepseek-v4-pro", api_key_env="DEEPSEEK_API_KEY")
+
+
+def test_provider_preset_builds_endpoint(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    gen = get_generator("deepseek")
+    assert gen.endpoint == "https://api.deepseek.com/chat/completions"
+    assert gen.model == "deepseek-v4-pro"
+    # model override flows through the preset
+    gen2 = get_generator("deepseek", model="deepseek-v4-flash")
+    assert gen2.model == "deepseek-v4-flash"
+
+
+def test_openai_compat_generate_stubbed(monkeypatch):
+    from lurebench.generate import OpenAICompatibleGenerator
+
+    monkeypatch.setenv("MOONSHOT_API_KEY", "sk-test")
+    gen = get_generator("kimi", model="kimi-k2.6")
+
+    calls = {"n": 0}
+
+    def fake_post(payload):
+        calls["n"] += 1
+        # Sanity: the defensive system prompt is actually sent.
+        assert payload["messages"][0]["role"] == "system"
+        assert "LureBench" in payload["messages"][0]["content"]
+        return {"choices": [{"finish_reason": "stop",
+                             "message": {"content": "Confirm the details at <<link>> today."}}]}
+
+    monkeypatch.setattr(gen, "_post", fake_post)
+    spec = GenerationSpec(typology="phishing", generator="kimi-k2.6")
+    records = generate_records(gen, spec, 3)
+    assert calls["n"] == 3
+    assert len(records) >= 1
+    assert all(r.generator == "kimi-k2.6" and r.source == "ai" for r in records)
+
+
+def test_openai_compat_skips_content_filter(monkeypatch):
+    from lurebench.generate import OpenAICompatibleGenerator
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    gen = get_generator("deepseek")
+    monkeypatch.setattr(gen, "_post", lambda payload: {
+        "choices": [{"finish_reason": "content_filter", "message": {"content": "blocked"}}]
+    })
+    spec = GenerationSpec(typology="bec", generator="deepseek-v4-pro")
+    assert generate_records(gen, spec, 2) == []

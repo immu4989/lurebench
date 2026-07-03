@@ -14,23 +14,12 @@ from __future__ import annotations
 
 from typing import List
 
-from .base import GenerationSpec, Generator
+from .base import SYSTEM_PROMPT, GenerationSpec, Generator, build_user_prompt
 
 # Defaults to the current most-capable Opus-tier model. Any model works; note that
 # Claude Fable 5 runs cyber safety classifiers and may decline more often — set
 # `model="claude-fable-5"` only if you also want the server-side fallback path.
 _DEFAULT_MODEL = "claude-opus-4-8"
-
-_SYSTEM = (
-    "You generate synthetic, clearly-fictional example messages used ONLY to train "
-    "and evaluate automated fraud-detection models for a defensive security benchmark "
-    "(LureBench). Hard rules for every message you write:\n"
-    "- Use the placeholders <<link>> for any URL and <<contact>> for any phone/handle/email. "
-    "Never write a real or realistic URL, address, phone number, or payment detail.\n"
-    "- Never name a real person, company, bank, or government body. Use generic roles only.\n"
-    "- Do not include operational instructions, malware, or anything beyond the message text.\n"
-    "- Output ONLY the message text — no preamble, no explanation, no quotes."
-)
 
 
 class AnthropicGenerator(Generator):
@@ -49,15 +38,6 @@ class AnthropicGenerator(Generator):
         self.model = model
         self.max_tokens = max_tokens
 
-    def _user_prompt(self, spec: GenerationSpec) -> str:
-        persona = spec.persona or "a generic, unremarkable scenario"
-        persuasion = ", ".join(spec.persuasion) if spec.persuasion else "any plausible angle"
-        return (
-            f"Write one synthetic {spec.typology.replace('_', ' ')} lure delivered over "
-            f"{spec.channel} in {spec.language}. Scenario seed: {persona}. "
-            f"Persuasion emphasis: {persuasion}. Remember the placeholder and no-real-entity rules."
-        )
-
     def generate(self, spec: GenerationSpec, n: int) -> List[str]:
         spec.validate()
         out: List[str] = []
@@ -66,8 +46,8 @@ class AnthropicGenerator(Generator):
                 resp = self._client.messages.create(
                     model=self.model,
                     max_tokens=self.max_tokens,
-                    system=_SYSTEM,
-                    messages=[{"role": "user", "content": self._user_prompt(spec)}],
+                    system=SYSTEM_PROMPT,
+                    messages=[{"role": "user", "content": build_user_prompt(spec)}],
                 )
             except self._anthropic.APIStatusError:
                 # Transient/API errors: skip this item rather than aborting the batch.

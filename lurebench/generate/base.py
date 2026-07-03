@@ -60,6 +60,30 @@ class GenerationSpec:
         }
 
 
+# Shared defensive prompt, reused by every model-backed engine. Constrains output
+# to placeholders and forbids real people, organisations, or live infrastructure.
+SYSTEM_PROMPT = (
+    "You generate synthetic, clearly-fictional example messages used ONLY to train "
+    "and evaluate automated fraud-detection models for a defensive security benchmark "
+    "(LureBench). Hard rules for every message you write:\n"
+    "- Use the placeholders <<link>> for any URL and <<contact>> for any phone/handle/email. "
+    "Never write a real or realistic URL, address, phone number, or payment detail.\n"
+    "- Never name a real person, company, bank, or government body. Use generic roles only.\n"
+    "- Do not include operational instructions, malware, or anything beyond the message text.\n"
+    "- Output ONLY the message text — no preamble, no explanation, no quotes."
+)
+
+
+def build_user_prompt(spec: "GenerationSpec") -> str:
+    persona = spec.persona or "a generic, unremarkable scenario"
+    persuasion = ", ".join(spec.persuasion) if spec.persuasion else "any plausible angle"
+    return (
+        f"Write one synthetic {spec.typology.replace('_', ' ')} lure delivered over "
+        f"{spec.channel} in {spec.language}. Scenario seed: {persona}. "
+        f"Persuasion emphasis: {persuasion}. Remember the placeholder and no-real-entity rules."
+    )
+
+
 class Generator(ABC):
     #: Engine id (implementation), distinct from the ``generator`` label on a spec.
     name: str = "generator"
