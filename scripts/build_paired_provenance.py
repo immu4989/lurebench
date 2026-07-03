@@ -1,36 +1,35 @@
 #!/usr/bin/env python3
-"""Build the distribution-matched paired provenance dataset.
+"""Build paired-provenance rewrites for ONE generator (independent + robust).
 
-Human phishing lures (de-tokenized to natural prose, defanged, length-capped) and
-an AI rewrite of each — same scenario, typology, and length. This is the
-confound-controlled basis for "can you tell AI-authored fraud from human-authored?"
+Each generator runs as its own process writing its own file, so a hang or slow
+model never traps another's completed work. A socket-level timeout backstops the
+per-request timeout so a stuck connection can't hang the batch indefinitely.
 
-500 seeds x {DeepSeek, Mistral}, run concurrently. Run from repo root with keys:
-    set -a; source .env; set +a
-    python scripts/build_paired_provenance.py
+    python scripts/build_paired_provenance.py --engine mistral \
+        --label mistral-large-latest --count 300 --max-tokens 2048
+
+Writes data/full/paired/<label>.jsonl. Human seeds are re-derived deterministically
+by the eval, so no shared human file is needed here.
 """
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+import argparse
+import socket
 from pathlib import Path
 
 from lurebench.generate import get_generator, rewrite_records
 from lurebench.ingest.base import defang, detokenize
 from lurebench.schema import Lure, load_jsonl, save_jsonl
 
-N_SEEDS = 500
+socket.setdefaulttimeout(120)  # backstop: no socket op (connect/handshake/read) hangs forever
+
 SEED_WORDS = 120
 MIN_WORDS = 25
-# (engine, provenance-label, max_tokens) — DeepSeek reasons, so give it more room.
-GENERATORS = [
-    ("deepseek", "deepseek-v4-pro", 3072),
-    ("mistral", "mistral-large-latest", 2048),
-]
-OUT = "data/full/paired/phishing_provenance.jsonl"
+OUTDIR = Path("data/full/paired")
 
 
-def prep_seeds():
+def prep_seeds(n: int):
     corpus = load_jsonl("data/full/core/train.jsonl")
     human = [r for r in corpus if r.source == "human" and r.typology == "phishing"]
     seeds = []
@@ -39,31 +38,27 @@ def prep_seeds():
         if len(text.split()) >= MIN_WORDS:
             seeds.append(Lure(id=r.id, text=text, label=1, source="human",
                               typology="phishing", channel="email"))
-        if len(seeds) >= N_SEEDS:
+        if len(seeds) >= n:
             break
     return seeds
 
 
 def main() -> None:
-    seeds = prep_seeds()
-    print(f"prepared {len(seeds)} human phishing seeds", flush=True)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--engine", required=True)
+    ap.add_argument("--label", required=True)
+    ap.add_argument("--count", type=int, required=True)
+    ap.add_argument("--max-tokens", type=int, default=2048)
+    args = ap.parse_args()
 
-    def do(engine, label, max_tokens):
-        gen = get_generator(engine, max_tokens=max_tokens)
-        recs = rewrite_records(gen, seeds, generator_label=label, typology="phishing")
-        print(f"{label}: {len(recs)}/{len(seeds)} rewrites", flush=True)
-        return recs
+    OUTDIR.mkdir(parents=True, exist_ok=True)
+    seeds = prep_seeds(args.count)
+    print(f"{args.label}: prepared {len(seeds)} seeds", flush=True)
 
-    ai = []
-    with ThreadPoolExecutor(max_workers=len(GENERATORS)) as ex:
-        futs = [ex.submit(do, e, lbl, mt) for e, lbl, mt in GENERATORS]
-        for f in futs:
-            ai.extend(f.result())
-
-    paired = list(seeds) + ai
-    Path("data/full/paired").mkdir(parents=True, exist_ok=True)
-    save_jsonl(paired, OUT)
-    print(f"saved {len(seeds)} human + {len(ai)} AI -> {OUT}", flush=True)
+    gen = get_generator(args.engine, max_tokens=args.max_tokens)
+    recs = rewrite_records(gen, seeds, generator_label=args.label, typology="phishing")
+    save_jsonl(recs, OUTDIR / f"{args.label}.jsonl")
+    print(f"{args.label}: {len(recs)}/{len(seeds)} rewrites -> {OUTDIR}/{args.label}.jsonl", flush=True)
 
 
 if __name__ == "__main__":
