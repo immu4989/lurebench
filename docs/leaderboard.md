@@ -9,9 +9,11 @@ _Generated from **data/full/core/test.jsonl** (2055 records)._
 | Detector | MCC | TPR | FPR | F1 | AUC |
 |---|---|---|---|---|---|
 | `heuristic-v0` | 0.099 | 0.173 | 0.105 | 0.260 | 0.524 |
+| `tfidf-logreg` | 0.909 | 0.962 | 0.048 | 0.946 | 0.992 |
 
 ### Detection rate by fraud typology
 
 | Detector | `phishing` | `bec` | `romance` | `pig_butchering` |
 |---|---|---|---|---|
 | `heuristic-v0` | 0.156 | 0.826 | 0.148 | 0.071 |
+| `tfidf-logreg` | 0.959 | 1.000 | 1.000 | 1.000 |

@@ -50,6 +50,22 @@ def _cmd_ingest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_train(args: argparse.Namespace) -> int:
+    from .detectors.tfidf import TfidfLogisticDetector
+
+    records = load_jsonl(args.dataset)
+    try:
+        detector = TfidfLogisticDetector.train(records, task=args.task)
+    except ImportError as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    detector.save(args.out)
+    n_pos = sum(1 for r in records if (r.label if args.task == "fraud" else (r.source == "ai")))
+    print(f"trained {detector.name} (task={args.task}) on {len(records)} records "
+          f"({n_pos} positive) -> {args.out}")
+    return 0
+
+
 def _cmd_leaderboard(args: argparse.Namespace) -> int:
     dataset = load_jsonl(args.dataset)
     names = args.detector or available()
@@ -255,6 +271,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_man = sub.add_parser("manifest", help="print the composition manifest for a dataset")
     p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
     p_man.set_defaults(func=_cmd_manifest)
+
+    p_train = sub.add_parser("train", help="train the tfidf-logreg baseline detector")
+    p_train.add_argument("--dataset", "-d", required=True, help="training JSONL (use the train split)")
+    p_train.add_argument("--out", "-o", default="models/tfidf-logreg-fraud.joblib", help="model output path")
+    p_train.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
+    p_train.set_defaults(func=_cmd_train)
 
     p_pub = sub.add_parser("publish", help="assemble a Hub-ready dataset dir (and optionally push)")
     p_pub.add_argument("--split", "-s", action="append", required=True, help="name=path (repeatable)")

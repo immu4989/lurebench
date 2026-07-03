@@ -18,8 +18,9 @@ env/
 !.env.example
 *.key
 secrets/
-# Generated staging (review-pending lures) and large/restricted data — never committed.
+# Generated staging (review-pending lures), trained model artifacts, and large data.
 staging/
+models/
 data/full/
 data/restricted/
 *.parquet
