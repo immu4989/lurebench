@@ -36,7 +36,7 @@ class OpenAICompatibleGenerator(Generator):
         api_key_env: str,
         max_tokens: int = 1024,
         temperature: float = 1.0,
-        timeout: float = 60.0,
+        timeout: float = 120.0,
         max_retries: int = 5,
         retry_base: float = 2.0,
         max_delay: float = 30.0,
@@ -108,7 +108,14 @@ class OpenAICompatibleGenerator(Generator):
                     continue
                 self.stats["rate_limited" if exc.code == 429 else "http_error"] += 1
                 return None
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError):
+                # Transient network errors — incl. urllib.error.URLError and read
+                # timeouts (socket.timeout, which on Python 3.9 is NOT a TimeoutError
+                # subclass). Retryable, then counted rather than crashing the batch.
+                if attempt < self.max_retries:
+                    time.sleep(min(delay, self.max_delay))
+                    delay *= 2
+                    continue
                 self.stats["http_error"] += 1
                 return None
 

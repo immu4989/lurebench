@@ -158,6 +158,29 @@ def test_openai_compat_counts_exhausted_rate_limit(monkeypatch):
     assert gen.stats["rate_limited"] == 3  # visible, not silent
 
 
+def test_openai_compat_retries_socket_timeout(monkeypatch):
+    # socket.timeout during response read must be retried, never crash the batch
+    # (on Python 3.9 socket.timeout is not a TimeoutError subclass).
+    import socket
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    gen = get_generator("deepseek")
+    gen.retry_base = 0.0
+
+    seq = {"n": 0}
+
+    def flaky_post(payload):
+        seq["n"] += 1
+        if seq["n"] == 1:
+            raise socket.timeout("read timed out")
+        return {"choices": [{"finish_reason": "stop", "message": {"content": "confirm at <<link>>"}}]}
+
+    monkeypatch.setattr(gen, "_post", flaky_post)
+    spec = GenerationSpec(typology="phishing", generator="deepseek-v4-pro")
+    records = generate_records(gen, spec, 1)
+    assert len(records) == 1 and gen.stats["ok"] == 1
+
+
 def test_openai_compat_skips_content_filter(monkeypatch):
     from lurebench.generate import OpenAICompatibleGenerator
 
