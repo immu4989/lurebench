@@ -74,6 +74,18 @@ def test_generic_adapter_csv(tmp_path):
     assert records[0].meta["source_id"] == "demo"
 
 
+def test_detokenize_rejoins_urls_and_preserves_words():
+    from lurebench.ingest.base import defang, detokenize
+
+    # spaced domain/scheme rejoin, then defang
+    assert defang(detokenize("visit lookdog . com today")) == "visit <<link>> today"
+    assert "<<link>>" in defang(detokenize("go to http : / / evil . biz / x"))
+    # natural punctuation restored
+    assert detokenize("word , next . end") == "word, next. end"
+    # legit TLD-homograph words survive (no over-stripping)
+    assert detokenize("net income for the org this year") == "net income for the org this year"
+
+
 def test_registry_get_adapter():
     assert isinstance(get_adapter("ephishgen"), EPhishGenAdapter)
     with pytest.raises(KeyError):

@@ -45,6 +45,30 @@ def defang(text: str) -> str:
     return text
 
 
+_TLDS = "com|net|org|info|biz|io|co|ru|cn|xyz|top|link|click|us|uk|de|fr|online|site|shop|app"
+_SPACED_SCHEME_RE = re.compile(r"\b(https?)\s*:\s*/\s*/\s*", re.I)
+_SPACED_DOMAIN_RE = re.compile(rf"\b([a-z0-9-]+)\s+\.\s+(?=(?:{_TLDS})\b)", re.I)
+_SPACE_BEFORE_PUNCT_RE = re.compile(r"\s+([.,;:!?%)\]}])")
+_SPACE_AFTER_OPEN_RE = re.compile(r"([(\[{])\s+")
+_MULTISPACE_RE = re.compile(r"[ \t]{2,}")
+
+
+def detokenize(text: str) -> str:
+    """Restore natural prose from pre-tokenized text (spaces around punctuation).
+
+    Some public corpora ship tokenized ("word . com", "http : / /") — a spacing
+    style that is itself a human-vs-AI tell and that splits URLs so defang misses
+    them. This rejoins schemes/domains and removes spaces before punctuation.
+    Bounded to TLD-suffixed tokens so legit words ("net income") are untouched.
+    """
+    text = _SPACED_SCHEME_RE.sub(r"\1://", text)
+    text = _SPACED_DOMAIN_RE.sub(r"\1.", text)
+    text = _SPACE_BEFORE_PUNCT_RE.sub(r"\1", text)
+    text = _SPACE_AFTER_OPEN_RE.sub(r"\1", text)
+    text = _MULTISPACE_RE.sub(" ", text)
+    return text
+
+
 def norm_key(text: str) -> str:
     """Whitespace/case-normalized SHA1 used for cross-source dedup."""
     normalized = re.sub(r"\s+", " ", text.lower()).strip()
