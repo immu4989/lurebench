@@ -62,6 +62,47 @@ def generate_records(
     return dedupe(records)
 
 
+def rewrite_records(
+    generator: Generator,
+    seeds: Sequence[Lure],
+    generator_label: str,
+    typology: str = "phishing",
+    start_index: int = 0,
+) -> List[Lure]:
+    """Produce AI rewrites of human ``seeds`` for the distribution-matched provenance
+    task. Each rewrite preserves its seed's scenario/typology/length and links back
+    via ``meta.rewrite_of``. Defanged and review-pending like any generated record.
+    """
+    out: List[Lure] = []
+    for i, seed in enumerate(seeds):
+        spec = GenerationSpec(typology=typology, generator=generator_label, seed_text=seed.text)
+        texts = generator.generate(spec, 1)
+        if not texts:
+            continue
+        text = defang(texts[0].strip())
+        if not text:
+            continue
+        out.append(
+            Lure(
+                id=f"rw-{typology}-{generator_label}-{start_index + i:05d}",
+                text=text,
+                label=1,
+                source="ai",
+                typology=typology,
+                generator=generator_label,
+                language=seed.language,
+                channel=seed.channel,
+                meta={
+                    "source_id": "controlled-rewrite",
+                    "rewrite_of": seed.id,
+                    "generation": {"engine": generator.name, "mode": "rewrite"},
+                    "review": "pending",
+                },
+            )
+        )
+    return out
+
+
 def screen(records: Sequence[Lure]) -> Tuple[List[Lure], List[Lure]]:
     """Split records into (clean-pending, flagged-for-human) per protocol step 3.
 

@@ -45,6 +45,10 @@ class GenerationSpec:
     # Hard mode: subtler, more varied lures that don't lean on stock spam markers —
     # closer to how real fraud actually reads. Rotates through per-typology angles.
     hard: bool = False
+    # Rewrite mode: when set, produce an AI rewrite of this human seed lure —
+    # same scenario, typology, and approximate length — for a distribution-matched
+    # provenance task (human original vs AI rewrite).
+    seed_text: str = ""
 
     def validate(self) -> None:
         if self.typology not in GENERATABLE:
@@ -152,11 +156,34 @@ def _angle(spec: "GenerationSpec", index: int) -> str:
     return spec.persona or "a generic, unremarkable scenario"
 
 
+# Rewrite-mode system prompt: produce an equivalent lure in the model's own words,
+# matched to the human seed on scenario, typology, and length — for the
+# distribution-matched provenance task. Same defensive guardrails.
+SYSTEM_PROMPT_REWRITE = (
+    "You rewrite fraud-lure messages for a defensive detection benchmark (LureBench). "
+    "Given a message, rewrite it in your own words as an equivalent lure of the SAME "
+    "type: preserve the scenario, intent, tone, and APPROXIMATE LENGTH.\n"
+    "- Keep any <<link>> and <<contact>> placeholders. Never add a real or realistic "
+    "URL, address, phone, or payment detail; never introduce a real person, company, "
+    "bank, or government body.\n"
+    "- Do not summarise or shorten — match the original's length and level of detail.\n"
+    "- Output ONLY the rewritten message — no preamble, no explanation, no quotes."
+)
+
+
 def system_prompt_for(spec: "GenerationSpec") -> str:
+    if spec.seed_text:
+        return SYSTEM_PROMPT_REWRITE
     return SYSTEM_PROMPT_HARD if spec.hard else SYSTEM_PROMPT
 
 
 def build_user_prompt(spec: "GenerationSpec", index: int = 0) -> str:
+    if spec.seed_text:
+        return (
+            f"Rewrite this {spec.typology.replace('_', ' ')} message as an equivalent lure "
+            f"in your own words, matching its length. Keep placeholders as-is.\n\n"
+            f"MESSAGE:\n{spec.seed_text}"
+        )
     scenario = _angle(spec, index)
     persuasion = ", ".join(spec.persuasion) if spec.persuasion else "any plausible angle"
     style = " Vary the tone and length; keep it plausible and understated." if spec.hard else ""

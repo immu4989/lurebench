@@ -17,17 +17,30 @@ from typing import Iterable, Iterator, List
 
 from ..schema import Lure
 
+_HTML_RE = re.compile(r"(?<!<)<(?!<)[^<>]{1,80}>(?!>)")  # HTML tags, but not our <<placeholders>>
 _URL_RE = re.compile(r"(https?://\S+|www\.\S+)", re.I)
 _EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 _MSG_HANDLE_RE = re.compile(r"(t\.me/\S+|wa\.me/\S+|whatsapp:\s*\S+|telegram:\s*\S+)", re.I)
+# Bare domains (no scheme) with a recognizable TLD — catches "Mail.com", "evil.ru".
+_BARE_DOMAIN_RE = re.compile(
+    r"\b(?:[a-z0-9-]+\.)+(?:com|net|org|info|biz|io|co|ru|cn|xyz|top|link|click|us|uk|de|fr|online|site|shop|app)\b",
+    re.I,
+)
 _PHONE_RE = re.compile(r"(?<!\w)\+?\d[\d\s().-]{8,}\d(?!\w)")
 
 
 def defang(text: str) -> str:
-    """Replace links and contact hand-offs with placeholders. Idempotent."""
+    """Replace links and contact hand-offs with placeholders. Idempotent.
+
+    Order matters: strip HTML first, then full URLs, then emails (which contain a
+    domain) before bare domains, so ``user@evil.com`` becomes ``<<contact>>`` rather
+    than ``user@<<link>>``.
+    """
+    text = _HTML_RE.sub(" ", text)
     text = _URL_RE.sub("<<link>>", text)
-    text = _MSG_HANDLE_RE.sub("<<contact>>", text)
     text = _EMAIL_RE.sub("<<contact>>", text)
+    text = _MSG_HANDLE_RE.sub("<<contact>>", text)
+    text = _BARE_DOMAIN_RE.sub("<<link>>", text)
     text = _PHONE_RE.sub("<<contact>>", text)
     return text
 

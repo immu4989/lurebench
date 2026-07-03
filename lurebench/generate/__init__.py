@@ -10,7 +10,7 @@ from typing import Dict, Type
 
 from .base import GenerationSpec, Generator
 from .openai_compat import OpenAICompatibleGenerator
-from .pipeline import generate_records, promote, screen
+from .pipeline import generate_records, promote, rewrite_records, screen
 from .template import TemplateGenerator
 
 _EAGER: Dict[str, Type[Generator]] = {TemplateGenerator.name: TemplateGenerator}
@@ -85,6 +85,7 @@ __all__ = [
     "available",
     "get_generator",
     "generate_records",
+    "rewrite_records",
     "screen",
     "promote",
 ]
