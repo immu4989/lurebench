@@ -12,6 +12,12 @@ env/
 .mypy_cache/
 .DS_Store
 *.log
+# Secrets — API keys never get committed.
+.env
+.env.*
+!.env.example
+*.key
+secrets/
 # Large / restricted data artifacts are never committed; see DATA.md.
 data/full/
 data/restricted/
