@@ -91,6 +91,8 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     gen_kwargs = {}
     if args.engine != "template" and args.model:
         gen_kwargs["model"] = args.model
+    if args.engine != "template" and args.max_tokens:
+        gen_kwargs["max_tokens"] = args.max_tokens
     if args.engine == "openai-compat":
         if not args.base_url or not args.api_key_env:
             print("! engine 'openai-compat' requires --base-url and --api-key-env", file=sys.stderr)
@@ -267,6 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--n", type=int, default=10, help="number of records to generate")
     p_gen.add_argument("--engine", "-e", default="template", help=f"one of {gen_available()}")
     p_gen.add_argument("--model", default=None, help="model id (defaults per engine/provider preset)")
+    p_gen.add_argument("--max-tokens", type=int, default=None, help="output token budget (raise for reasoning models, e.g. kimi)")
     p_gen.add_argument("--base-url", default=None, help="required for engine 'openai-compat'")
     p_gen.add_argument("--api-key-env", default=None, help="env var holding the provider key (openai-compat)")
     p_gen.add_argument("--generator-id", default=None, help="provenance label stamped on records")
