@@ -14,7 +14,6 @@ from __future__ import annotations
 import glob
 import statistics
 
-from lurebench.corpus import assign_test
 from lurebench.detectors.tfidf import TfidfLogisticDetector
 from lurebench.ingest.base import defang, detokenize
 from lurebench.schema import Lure, load_jsonl
@@ -47,16 +46,19 @@ def main() -> None:
     print(f"mean words: human {round(statistics.mean(len(r.text.split()) for r in human))}"
           f"  ai {round(statistics.mean(len(r.text.split()) for r in ai))}\n")
 
-    human_tr = [r for r in human if not assign_test(r.id)]
-    human_te = [r for r in human if assign_test(r.id)]
+    # Index-based holdout (every 5th) — self-contained; these records are all from
+    # the corpus train split, so the corpus id-hash can't provide a holdout here.
+    def split(records, k=5):
+        test = records[::k]
+        train = [r for i, r in enumerate(records) if i % k != 0]
+        return train, test
+
+    human_tr, human_te = split(human)
 
     print("=== in-distribution provenance (random split per generator) ===")
     for g in gens:
         g_ai = [r for r in ai if r.generator == g]
-        ai_tr = [r for r in g_ai if not assign_test(r.id.replace("rw-phishing-", ""))]
-        ai_te = [r for r in g_ai if assign_test(r.id.replace("rw-phishing-", ""))]
-        if not ai_te:
-            ai_tr, ai_te = g_ai[:-max(1, len(g_ai)//10)], g_ai[-max(1, len(g_ai)//10):]
+        ai_tr, ai_te = split(g_ai)
         det = TfidfLogisticDetector.train(human_tr + ai_tr, task="provenance")
         rec = sum(1 for r in ai_te if det.predict(r) == 1) / len(ai_te)
         fpr = sum(1 for r in human_te if det.predict(r) == 1) / len(human_te)
