@@ -16,13 +16,13 @@ Outputs to data/full/phishtext/ (gitignored): train.jsonl, test.jsonl, manifest.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import urllib.request
 from pathlib import Path
 
 import pandas as pd
 
+from lurebench.corpus import assign_test
 from lurebench.ingest import GenericAdapter, dedupe
 from lurebench.manifest import build_manifest, check_balance
 from lurebench.schema import save_jsonl
@@ -30,18 +30,12 @@ from lurebench.schema import save_jsonl
 DATASET = "David-Egea/phishing-texts"
 OUT = Path("data/full/phishtext")
 MIN_TOKENS = 5
-TEST_MODULUS = 10  # ~10% held out for the frozen test split
 
 
 def parquet_urls() -> list[str]:
     url = f"https://huggingface.co/api/datasets/{DATASET}/parquet/default/train"
     with urllib.request.urlopen(url) as resp:  # noqa: S310 - trusted HF host
         return json.load(resp)
-
-
-def in_test(record_id: str) -> bool:
-    digest = int(hashlib.sha1(record_id.encode("utf-8")).hexdigest(), 16)
-    return digest % TEST_MODULUS == 0
 
 
 def main() -> None:
@@ -78,8 +72,8 @@ def main() -> None:
     records = dedupe(records)
     print(f"  {before} valid rows -> {len(records)} after dedup")
 
-    train = [r for r in records if not in_test(r.id)]
-    test = [r for r in records if in_test(r.id)]
+    train = [r for r in records if not assign_test(r.id)]
+    test = [r for r in records if assign_test(r.id)]
     save_jsonl(train, OUT / "train.jsonl")
     save_jsonl(test, OUT / "test.jsonl")
 

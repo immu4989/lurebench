@@ -13,6 +13,7 @@ from .ingest import available as ingest_available
 from .generate import GenerationSpec, generate_records, screen
 from .generate import available as gen_available
 from .generate import get_generator
+from .corpus import build_core, write_core
 from .hub import assemble, push
 from .ingest import dedupe, get_adapter
 from .leaderboard import evaluate_detectors, render_markdown, write_json
@@ -120,6 +121,29 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     print(f"  {len(clean)} pending human review, {len(flagged)} auto-flagged for attention")
     print("  NOTE: all records are review-pending. Approve them (set meta.review='approved')")
     print("  before promoting into a shard — nothing here is shard-ready yet.")
+    return 0
+
+
+def _cmd_assemble_core(args: argparse.Namespace) -> int:
+    build = build_core(args.source, test_modulus=args.test_modulus)
+    paths = write_core(build, args.out)
+    manifest = build_manifest(build.train + build.test)
+
+    print(f"assembled lurebench-core: {build.n} records "
+          f"({len(build.train)} train / {len(build.test)} test)")
+    print(f"  deduped {build.n_before_dedup} -> {build.n_after_dedup}")
+    if build.dropped_pending or build.dropped_flagged:
+        print(f"  dropped {build.dropped_pending} pending + {build.dropped_flagged} "
+              f"flagged generated records (not approved)")
+    print(f"  by source: {build.per_source}")
+    print(f"  fraud_ratio={manifest['fraud_ratio']} ai_ratio={manifest['ai_ratio']}")
+    for warning in check_balance(manifest):
+        print(f"  ! balance: {warning}", file=sys.stderr)
+
+    print(f"\nwrote {paths['train']} and {paths['test']}")
+    print("Next — assemble the Hub dir and (optionally) push:")
+    print(f"  lurebench publish -s train={paths['train']} -s test={paths['test']} "
+          f"-r lurebench/core -o {args.out}/hub --push")
     return 0
 
 
@@ -247,6 +271,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_gen.add_argument("--persuasion", action="append", help="persuasion tag (repeatable)")
     p_gen.add_argument("--out", "-o", required=True, help="staging JSONL path (review-pending)")
     p_gen.set_defaults(func=_cmd_generate)
+
+    p_core = sub.add_parser("assemble-core", help="merge sourced + approved-generated shards into lurebench-core")
+    p_core.add_argument("--source", "-s", action="append", required=True, help="input JSONL (repeatable)")
+    p_core.add_argument("--out", "-o", required=True, help="output dir for train.jsonl / test.jsonl")
+    p_core.add_argument("--test-modulus", type=int, default=10, help="1/N held out as the frozen test split")
+    p_core.set_defaults(func=_cmd_assemble_core)
 
     return parser
 
