@@ -25,7 +25,7 @@ import json
 from typing import Iterator, Optional, Set
 
 from ..schema import Lure
-from .base import Adapter, defang
+from .base import Adapter, defang, detokenize
 
 
 class GenericAdapter(Adapter):
@@ -43,11 +43,13 @@ class GenericAdapter(Adapter):
         language: str = "en",
         language_col: Optional[str] = None,
         channel: str = "email",
+        detokenize: bool = False,
         homepage: str = "",
         license: str = "unknown — verify upstream",
         citation: str = "",
     ) -> None:
         self.source_id = source_id
+        self._detokenize = detokenize
         self.text_col = text_col
         self.label_col = label_col
         self.label_true = {v.lower() for v in label_true}
@@ -80,6 +82,8 @@ class GenericAdapter(Adapter):
             text = (str(row.get(self.text_col, "")) or "").strip()
             if not text:
                 continue
+            if self._detokenize:
+                text = detokenize(text)
             raw_label = str(row.get(self.label_col, "")).strip().lower()
             is_fraud = raw_label in self.label_true
             source = str(row.get(self.source_col)).strip().lower() if self.source_col else self._source

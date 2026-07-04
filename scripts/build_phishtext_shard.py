@@ -62,6 +62,7 @@ def main() -> None:
         typology_benign="benign",
         source="human",
         channel="email",
+        detokenize=True,  # corpus is pre-tokenized (spaces around punctuation) — restore prose
         homepage=f"https://huggingface.co/datasets/{DATASET}",
         license="MIT",
         citation="David-Egea/phishing-texts (Hugging Face Hub), MIT license",

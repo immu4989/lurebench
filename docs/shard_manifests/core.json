@@ -1,44 +1,45 @@
 {
-  "n": 20393,
-  "n_fraud": 7951,
-  "n_benign": 12442,
-  "fraud_ratio": 0.3899,
-  "n_ai": 540,
-  "n_human": 19853,
-  "ai_ratio": 0.0265,
+  "n": 20388,
+  "n_fraud": 7968,
+  "n_benign": 12420,
+  "fraud_ratio": 0.3908,
+  "n_ai": 590,
+  "n_human": 19798,
+  "ai_ratio": 0.0289,
   "by_typology": {
-    "benign": 12442,
-    "phishing": 7560,
+    "benign": 12420,
+    "phishing": 7527,
     "bec": 144,
-    "pig_butchering": 98,
+    "pig_butchering": 148,
     "romance": 149
   },
   "by_source": {
-    "human": 19853,
-    "ai": 540
+    "human": 19798,
+    "ai": 590
   },
   "by_generator": {
     "deepseek-v4-pro": 190,
-    "glm-4.6": 150,
+    "glm-4.6": 200,
     "mistral-large-latest": 200
   },
   "by_language": {
-    "en": 20393
+    "en": 20388
   },
   "cells": {
-    "benign|human|na|en": 12442,
-    "phishing|human|na|en": 7411,
+    "benign|human|na|en": 12420,
+    "phishing|human|na|en": 7378,
     "bec|ai|deepseek-v4-pro|en": 44,
     "phishing|ai|deepseek-v4-pro|en": 49,
     "pig_butchering|ai|deepseek-v4-pro|en": 48,
     "romance|ai|deepseek-v4-pro|en": 49,
     "bec|ai|glm-4.6|en": 50,
     "phishing|ai|glm-4.6|en": 50,
+    "pig_butchering|ai|glm-4.6|en": 50,
     "romance|ai|glm-4.6|en": 50,
     "bec|ai|mistral-large-latest|en": 50,
     "phishing|ai|mistral-large-latest|en": 50,
     "pig_butchering|ai|mistral-large-latest|en": 50,
     "romance|ai|mistral-large-latest|en": 50
   },
-  "_note": "lurebench-core-v1: human phishtext (MIT) + hard-mode AI lures from deepseek-v4-pro/glm-4.6/mistral-large-latest"
+  "_note": "lurebench-core v1.1: detokenized+improved-defang human phishtext (MIT) + 12/12 hard-mode AI cells (deepseek/glm/mistral)"
 }
