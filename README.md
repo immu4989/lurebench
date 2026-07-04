@@ -25,10 +25,10 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 Train a classifier to tell AI-written fraud from human-written fraud on a naively assembled corpus, and it looks almost perfect: near-100% recall, a 0.1% false-alarm rate, and it even generalizes to generators it never trained on. That result is a trap.
 
 <p align="center">
-  <img src="docs/assets/provenance.svg" width="720" alt="Bar chart: cross-generator AI-fraud detection recall drops from ~98-100% on the naive corpus to 32-56% once the corpus is distribution-matched.">
+  <img src="docs/assets/provenance.svg" width="720" alt="Bar chart: cross-generator AI-fraud detection AUC drops from a perfect 1.00 on the naive corpus to 0.58 (DeepSeek), 0.57 (GLM) and 0.83 (Mistral) once the corpus is distribution-matched, with two of three near the 0.50 chance line.">
 </p>
 
-Inspecting the model showed it was separating **corpus-of-origin**, not authorship: the human phishing was older, longer, pre-tokenized, and defanged differently than the fresh LLM text. Once the two classes are distribution-matched (each human lure paired with an AI rewrite of the *same* lure, matched on length and defanged the same way), the separation falls apart. Cross-generator recall drops to 32–56%, and the false-alarm rate on human text climbs from 0.1% to a real 10–18%. Distinguishing AI-authored fraud from human-authored fraud, and doing it across generators, is genuinely hard. Full write-up in [docs/provenance_results.md](docs/provenance_results.md).
+Inspecting the model showed it was separating **corpus-of-origin**, not authorship: the human phishing was older, longer, pre-tokenized, and defanged differently than the fresh LLM text. Once the two classes are distribution-matched (each human lure paired with an AI rewrite of the *same* lure, matched on length and defanged the same way), the separation falls apart. Cross-generator AUC drops from a perfect 1.00 to **0.58 and 0.57** for two of the three generators, barely above the 0.50 chance line. Only one model's output (Mistral) keeps a detectable signature at 0.83, and it does not transfer to the others. Distinguishing AI-authored fraud from human-authored fraud, across generators, turns out to be close to a coin flip. Full write-up in [docs/provenance_results.md](docs/provenance_results.md).
 
 ## Two tasks, and why the distinction matters
 
@@ -115,7 +115,7 @@ This is a defensive research project. The corpus exists to train and evaluate de
 
 LureBench is an early pilot, and the writeups say so plainly:
 
-- The distribution-matched provenance result rests on two generators and phishing only (the human data is phishing-only). DeepSeek's rewrite yield was low, so its numbers are smaller-sample.
+- The distribution-matched provenance result covers three generators and phishing only (the human data is phishing-only), with a few hundred paired rewrites per generator.
 - The human corpus is older-era phishing. De-tokenization and rewriting remove the largest tells; the residual signal is register and style, which is arguably legitimate authorship signal, but a contemporary human-fraud source would be stronger.
 - Audio and video deepfake fraud are out of scope. They are well served by existing benchmarks (ASVspoof 5, Deepfake-Eval-2024, VishGPT); LureBench covers text.
 

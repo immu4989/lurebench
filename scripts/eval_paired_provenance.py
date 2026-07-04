@@ -65,15 +65,21 @@ def main() -> None:
         print(f"  {g:22} AI-recall={rec:.3f}  human-FPR={fpr:.3f}  (test AI={len(ai_te)})")
 
     if len(gens) >= 2:
+        from lurebench.metrics import roc_auc
         print("\n=== LOGO cross-generator provenance (train excludes held-out generator) ===")
+        print("  bal-acc = balanced accuracy (0.5 = chance); AUC = threshold-independent discrimination")
         for g in gens:
             ai_tr = [r for r in ai if r.generator != g]
             ai_te = [r for r in ai if r.generator == g]
             det = TfidfLogisticDetector.train(human_tr + ai_tr, task="provenance")
             rec = sum(1 for r in ai_te if det.predict(r) == 1) / len(ai_te)
             fpr = sum(1 for r in human_te if det.predict(r) == 1) / len(human_te)
-            print(f"  held-out {g:22} AI-recall={rec:.3f}  human-FPR={fpr:.3f}"
-                  f"  (test AI={len(ai_te)}, FPR-n={len(human_te)})")
+            bal = (rec + (1 - fpr)) / 2
+            y = [0] * len(human_te) + [1] * len(ai_te)
+            scores = [det.score(r) for r in human_te + ai_te]
+            auc = roc_auc(y, scores)
+            print(f"  held-out {g:22} bal-acc={bal:.3f}  AUC={auc:.3f}  "
+                  f"(recall={rec:.2f}, FPR={fpr:.2f}, test AI={len(ai_te)})")
 
     det = TfidfLogisticDetector.train(human_tr + ai, task="provenance")
     names = det._pipe.named_steps["tfidf"].get_feature_names_out()

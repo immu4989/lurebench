@@ -1,30 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 410" font-family="system-ui,-apple-system,Segoe UI,sans-serif">
 <rect x="0" y="0" width="720" height="410" rx="12" fill="#fcfcfb"/>
-<text x="62" y="32" font-size="19" font-weight="700" fill="#0b0b0b">Remove the confound, and AI-fraud detection collapses</text>
-<text x="62" y="54" font-size="13" fill="#52514e">Cross-generator recall: train on one generator, test on a held-out one</text>
-<rect x="616" y="68" width="11" height="11" rx="3" fill="#1baf7a"/>
-<text x="632" y="78" font-size="13" fill="#52514e">Mistral</text>
-<rect x="529" y="68" width="11" height="11" rx="3" fill="#2a78d6"/>
-<text x="545" y="78" font-size="13" fill="#52514e">DeepSeek</text>
+<text x="62" y="32" font-size="19" font-weight="700" fill="#0b0b0b">Control the confound, and AI-fraud detection falls to near chance</text>
+<text x="62" y="54" font-size="13" fill="#52514e">Cross-generator AUC (train on other generators, test on the held-out one)</text>
+<rect x="520" y="68" width="11" height="11" rx="3" fill="#1baf7a"/>
+<text x="536" y="78" font-size="13" fill="#52514e">Distribution-matched</text>
+<rect x="403" y="68" width="11" height="11" rx="3" fill="#2a78d6"/>
+<text x="419" y="78" font-size="13" fill="#52514e">Naive corpus</text>
 <line x1="62" y1="354.0" x2="696" y2="354.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="54" y="358.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0</text>
+<text x="54" y="358.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.00</text>
 <line x1="62" y1="289.5" x2="696" y2="289.5" stroke="#e1e0d9" stroke-width="1"/>
-<text x="54" y="293.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">25</text>
+<text x="54" y="293.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.25</text>
 <line x1="62" y1="225.0" x2="696" y2="225.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="54" y="229.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">50</text>
+<text x="54" y="229.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.50</text>
 <line x1="62" y1="160.5" x2="696" y2="160.5" stroke="#e1e0d9" stroke-width="1"/>
-<text x="54" y="164.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">75</text>
+<text x="54" y="164.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0.75</text>
 <line x1="62" y1="96.0" x2="696" y2="96.0" stroke="#e1e0d9" stroke-width="1"/>
-<text x="54" y="100.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">100</text>
+<text x="54" y="100.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">1.00</text>
 <line x1="62" y1="354" x2="696" y2="354" stroke="#c3c2b7" stroke-width="1.5"/>
-<path d="M173.5,354.0 L173.5,105.2 Q173.5,101.2 177.5,101.2 L215.5,101.2 Q219.5,101.2 219.5,105.2 L219.5,354.0 Z" fill="#2a78d6"/>
-<text x="196.5" y="95.2" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">98%</text>
-<path d="M221.5,354.0 L221.5,100.0 Q221.5,96.0 225.5,96.0 L263.5,96.0 Q267.5,96.0 267.5,100.0 L267.5,354.0 Z" fill="#1baf7a"/>
-<text x="244.5" y="90.0" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">100%</text>
-<text x="220.5" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">Naive corpus</text>
-<path d="M490.5,354.0 L490.5,275.4 Q490.5,271.4 494.5,271.4 L532.5,271.4 Q536.5,271.4 536.5,275.4 L536.5,354.0 Z" fill="#2a78d6"/>
-<text x="513.5" y="265.4" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">32%</text>
-<path d="M538.5,354.0 L538.5,213.5 Q538.5,209.5 542.5,209.5 L580.5,209.5 Q584.5,209.5 584.5,213.5 L584.5,354.0 Z" fill="#1baf7a"/>
-<text x="561.5" y="203.5" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">56%</text>
-<text x="537.5" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">Distribution-matched</text>
+<line x1="62" y1="225.0" x2="696" y2="225.0" stroke="#898781" stroke-width="1.5" stroke-dasharray="5 4"/>
+<text x="696" y="219.0" font-size="11.5" font-style="italic" fill="#898781" text-anchor="end">chance</text>
+<path d="M120.7,354.0 L120.7,100.0 Q120.7,96.0 124.7,96.0 L162.7,96.0 Q166.7,96.0 166.7,100.0 L166.7,354.0 Z" fill="#2a78d6"/>
+<text x="143.7" y="90.0" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M168.7,354.0 L168.7,207.6 Q168.7,203.6 172.7,203.6 L210.7,203.6 Q214.7,203.6 214.7,207.6 L214.7,354.0 Z" fill="#1baf7a"/>
+<text x="191.7" y="197.6" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.58</text>
+<text x="167.7" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">DeepSeek</text>
+<path d="M332.0,354.0 L332.0,100.0 Q332.0,96.0 336.0,96.0 L374.0,96.0 Q378.0,96.0 378.0,100.0 L378.0,354.0 Z" fill="#2a78d6"/>
+<text x="355.0" y="90.0" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M380.0,354.0 L380.0,209.9 Q380.0,205.9 384.0,205.9 L422.0,205.9 Q426.0,205.9 426.0,209.9 L426.0,354.0 Z" fill="#1baf7a"/>
+<text x="403.0" y="199.9" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.57</text>
+<text x="379.0" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">GLM</text>
+<path d="M543.3,354.0 L543.3,100.0 Q543.3,96.0 547.3,96.0 L585.3,96.0 Q589.3,96.0 589.3,100.0 L589.3,354.0 Z" fill="#2a78d6"/>
+<text x="566.3" y="90.0" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M591.3,354.0 L591.3,142.6 Q591.3,138.6 595.3,138.6 L633.3,138.6 Q637.3,138.6 637.3,142.6 L637.3,354.0 Z" fill="#1baf7a"/>
+<text x="614.3" y="132.6" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.83</text>
+<text x="590.3" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">Mistral</text>
 </svg>

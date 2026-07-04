@@ -34,8 +34,9 @@ def _bar_path(x, y, w, h, r=4):
             f"L{x + w:.1f},{y + h:.1f} Z")
 
 
-def grouped_bar(title, subtitle, categories, series, fmt=lambda v: f"{v * 100:.0f}%"):
-    """series: list of (name, color, [values 0..1 per category])."""
+def grouped_bar(title, subtitle, categories, series, fmt=lambda v: f"{v * 100:.0f}%",
+                pct=True, refline=None):
+    """series: list of (name, color, [values 0..1 per category]). refline=(value, label)."""
     p = []
     p.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
              f'font-family="system-ui,-apple-system,Segoe UI,sans-serif">')
@@ -53,13 +54,23 @@ def grouped_bar(title, subtitle, categories, series, fmt=lambda v: f"{v * 100:.0
         p.append(f'<rect x="{lx:.0f}" y="{ly - 10}" width="11" height="11" rx="3" fill="{color}"/>')
         p.append(f'<text x="{lx + 16:.0f}" y="{ly}" font-size="13" fill="{INK2}">{name}</text>')
 
-    # y gridlines 0..100%
+    # y gridlines
     for t in (0, 0.25, 0.5, 0.75, 1.0):
         y = Y1 - t * PLOTH
+        lab = f"{t * 100:.0f}" if pct else f"{t:.2f}"
         p.append(f'<line x1="{X0}" y1="{y:.1f}" x2="{X1}" y2="{y:.1f}" stroke="{GRID}" stroke-width="1"/>')
         p.append(f'<text x="{X0 - 8}" y="{y + 4:.1f}" font-size="11" fill="{MUTED}" '
-                 f'text-anchor="end" font-variant-numeric="tabular-nums">{t * 100:.0f}</text>')
+                 f'text-anchor="end" font-variant-numeric="tabular-nums">{lab}</text>')
     p.append(f'<line x1="{X0}" y1="{Y1}" x2="{X1}" y2="{Y1}" stroke="{BASE}" stroke-width="1.5"/>')
+
+    # optional reference line (e.g. chance = 0.5)
+    if refline is not None:
+        rv, rlabel = refline
+        ry = Y1 - rv * PLOTH
+        p.append(f'<line x1="{X0}" y1="{ry:.1f}" x2="{X1}" y2="{ry:.1f}" stroke="{MUTED}" '
+                 f'stroke-width="1.5" stroke-dasharray="5 4"/>')
+        p.append(f'<text x="{X1}" y="{ry - 6:.1f}" font-size="11.5" font-style="italic" '
+                 f'fill="{MUTED}" text-anchor="end">{rlabel}</text>')
 
     n = len(categories)
     s = len(series)
@@ -88,15 +99,18 @@ def main() -> None:
     out = Path("docs/assets")
     out.mkdir(parents=True, exist_ok=True)
 
-    # 1) The confound and its removal — cross-generator provenance recall
+    # 1) The confound and its removal — cross-generator provenance AUC vs chance
     prov = grouped_bar(
-        "Remove the confound, and AI-fraud detection collapses",
-        "Cross-generator recall: train on one generator, test on a held-out one",
-        ["Naive corpus", "Distribution-matched"],
+        "Control the confound, and AI-fraud detection falls to near chance",
+        "Cross-generator AUC (train on other generators, test on the held-out one)",
+        ["DeepSeek", "GLM", "Mistral"],
         [
-            ("DeepSeek", BLUE, [0.98, 0.32]),
-            ("Mistral", AQUA, [1.00, 0.56]),
+            ("Naive corpus", BLUE, [1.00, 1.00, 1.00]),
+            ("Distribution-matched", AQUA, [0.583, 0.574, 0.835]),
         ],
+        fmt=lambda v: f"{v:.2f}",
+        pct=False,
+        refline=(0.5, "chance"),
     )
     (out / "provenance.svg").write_text(prov, encoding="utf-8")
 
