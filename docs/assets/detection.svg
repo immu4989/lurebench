@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 410" font-family="system-ui,-apple-system,Segoe UI,sans-serif">
+<rect x="0" y="0" width="720" height="410" rx="12" fill="#fcfcfb"/>
+<text x="62" y="32" font-size="19" font-weight="700" fill="#0b0b0b">Detection rate by fraud typology</text>
+<text x="62" y="54" font-size="13" fill="#52514e">A keyword heuristic fails on AI lures; a trained baseline sets the real bar</text>
+<rect x="579" y="68" width="11" height="11" rx="3" fill="#1baf7a"/>
+<text x="595" y="78" font-size="13" fill="#52514e">tfidf-logreg</text>
+<rect x="462" y="68" width="11" height="11" rx="3" fill="#2a78d6"/>
+<text x="478" y="78" font-size="13" fill="#52514e">heuristic-v0</text>
+<line x1="62" y1="354.0" x2="696" y2="354.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="358.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0</text>
+<line x1="62" y1="289.5" x2="696" y2="289.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="293.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">25</text>
+<line x1="62" y1="225.0" x2="696" y2="225.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="229.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">50</text>
+<line x1="62" y1="160.5" x2="696" y2="160.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="164.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">75</text>
+<line x1="62" y1="96.0" x2="696" y2="96.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="100.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">100</text>
+<line x1="62" y1="354" x2="696" y2="354" stroke="#c3c2b7" stroke-width="1.5"/>
+<path d="M94.2,354.0 L94.2,306.7 Q94.2,302.7 98.2,302.7 L136.2,302.7 Q140.2,302.7 140.2,306.7 L140.2,354.0 Z" fill="#2a78d6"/>
+<text x="117.2" y="296.7" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">20%</text>
+<path d="M142.2,354.0 L142.2,109.5 Q142.2,105.5 146.2,105.5 L184.2,105.5 Q188.2,105.5 188.2,109.5 L188.2,354.0 Z" fill="#1baf7a"/>
+<text x="165.2" y="99.5" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">96%</text>
+<text x="141.2" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">Phishing</text>
+<path d="M252.8,354.0 L252.8,144.9 Q252.8,140.9 256.8,140.9 L294.8,140.9 Q298.8,140.9 298.8,144.9 L298.8,354.0 Z" fill="#2a78d6"/>
+<text x="275.8" y="134.9" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">83%</text>
+<path d="M300.8,354.0 L300.8,111.1 Q300.8,107.1 304.8,107.1 L342.8,107.1 Q346.8,107.1 346.8,111.1 L346.8,354.0 Z" fill="#1baf7a"/>
+<text x="323.8" y="101.1" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">96%</text>
+<text x="299.8" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">BEC</text>
+<path d="M411.2,354.0 L411.2,319.8 Q411.2,315.8 415.2,315.8 L453.2,315.8 Q457.2,315.8 457.2,319.8 L457.2,354.0 Z" fill="#2a78d6"/>
+<text x="434.2" y="309.8" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">15%</text>
+<path d="M459.2,354.0 L459.2,100.0 Q459.2,96.0 463.2,96.0 L501.2,96.0 Q505.2,96.0 505.2,100.0 L505.2,354.0 Z" fill="#1baf7a"/>
+<text x="482.2" y="90.0" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">100%</text>
+<text x="458.2" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">Romance</text>
+<path d="M569.8,354.0 L569.8,334.5 Q569.8,330.5 573.8,330.5 L611.8,330.5 Q615.8,330.5 615.8,334.5 L615.8,354.0 Z" fill="#2a78d6"/>
+<text x="592.8" y="324.5" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">9%</text>
+<path d="M617.8,354.0 L617.8,111.6 Q617.8,107.6 621.8,107.6 L659.8,107.6 Q663.8,107.6 663.8,111.6 L663.8,354.0 Z" fill="#1baf7a"/>
+<text x="640.8" y="101.6" font-size="12" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">96%</text>
+<text x="616.8" y="374.0" font-size="13" fill="#0b0b0b" text-anchor="middle">Pig-butchering</text>
+</svg>
