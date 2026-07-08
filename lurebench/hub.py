@@ -14,7 +14,7 @@ import json
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional
 
 from .manifest import build_manifest, check_balance
 from .schema import Lure, load_jsonl

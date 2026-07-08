@@ -55,6 +55,13 @@ def main() -> None:
     seeds = prep_seeds(args.count)
     print(f"{args.label}: prepared {len(seeds)} seeds", flush=True)
 
+    # `--engine human` just persists the human seeds as the negative class, so the
+    # paired set is self-contained for `lurebench cross-generator`.
+    if args.engine == "human":
+        save_jsonl(seeds, OUTDIR / "human.jsonl")
+        print(f"human: {len(seeds)} seeds -> {OUTDIR}/human.jsonl", flush=True)
+        return
+
     gen = get_generator(args.engine, max_tokens=args.max_tokens)
     recs = rewrite_records(gen, seeds, generator_label=args.label, typology="phishing")
     save_jsonl(recs, OUTDIR / f"{args.label}.jsonl")

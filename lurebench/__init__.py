@@ -18,8 +18,10 @@ Import the harness and a baseline detector:
 from .schema import Lure, load_jsonl, save_jsonl
 from .metrics import Metrics, evaluate
 from .harness import Report, run
+from .crossgen import cross_generator_provenance
+from .data import load_core
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Lure",
@@ -29,5 +31,7 @@ __all__ = [
     "evaluate",
     "Report",
     "run",
+    "cross_generator_provenance",
+    "load_core",
     "__version__",
 ]

@@ -14,6 +14,8 @@ from .generate import GenerationSpec, generate_records, screen
 from .generate import available as gen_available
 from .generate import get_generator
 from .corpus import build_core, write_core
+from .crossgen import cross_generator_provenance
+from .crossgen import render_markdown as render_crossgen
 from .hub import assemble, push
 from .ingest import dedupe, get_adapter
 from .leaderboard import evaluate_detectors, render_markdown, write_json
@@ -66,10 +68,30 @@ def _cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_cross_generator(args: argparse.Namespace) -> int:
+    records = []
+    for path in args.dataset:
+        records.extend(load_jsonl(path))
+    try:
+        results = cross_generator_provenance(records, threshold=args.threshold)
+    except (ValueError, ImportError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    label = ", ".join(args.dataset)
+    md = render_crossgen(results, dataset_label=label)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(md)
+        print(f"wrote {args.out}")
+    else:
+        print(md)
+    return 0
+
+
 def _cmd_leaderboard(args: argparse.Namespace) -> int:
     dataset = load_jsonl(args.dataset)
     names = args.detector or available()
-    results = evaluate_detectors(dataset, names, threshold=args.threshold)
+    results = evaluate_detectors(dataset, names, threshold=args.threshold, task=args.task)
     markdown = render_markdown(results, dataset_label=args.dataset, n_records=len(dataset))
 
     if args.out:
@@ -264,9 +286,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_lb.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
     p_lb.add_argument("--detector", "-m", action="append", help="detector name (repeatable); default: all")
     p_lb.add_argument("--threshold", type=float, default=0.5)
+    p_lb.add_argument("--task", "-t", choices=["fraud", "provenance"], default=None,
+                      help="override each detector's task (score any dataset on either question)")
     p_lb.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_lb.add_argument("--json", default=None, help="also write results JSON here")
     p_lb.set_defaults(func=_cmd_leaderboard)
+
+    p_cg = sub.add_parser("cross-generator",
+                          help="leave-one-generator-out provenance (the headline finding)")
+    p_cg.add_argument("--dataset", "-d", action="append", required=True,
+                      help="JSONL with human + multi-generator AI records (repeatable)")
+    p_cg.add_argument("--threshold", type=float, default=0.5)
+    p_cg.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
+    p_cg.set_defaults(func=_cmd_cross_generator)
 
     p_man = sub.add_parser("manifest", help="print the composition manifest for a dataset")
     p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")

@@ -40,8 +40,13 @@ def evaluate_detectors(
     dataset: Sequence[Lure],
     detector_names: Sequence[str],
     threshold: float = 0.5,
+    task: Optional[str] = None,
 ) -> List[dict]:
-    """Return one result entry per detector (or an error entry if it can't run)."""
+    """Return one result entry per detector (or an error entry if it can't run).
+
+    ``task`` (``"fraud"`` or ``"provenance"``) overrides each detector's default task
+    so a single dataset can be scored on either question.
+    """
     results: List[dict] = []
     for name in detector_names:
         # A single detector failing (missing extra, gated model, no API key,
@@ -49,12 +54,12 @@ def evaluate_detectors(
         # leaderboard, so everything from construction through scoring is guarded.
         try:
             detector = get_detector(name)
-            task = getattr(detector, "task", "fraud")
-            report = run(detector, dataset, threshold=threshold, task=task)
-            target = TASK_TARGET[task]
+            t = task or getattr(detector, "task", "fraud")
+            report = run(detector, dataset, threshold=threshold, task=t)
+            target = TASK_TARGET[t]
             slices: Dict[str, Optional[float]] = {}
 
-            if task == "fraud":
+            if t == "fraud":
                 for typ in FRAUD_TYPOLOGIES:
                     subset = [r for r in dataset if r.typology == typ]
                     slices[typ] = _recall_on_subset(detector, subset, target, threshold)
@@ -118,13 +123,14 @@ def render_markdown(results: Sequence[dict], dataset_label: str, n_records: int)
 
     if prov:
         lines.append("## Task: `provenance` (AI vs. human)\n")
-        lines.append("| Detector | MCC | TPR | FPR | F1 | AUC |")
+        lines.append("AUC and balanced accuracy are the honest read (0.5 = chance).\n")
+        lines.append("| Detector | AUC | bal-acc | MCC | TPR | FPR |")
         lines.append("|---|---|---|---|---|---|")
         for r in prov:
             m = r["metrics"]
             lines.append(
-                f"| `{r['detector']}` | {_fmt(m['mcc'])} | {_fmt(m['recall'])} | "
-                f"{_fmt(m['fpr'])} | {_fmt(m['f1'])} | {_fmt(m['auc'])} |"
+                f"| `{r['detector']}` | {_fmt(m['auc'])} | {_fmt(m.get('balanced_accuracy'))} | "
+                f"{_fmt(m['mcc'])} | {_fmt(m['recall'])} | {_fmt(m['fpr'])} |"
             )
         lines.append("")
 

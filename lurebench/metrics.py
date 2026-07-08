@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Optional, Sequence, Tuple
 
 
 @dataclass
@@ -25,6 +25,7 @@ class Metrics:
     fpr: float             # false-positive rate
     f1: float
     mcc: float             # Matthews correlation coefficient (headline)
+    balanced_accuracy: float = 0.5  # (TPR + TNR) / 2; 0.5 = chance
     auc: Optional[float] = None
 
     def as_dict(self) -> dict:
@@ -91,8 +92,9 @@ def evaluate(
     tp, fp, tn, fn = confusion(y_true, y_pred)
     n = len(y_true)
     precision = _safe_div(tp, tp + fp)
-    recall = _safe_div(tp, tp + fn)
+    recall = _safe_div(tp, tp + fn)          # TPR / sensitivity
     fpr = _safe_div(fp, fp + tn)
+    specificity = _safe_div(tn, tn + fp)     # TNR
     f1 = _safe_div(2 * precision * recall, precision + recall)
     return Metrics(
         n=n,
@@ -106,5 +108,6 @@ def evaluate(
         fpr=fpr,
         f1=f1,
         mcc=mcc_from_confusion(tp, fp, tn, fn),
+        balanced_accuracy=(recall + specificity) / 2,
         auc=roc_auc(y_true, scores) if scores is not None else None,
     )

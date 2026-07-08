@@ -6,7 +6,7 @@ authors:
   - family-names: Ahamed
     given-names: Imran
 repository-code: "https://github.com/immu4989/lurebench"
-version: 0.1.0
+version: 0.2.0
 license: Apache-2.0
 keywords:
   - fraud detection
