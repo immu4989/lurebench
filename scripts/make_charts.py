@@ -125,7 +125,19 @@ def main() -> None:
         ],
     )
     (out / "detection.svg").write_text(det, encoding="utf-8")
-    print("wrote docs/assets/provenance.svg and docs/assets/detection.svg")
+
+    # 3) Adversarial robustness — attack success rate by attack (higher = more brittle)
+    rob = grouped_bar(
+        "Clean accuracy is not deployment accuracy",
+        "Attack success rate: of the lures a detector caught, the fraction that evade after an attack",
+        ["Homoglyph", "Leet", "Zero-width", "Whitespace"],
+        [
+            ("heuristic-v0", BLUE, [0.99, 0.99, 1.00, 0.52]),
+            ("tfidf-logreg", AQUA, [0.38, 0.16, 0.03, 0.00]),
+        ],
+    )
+    (out / "robustness.svg").write_text(rob, encoding="utf-8")
+    print("wrote docs/assets/{provenance,detection,robustness}.svg")
 
 
 if __name__ == "__main__":
