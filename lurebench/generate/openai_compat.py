@@ -131,6 +131,25 @@ class OpenAICompatibleGenerator(Generator):
             return None
         return None
 
+    def complete(self, system: str, user: str) -> str:
+        """Single raw chat completion (system + user) -> text, or '' on failure.
+
+        Reused by adversarial attacks and any caller needing a free-form completion
+        with the same retry/backoff and error handling as generation.
+        """
+        self.stats = {"attempted": 1, "ok": 0, "rate_limited": 0,
+                      "content_filter": 0, "http_error": 0, "empty": 0}
+        payload = {
+            "model": self.model,
+            "max_tokens": self.max_tokens,
+            "temperature": self.temperature,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        return self._one(payload) or ""
+
     def generate(self, spec: GenerationSpec, n: int) -> List[str]:
         spec.validate()
         self.stats = {"attempted": 0, "ok": 0, "rate_limited": 0,

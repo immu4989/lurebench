@@ -27,6 +27,10 @@ class Metrics:
     mcc: float             # Matthews correlation coefficient (headline)
     balanced_accuracy: float = 0.5  # (TPR + TNR) / 2; 0.5 = chance
     auc: Optional[float] = None
+    # Detection at a fixed false-positive budget — what deployment actually cares
+    # about (analyst time is finite). Threshold-swept, so independent of `threshold`.
+    recall_at_1pct_fpr: Optional[float] = None
+    recall_at_01pct_fpr: Optional[float] = None
 
     def as_dict(self) -> dict:
         return asdict(self)
@@ -81,6 +85,33 @@ def roc_auc(y_true: Sequence[int], scores: Sequence[float]) -> Optional[float]:
     return (sum_pos_ranks - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
 
 
+def recall_at_fpr(
+    y_true: Sequence[int], scores: Sequence[float], max_fpr: float
+) -> Optional[float]:
+    """Max recall (TPR) achievable while keeping FPR <= ``max_fpr``, by sweeping the
+    threshold. This is the operating-point view a deployment cares about: how much
+    fraud you catch at a tolerable false-alarm budget. ``None`` if a class is absent.
+    """
+    n_pos = sum(1 for t in y_true if t == 1)
+    n_neg = len(y_true) - n_pos
+    if n_pos == 0 or n_neg == 0:
+        return None
+    allowed_fp = max_fpr * n_neg
+    tp = fp = 0
+    best_recall = 0.0
+    # Descending score = progressively lower threshold (more predicted-positive).
+    for _, t in sorted(zip(scores, y_true), key=lambda x: -x[0]):
+        if t == 1:
+            tp += 1
+        else:
+            fp += 1
+        if fp <= allowed_fp:
+            best_recall = max(best_recall, tp / n_pos)
+        else:
+            break  # fp only grows from here
+    return best_recall
+
+
 def evaluate(
     y_true: Sequence[int],
     y_pred: Sequence[int],
@@ -110,4 +141,6 @@ def evaluate(
         mcc=mcc_from_confusion(tp, fp, tn, fn),
         balanced_accuracy=(recall + specificity) / 2,
         auc=roc_auc(y_true, scores) if scores is not None else None,
+        recall_at_1pct_fpr=recall_at_fpr(y_true, scores, 0.01) if scores is not None else None,
+        recall_at_01pct_fpr=recall_at_fpr(y_true, scores, 0.001) if scores is not None else None,
     )

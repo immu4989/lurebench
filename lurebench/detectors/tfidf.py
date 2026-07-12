@@ -16,7 +16,7 @@ Requires the ``train`` extra: pip install "lurebench[train]"
 from __future__ import annotations
 
 import os
-from typing import Optional, Sequence
+from typing import List, Optional, Sequence
 
 from ..schema import Lure
 from .base import Detector
@@ -101,3 +101,16 @@ class TfidfLogisticDetector(Detector):
         classes = list(self._pipe.classes_)
         idx = classes.index(1) if 1 in classes else len(classes) - 1
         return float(proba[idx])
+
+    def top_positive_features(self, top_k: int = 25) -> List[str]:
+        """The words most predictive of the positive class — the targeted attacker's
+        list of terms to avoid. Requires a linear model with named features."""
+        try:
+            vec = self._pipe.named_steps.get("tfidf") or self._pipe.named_steps.get("vec")
+            clf = self._pipe.named_steps.get("clf") or self._pipe.named_steps.get("logreg")
+            names = vec.get_feature_names_out()
+            coef = clf.coef_[0]
+        except (AttributeError, KeyError, IndexError):
+            return []
+        order = sorted(range(len(coef)), key=lambda i: coef[i], reverse=True)
+        return [str(names[i]) for i in order[:top_k]]

@@ -112,7 +112,6 @@ def test_provider_preset_builds_endpoint(monkeypatch):
 
 
 def test_openai_compat_generate_stubbed(monkeypatch):
-    from lurebench.generate import OpenAICompatibleGenerator
 
     monkeypatch.setenv("MOONSHOT_API_KEY", "sk-test")
     gen = get_generator("kimi", model="kimi-k2.6")
@@ -200,7 +199,6 @@ def test_openai_compat_retries_socket_timeout(monkeypatch):
 
 
 def test_openai_compat_skips_content_filter(monkeypatch):
-    from lurebench.generate import OpenAICompatibleGenerator
 
     monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
     gen = get_generator("deepseek")

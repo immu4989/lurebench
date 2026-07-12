@@ -105,6 +105,15 @@ lurebench cross-generator -d data/full/paired/human.jsonl -d data/full/paired/de
   -d data/full/paired/glm-4.6.jsonl -d data/full/paired/mistral-large-latest.jsonl
 ```
 
+Stress-test a detector the way a real fraudster would — perturb the lures it catches and measure how many now evade (the **attack success rate**). Clean accuracy is not deployment accuracy:
+
+```bash
+lurebench robustness -d data/full/core/test.jsonl -m tfidf-logreg \
+  -a homoglyph -a leet -a zero-width -a whitespace
+```
+
+The keyword baseline looks interpretable until an attacker types `vеrifу` once (ASR 0.99); the trained model degrades gracefully (homoglyph ASR 0.38). See [docs/adversarial-robustness.md](docs/adversarial-robustness.md).
+
 Generation uses any OpenAI-compatible provider by name, with your own key:
 
 ```bash
@@ -112,7 +121,7 @@ export DEEPSEEK_API_KEY=...
 lurebench generate --typology bec --n 50 --engine deepseek --hard --out staging/bec.jsonl
 ```
 
-Nine commands cover the pipeline: `ingest`, `generate`, `assemble-core`, `train`, `eval`, `leaderboard`, `cross-generator`, `manifest`, `publish`. See the [changelog](CHANGELOG.md) for what's new in `v0.2`, and [docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute one.
+Ten commands cover the pipeline: `ingest`, `generate`, `assemble-core`, `train`, `eval`, `leaderboard`, `cross-generator`, `robustness`, `manifest`, `publish`. See the [changelog](CHANGELOG.md) for what's new in `v0.3`, and [docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute one.
 
 ## Why it matters
 

@@ -13,10 +13,14 @@ from .ingest import available as ingest_available
 from .generate import GenerationSpec, generate_records, screen
 from .generate import available as gen_available
 from .generate import get_generator
+from .attacks import available as attacks_available
+from .attacks import get_attack
 from .corpus import build_core, write_core
 from .crossgen import cross_generator_provenance
 from .crossgen import render_markdown as render_crossgen
 from .hub import assemble, push
+from .robustness import render_markdown as render_robustness
+from .robustness import run_robustness
 from .ingest import dedupe, get_adapter
 from .leaderboard import evaluate_detectors, render_markdown, write_json
 from .manifest import build_manifest, check_balance
@@ -254,6 +258,73 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_robustness(args: argparse.Namespace) -> int:
+    dataset = load_jsonl(args.dataset)
+    try:
+        detector = get_detector(args.detector)
+    except Exception as exc:  # noqa: BLE001
+        print(f"! {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 1
+
+    reports = []
+    for aname in args.attack:
+        try:
+            if aname.startswith("llm-"):
+                if not args.engine:
+                    print(f"! {aname} needs --engine <provider>", file=sys.stderr)
+                    continue
+                from .attacks.llm import (
+                    LLMKeywordEvasionAttack,
+                    LLMParaphraseAttack,
+                    provider_complete_fn,
+                )
+
+                complete_fn = provider_complete_fn(args.engine, args.model)
+                if aname == "llm-keyword-evasion":
+                    words = _predictive_words(detector)
+                    attack = LLMKeywordEvasionAttack(complete_fn, words)
+                else:
+                    attack = LLMParaphraseAttack(complete_fn)
+            else:
+                attack = get_attack(aname)
+        except Exception as exc:  # noqa: BLE001 - one attack must not abort the run
+            print(f"! skipping {aname}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        reports.append(
+            run_robustness(detector, dataset, attack, threshold=args.threshold, task=args.task)
+        )
+
+    if not reports:
+        print("No attack could be run.", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps([r.as_dict() for r in reports], indent=2))
+    else:
+        md = render_robustness(reports, dataset_label=args.dataset)
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as fh:
+                fh.write(md + "\n")
+            print(f"wrote {args.out}")
+        else:
+            print("\n" + md + "\n")
+    return 0
+
+
+def _predictive_words(detector, top_k: int = 25) -> List[str]:
+    """Pull a detector's most lure-predictive words for targeted evasion, falling back
+    to a generic phishing-keyword list for detectors that can't expose their features."""
+    extract = getattr(detector, "top_positive_features", None)
+    if callable(extract):
+        try:
+            words = list(extract(top_k))
+            if words:
+                return words
+        except Exception:  # noqa: BLE001
+            pass
+    return ["verify", "urgent", "account", "click", "suspended", "payment"]
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lurebench", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -299,6 +370,25 @@ def build_parser() -> argparse.ArgumentParser:
     p_cg.add_argument("--threshold", type=float, default=0.5)
     p_cg.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_cg.set_defaults(func=_cmd_cross_generator)
+
+    p_rob = sub.add_parser(
+        "robustness",
+        help="adversarial robustness: how many caught lures evade after an attack",
+    )
+    p_rob.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
+    p_rob.add_argument("--detector", "-m", required=True, help="detector to stress-test")
+    p_rob.add_argument(
+        "--attack", "-a", action="append", required=True,
+        help=f"attack to apply (repeatable). available: {', '.join(attacks_available())}",
+    )
+    p_rob.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
+    p_rob.add_argument("--threshold", type=float, default=0.5)
+    p_rob.add_argument("--engine", default=None,
+                       help="provider engine for llm-* attacks (e.g. deepseek, mistral)")
+    p_rob.add_argument("--model", default=None, help="provider model id for llm-* attacks")
+    p_rob.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
+    p_rob.add_argument("--json", action="store_true", help="emit JSON instead of Markdown")
+    p_rob.set_defaults(func=_cmd_robustness)
 
     p_man = sub.add_parser("manifest", help="print the composition manifest for a dataset")
     p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")

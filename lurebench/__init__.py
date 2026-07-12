@@ -20,8 +20,9 @@ from .metrics import Metrics, evaluate
 from .harness import Report, run
 from .crossgen import cross_generator_provenance
 from .data import load_core
+from .robustness import RobustnessReport, run_robustness
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "Lure",
@@ -33,5 +34,7 @@ __all__ = [
     "run",
     "cross_generator_provenance",
     "load_core",
+    "run_robustness",
+    "RobustnessReport",
     "__version__",
 ]

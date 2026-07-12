@@ -6,7 +6,6 @@ import pytest
 
 pytest.importorskip("sklearn")  # skip if the 'train' extra isn't installed
 
-from lurebench.detectors import get_detector
 from lurebench.detectors.tfidf import TfidfLogisticDetector
 from lurebench.schema import Lure
 

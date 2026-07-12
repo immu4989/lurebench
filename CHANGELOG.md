@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.3.0
+
+Adds an **adversarial robustness** axis. Clean-data accuracy is the wrong number to
+trust in deployment — a real fraudster perturbs the lure until it evades. This release
+measures that directly.
+
+### Added
+- **`lurebench robustness`** and `lurebench.robustness.run_robustness()` — take the
+  lures a detector catches on clean text, apply an attack, and report the **attack
+  success rate** (fraction that now evade), alongside clean vs attacked recall. ASR is
+  conditioned on clean catches, so a detector that already misses everything cannot
+  masquerade as robust.
+- **`lurebench.attacks`** — a pluggable attack registry. Four dependency-free,
+  deterministic character-level attacks (`homoglyph`, `leet`, `zero-width`,
+  `whitespace`) and two LLM-driven attacks (`llm-paraphrase`, `llm-keyword-evasion`)
+  that reuse the OpenAI-compatible provider plumbing (your key, never api.openai.com
+  or api.anthropic.com). The `Attack` ABC lets you add your own.
+- **`llm-keyword-evasion`** is a *targeted* attack: for linear detectors it pulls the
+  model's own most-predictive words (via `TfidfLogisticDetector.top_positive_features`)
+  and rewrites the lure to avoid them.
+- **`recall@FPR`** operating-point metrics (`Metrics.recall_at_1pct_fpr`,
+  `recall_at_01pct_fpr`) and `metrics.recall_at_fpr()` — how much fraud you catch at a
+  tolerable false-alarm budget, the number a deployment actually tunes to.
+- **`docs/adversarial-robustness.md`** documents the suite, the metric, and the
+  baseline results (keyword rules collapse under any character attack; the trained
+  TF-IDF model degrades gracefully).
+
+### Notes
+- Robustness is a *different axis* from clean accuracy and ranks detectors
+  differently: `heuristic-v0` looks cheap and interpretable until `vеrifу` defeats it
+  (ASR 0.99), while `tfidf-logreg` degrades gracefully (homoglyph ASR 0.38). Homoglyph
+  substitution is the most effective free attack against both baselines.
+
 ## 0.2.0
 
 Makes the benchmark reproducible and usable by others: the headline finding is now
