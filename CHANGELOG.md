@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0
+
+Adds a **taxonomy and threat-intel interoperability layer** — the government/public-sector
+piece. Detection is only half the job; the other half is communicating a detection in
+terms another organization can act on.
+
+### Added
+- **A formal fraud-lure taxonomy** (`lurebench/taxonomy.py`, v1.0) over the three axes
+  LureBench already tags — typology, channel, persuasion technique — with **curated
+  crosswalks** to MITRE ATT&CK (precise, stable IDs), the FBI/IC3 crime categories, and
+  FinCEN advisories. The crosswalks are clearly marked as LureBench editorial pointers,
+  not official designations.
+- **`lurebench stix`** and `lurebench.stix` — export the taxonomy and/or any dataset as a
+  **STIX 2.1 bundle** for ingestion by fusion centers, ISACs, and threat-intel platforms.
+  The taxonomy becomes `attack-pattern` objects (crosswalks as `external_references`);
+  each lure becomes an `indicator` (SHA-256 `artifact` pattern) linked by `relationship`
+  objects. IDs are deterministic (name-based UUIDv5) and timestamps fixed, so output is
+  reproducible and diffable. Both bundle types **pass the official OASIS `stix2-validator`**
+  (added to the `dev` extra and exercised in the test suite).
+- **`docs/taxonomy.md`** — the standard, the crosswalk tables (generated from code so they
+  cannot drift), STIX usage, and the honesty notes on what the crosswalks are and are not.
+- `taxonomy.validate()` enforces that the taxonomy and the dataset schema never drift apart.
+
 ## 0.3.0
 
 Adds an **adversarial robustness** axis. Clean-data accuracy is the wrong number to

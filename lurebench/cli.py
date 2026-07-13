@@ -325,6 +325,32 @@ def _predictive_words(detector, top_k: int = 25) -> List[str]:
     return ["verify", "urgent", "account", "click", "suspended", "payment"]
 
 
+def _cmd_stix(args: argparse.Namespace) -> int:
+    from .stix import records_to_stix, taxonomy_to_stix, to_bundle
+
+    if args.taxonomy_only:
+        bundle = to_bundle(taxonomy_to_stix())
+        n = len(bundle["objects"])
+        label = "taxonomy"
+    else:
+        if not args.dataset:
+            print("! provide --dataset, or use --taxonomy-only", file=sys.stderr)
+            return 1
+        dataset = load_jsonl(args.dataset)
+        bundle = records_to_stix(dataset, include_benign=args.include_benign)
+        n = len(bundle["objects"])
+        label = args.dataset
+
+    payload = json.dumps(bundle, indent=2)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(payload + "\n")
+        print(f"wrote {args.out} — STIX 2.1 bundle, {n} objects ({label})")
+    else:
+        print(payload)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lurebench", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -389,6 +415,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_rob.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_rob.add_argument("--json", action="store_true", help="emit JSON instead of Markdown")
     p_rob.set_defaults(func=_cmd_robustness)
+
+    p_stix = sub.add_parser(
+        "stix",
+        help="export the taxonomy and/or a dataset as a STIX 2.1 bundle (threat-intel interop)",
+    )
+    p_stix.add_argument("--dataset", "-d", default=None, help="path to a JSONL dataset")
+    p_stix.add_argument("--taxonomy-only", action="store_true",
+                        help="export just the taxonomy (attack-patterns + crosswalks)")
+    p_stix.add_argument("--include-benign", action="store_true",
+                        help="also emit indicators for benign records")
+    p_stix.add_argument("--out", "-o", default=None, help="write the bundle here (else stdout)")
+    p_stix.set_defaults(func=_cmd_stix)
 
     p_man = sub.add_parser("manifest", help="print the composition manifest for a dataset")
     p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")

@@ -21,8 +21,9 @@ from .harness import Report, run
 from .crossgen import cross_generator_provenance
 from .data import load_core
 from .robustness import RobustnessReport, run_robustness
+from .stix import records_to_stix, taxonomy_to_stix
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "Lure",
@@ -36,5 +37,7 @@ __all__ = [
     "load_core",
     "run_robustness",
     "RobustnessReport",
+    "records_to_stix",
+    "taxonomy_to_stix",
     "__version__",
 ]
