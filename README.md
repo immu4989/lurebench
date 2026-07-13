@@ -66,6 +66,8 @@ A detector's score on clean test data is not the number that survives contact wi
 
 Robustness is a *different axis* from clean accuracy and it ranks detectors differently. The keyword baseline looks cheap and interpretable until an attacker types one homoglyph and 99% of its catches walk through. The trained model degrades gracefully instead of collapsing. That gap — not the clean-data score — is what a buyer needs to see before deploying either. Attacks come in two tiers: free deterministic character tricks (`homoglyph`, `leet`, `zero-width`, `whitespace`) and stronger LLM rewrites (`llm-paraphrase`, `llm-keyword-evasion`, which targets a detector's own most-predictive words). Full write-up in [docs/adversarial-robustness.md](docs/adversarial-robustness.md).
 
+> **Try it interactively:** [**LureScope**](https://github.com/immu4989/lurescope) is the deployable companion — a small API and browser demo where you paste a message, score it, then watch an attack evade the detector live. It reuses these same detectors and attacks.
+
 ## How it works
 
 ```mermaid
