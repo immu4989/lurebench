@@ -325,6 +325,42 @@ def _predictive_words(detector, top_k: int = 25) -> List[str]:
     return ["verify", "urgent", "account", "click", "suspended", "payment"]
 
 
+def _cmd_multilingual(args: argparse.Namespace) -> int:
+    from .multilingual import cross_lingual_detection, render_comparison
+    from .multilingual import render_markdown as render_ml
+
+    dataset = load_jsonl(args.dataset)
+    names: List[str] = args.detector or ["tfidf-logreg"]
+    sections = []
+    for name in names:
+        try:
+            detector = get_detector(name)
+        except Exception as exc:  # noqa: BLE001
+            print(f"! skipping {name}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if cross_lingual_detection(detector, dataset, threshold=args.threshold):
+            if args.raw:
+                sections.append(render_ml(
+                    cross_lingual_detection(detector, dataset, threshold=args.threshold), name))
+            else:
+                sections.append(render_comparison(detector, dataset, name, threshold=args.threshold))
+        else:
+            print(f"! {name}: no fraud lures with a language tag found", file=sys.stderr)
+            continue
+
+    if not sections:
+        print("No detector could be run.", file=sys.stderr)
+        return 1
+    md = "\n\n".join(sections)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as fh:
+            fh.write(md + "\n")
+        print(f"wrote {args.out}")
+    else:
+        print("\n" + md + "\n")
+    return 0
+
+
 def _cmd_stix(args: argparse.Namespace) -> int:
     from .stix import records_to_stix, taxonomy_to_stix, to_bundle
 
@@ -415,6 +451,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_rob.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_rob.add_argument("--json", action="store_true", help="emit JSON instead of Markdown")
     p_rob.set_defaults(func=_cmd_robustness)
+
+    p_ml = sub.add_parser(
+        "multilingual",
+        help="per-language detection recall (the cross-lingual deployment gap)",
+    )
+    p_ml.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
+    p_ml.add_argument("--detector", "-m", action="append",
+                      help="detector to evaluate (repeatable; default tfidf-logreg)")
+    p_ml.add_argument("--threshold", type=float, default=0.5)
+    p_ml.add_argument("--raw", action="store_true",
+                      help="show raw recall only (default shows raw vs artifact-controlled)")
+    p_ml.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
+    p_ml.set_defaults(func=_cmd_multilingual)
 
     p_stix = sub.add_parser(
         "stix",

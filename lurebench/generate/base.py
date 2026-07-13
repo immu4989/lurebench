@@ -177,20 +177,49 @@ def system_prompt_for(spec: "GenerationSpec") -> str:
     return SYSTEM_PROMPT_HARD if spec.hard else SYSTEM_PROMPT
 
 
+# ISO 639-1 code -> English language name, so prompts read "in Spanish" rather than
+# the ambiguous "in es". Extend as new languages are added to the benchmark.
+LANGUAGE_NAMES = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "pt": "Portuguese",
+    "it": "Italian",
+    "nl": "Dutch",
+    "zh": "Chinese (Simplified)",
+    "ja": "Japanese",
+    "hi": "Hindi",
+    "ar": "Arabic",
+    "ru": "Russian",
+    "tl": "Tagalog",
+}
+
+
+def language_name(code: str) -> str:
+    """Human-readable language name for an ISO 639-1 code (falls back to the code)."""
+    return LANGUAGE_NAMES.get(code, code)
+
+
 def build_user_prompt(spec: "GenerationSpec", index: int = 0) -> str:
+    lang = language_name(spec.language)
     if spec.seed_text:
         return (
             f"Rewrite this {spec.typology.replace('_', ' ')} message as an equivalent lure "
-            f"in your own words, matching its length. Keep placeholders as-is.\n\n"
+            f"in your own words, in {lang}, matching its length. Keep placeholders as-is.\n\n"
             f"MESSAGE:\n{spec.seed_text}"
         )
     scenario = _angle(spec, index)
     persuasion = ", ".join(spec.persuasion) if spec.persuasion else "any plausible angle"
     style = " Vary the tone and length; keep it plausible and understated." if spec.hard else ""
+    lang_note = "" if spec.language == "en" else (
+        f" Write the entire message in natural, native-quality {lang} — not a translation "
+        "of an English template."
+    )
     return (
         f"Write one synthetic {spec.typology.replace('_', ' ')} lure delivered over "
-        f"{spec.channel} in {spec.language}. Scenario: {scenario}. "
-        f"Persuasion emphasis: {persuasion}.{style} "
+        f"{spec.channel} in {lang}. Scenario: {scenario}. "
+        f"Persuasion emphasis: {persuasion}.{style}{lang_note} "
         f"Remember the placeholder and no-real-entity rules."
     )
 

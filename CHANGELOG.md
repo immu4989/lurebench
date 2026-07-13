@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.0
+
+Extends the benchmark past English. Fraud detectors are trained almost entirely on
+English; fraud is not. This release measures how the shipped baselines hold up under a
+language shift.
+
+### Added
+- **`lurebench multilingual`** and `lurebench.multilingual.cross_lingual_detection()` —
+  report fraud-detection **recall per language**, so the deployment gap a monolingual
+  benchmark score hides becomes a number. Recall is measured on positives only, so it
+  needs no per-language benign set.
+- **Language-aware generation** — `lurebench generate --language es` now writes
+  native-quality lures in the target language (the prompt uses the language *name*, not
+  the ISO code, via `LANGUAGE_NAMES` in `lurebench/generate/base.py`).
+- **A multilingual pilot set** (`scripts/build_multilingual_pilot.py`) — hard-mode AI
+  lures for `phishing`/`bec` in Spanish, French, German, Portuguese, Italian, and Chinese,
+  under the same defensive guardrails as the rest of the corpus.
+- **Artifact-controlled evaluation** — the `multilingual` command reports recall both raw
+  and with defang placeholders stripped, because the raw number is misleading: a URL
+  becomes `<<link>>` (a top fraud feature) in every language, so a detector can post high
+  "cross-lingual recall" without reading the lure at all.
+- **`docs/multilingual.md`** — the finding, with explicit notes on what it does and does
+  not claim, and on which languages were fluency-reviewed vs structure-checked.
+
+### The finding
+On the pilot (es/fr/de/zh AI lures vs the English baseline), the trained `tfidf-logreg`
+shows a perfect **1.00 raw recall in every language** — which looks like flawless
+cross-lingual detection and is not. Strip the defang placeholder and Chinese recall
+collapses **1.00 → 0.05** (a placeholder-stripped Chinese lure has zero tokens the
+English-trained model has ever seen); European recall survives only on incidental
+cognate/token overlap. The keyword `heuristic-v0` collapses outright on any non-English
+text. Same confound lesson as the provenance work, now in the language dimension.
+
 ## 0.4.0
 
 Adds a **taxonomy and threat-intel interoperability layer** — the government/public-sector

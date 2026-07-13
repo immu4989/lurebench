@@ -20,10 +20,11 @@ from .metrics import Metrics, evaluate
 from .harness import Report, run
 from .crossgen import cross_generator_provenance
 from .data import load_core
+from .multilingual import cross_lingual_detection
 from .robustness import RobustnessReport, run_robustness
 from .stix import records_to_stix, taxonomy_to_stix
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     "Lure",
@@ -39,5 +40,6 @@ __all__ = [
     "RobustnessReport",
     "records_to_stix",
     "taxonomy_to_stix",
+    "cross_lingual_detection",
     "__version__",
 ]
