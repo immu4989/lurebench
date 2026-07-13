@@ -150,7 +150,7 @@ lurebench stix -d data/full/core/test.jsonl -o lures.stix.json
 lurebench stix --taxonomy-only -o taxonomy.stix.json
 ```
 
-Measure the **cross-lingual gap** — how detectors hold up when the language shifts. The trained baseline posts a perfect 1.00 recall in every language, which looks like flawless multilingual detection; strip the defang placeholder and Chinese recall collapses to 0.05, exposing it as an artifact (see [docs/multilingual.md](docs/multilingual.md)):
+Measure the **cross-lingual gap** — how detectors hold up when the language shifts. Across eight languages the trained baseline posts a perfect ~1.00 recall, which looks like flawless multilingual detection; strip the defang placeholder and it splits along script lines — Latin-script survives, but every non-Latin script collapses (Chinese 1.00→0.09, Russian 0.94→0.06, Arabic 1.00→0.00), exposing the recall as a `<<link>>` artifact rather than detection (see [docs/multilingual.md](docs/multilingual.md)):
 
 ```bash
 lurebench multilingual -d data/full/multilingual/eval.jsonl -m tfidf-logreg -m heuristic-v0

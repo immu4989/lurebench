@@ -25,13 +25,16 @@ language shift.
   not claim, and on which languages were fluency-reviewed vs structure-checked.
 
 ### The finding
-On the pilot (es/fr/de/zh AI lures vs the English baseline), the trained `tfidf-logreg`
-shows a perfect **1.00 raw recall in every language** — which looks like flawless
-cross-lingual detection and is not. Strip the defang placeholder and Chinese recall
-collapses **1.00 → 0.05** (a placeholder-stripped Chinese lure has zero tokens the
-English-trained model has ever seen); European recall survives only on incidental
-cognate/token overlap. The keyword `heuristic-v0` collapses outright on any non-English
-text. Same confound lesson as the provenance work, now in the language dimension.
+On the pilot (AI lures in eight languages vs the English baseline), the trained
+`tfidf-logreg` shows a perfect **~1.00 raw recall in every language** — which looks like
+flawless cross-lingual detection and is not. Strip the defang placeholder and the result
+splits cleanly along script lines: Latin-script recall survives (es/fr/de/it 0.91–1.00, on
+incidental cognate overlap), while **every non-Latin script collapses** — Chinese 1.00 →
+0.09, Russian 0.94 → 0.06, Arabic 1.00 → 0.00. In those scripts a placeholder-stripped lure
+has almost no tokens the English-trained model has seen, so the recall was entirely the
+`<<link>>` artifact. The keyword `heuristic-v0` collapses outright on any non-English text.
+Same confound lesson as the provenance work, now in the language dimension, confirmed
+across three independent scripts.
 
 ## 0.4.0
 

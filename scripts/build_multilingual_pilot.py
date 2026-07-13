@@ -32,7 +32,7 @@ from lurebench.schema import load_jsonl, save_jsonl
 CELLS = [
     ("mistral", "es"), ("mistral", "fr"), ("mistral", "de"),
     ("mistral", "it"), ("mistral", "pt"),
-    ("deepseek", "zh"),
+    ("deepseek", "zh"), ("deepseek", "ru"), ("deepseek", "ar"),
 ]
 TYPOLOGIES = ["phishing", "bec"]
 OUT = "data/full/multilingual/pilot.jsonl"
@@ -54,14 +54,20 @@ def main() -> None:
     ap.add_argument("--delay", type=float, default=2.5, help="seconds between calls (rate-limit spacing)")
     ap.add_argument("--timeout", type=float, default=45.0)
     ap.add_argument("--retries", type=int, default=3)
+    ap.add_argument("--out", default=OUT, help="output file (use separate files for parallel runs)")
+    ap.add_argument("--seed", default=None, help="also load these records as prior state (read-only)")
     args = ap.parse_args()
     _load_env()
     engines = set(args.engines.split(","))
+    out_path = args.out
 
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    records = list(load_jsonl(OUT)) if os.path.exists(OUT) else []
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    records = list(load_jsonl(out_path)) if os.path.exists(out_path) else []
+    # Count existing cells from a shared seed file (e.g. the main pilot) so a parallel
+    # run tops up to target without re-reading the file another run is writing.
+    seed = list(load_jsonl(args.seed)) if args.seed and os.path.exists(args.seed) else []
     have: dict = {}
-    for r in records:
+    for r in list(records) + seed:
         have[r.id.rsplit("-", 1)[0]] = have.get(r.id.rsplit("-", 1)[0], 0) + 1
 
     for engine, lang in CELLS:
@@ -92,12 +98,12 @@ def main() -> None:
                     idx += 1
                     got += 1
                     records.append(r)
-                save_jsonl(records, OUT)  # persist after every lure
+                save_jsonl(records, out_path)  # persist after every lure
                 time.sleep(args.delay)
             print(f"{engine}/{lang}/{typ} ({language_name(lang)}): +{got}/{need} "
                   f"in {time.time() - t0:.0f}s  [total {len(records)}]", flush=True)
 
-    print(f"\nwrote {len(records)} records -> {OUT}", flush=True)
+    print(f"\nwrote {len(records)} records -> {out_path}", flush=True)
 
 
 if __name__ == "__main__":
