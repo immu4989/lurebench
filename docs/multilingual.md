@@ -15,19 +15,18 @@ that handles it well (Mistral for the European languages, DeepSeek for the non-L
 scripts), under the same defensive guardrails as the rest of LureBench (placeholders only,
 no real entities). It covers `phishing` and `bec` across **eight languages** — Spanish,
 French, German, Italian, Portuguese (Latin script) and Chinese, Russian, Arabic (non-Latin
-script) — evaluated against the **English AI lures already in `lurebench-core`** as the
-baseline. Per-language counts appear in the tables below; this is a pilot (Arabic and
-Portuguese are thin), but the effect is categorical, and it splits cleanly along script
-lines.
+script) — **255 non-English lures**, 22–56 per language, evaluated against the **38 English
+AI lures already in `lurebench-core`** as the baseline. The effect is categorical, and it
+splits cleanly along script lines.
 
 ## What a naive evaluation shows
 
 Run the two baselines and look at raw recall (fraction of lures flagged):
 
-| Detector | English | Spanish | French | German | Italian | Chinese | Russian | Arabic |
-|---|---|---|---|---|---|---|---|---|
-| `tfidf-logreg` (trained) | 0.97 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.94 | 1.00 |
-| `heuristic-v0` (keyword) | 0.68 | 0.00 | 0.07 | 0.27 | 0.09 | 0.00 | 0.00 | 0.00 |
+| Detector | English | Spanish | French | German | Italian | Portuguese | Chinese | Russian | Arabic |
+|---|---|---|---|---|---|---|---|---|---|
+| `tfidf-logreg` (trained) | 0.97 | 1.00 | 1.00 | 1.00 | 1.00 | 0.93 | 1.00 | 0.94 | 0.98 |
+| `heuristic-v0` (keyword) | 0.68 | 0.00 | 0.07 | 0.27 | 0.09 | 0.68 | 0.00 | 0.00 | 0.00 |
 
 Two different stories. The keyword detector collapses the moment the language changes —
 unsurprising, it keys on English words. But the **trained model looks *perfectly*
@@ -45,29 +44,31 @@ Every generated lure is defanged: a URL becomes `<<link>>`, which tokenizes to t
 The `multilingual` command tests this directly by re-scoring with the placeholders
 stripped (the artifact-controlled column is shown by default):
 
-| Language | Script | `tfidf-logreg` raw → controlled | `heuristic-v0` raw → controlled |
-|---|---|---|---|
-| English | Latin | 0.97 → **0.97** | 0.68 → 0.08 |
-| Spanish | Latin | 1.00 → **1.00** | 0.00 → 0.00 |
-| French | Latin | 1.00 → **0.96** | 0.07 → 0.00 |
-| German | Latin | 1.00 → **1.00** | 0.27 → 0.00 |
-| Italian | Latin | 1.00 → **0.91** | 0.09 → 0.00 |
-| Chinese | Han | 1.00 → **0.09** | 0.00 → 0.00 |
-| Russian | Cyrillic | 0.94 → **0.06** | 0.00 → 0.00 |
-| Arabic | Arabic | 1.00 → **0.00** | 0.00 → 0.00 |
+| Language | Script | Lures | `tfidf-logreg` raw → controlled | `heuristic-v0` raw → controlled |
+|---|---|---|---|---|
+| English | Latin | 38 | 0.97 → **0.97** | 0.68 → 0.08 |
+| Spanish | Latin | 32 | 1.00 → **1.00** | 0.00 → 0.00 |
+| French | Latin | 27 | 1.00 → **0.96** | 0.07 → 0.00 |
+| German | Latin | 26 | 1.00 → **1.00** | 0.27 → 0.00 |
+| Italian | Latin | 22 | 1.00 → **0.91** | 0.09 → 0.00 |
+| Portuguese | Latin | 28 | 0.93 → **0.79** | 0.68 → 0.00 |
+| Chinese | Han | 32 | 1.00 → **0.09** | 0.00 → 0.00 |
+| Russian | Cyrillic | 32 | 0.94 → **0.06** | 0.00 → 0.00 |
+| Arabic | Arabic | 56 | 0.98 → **0.04** | 0.00 → 0.00 |
 
 The result splits **cleanly along script lines**:
 
 - **Latin-script languages survive the control.** The trained model keeps its recall on
-  Spanish, French, German, and Italian even with the placeholder removed — because those
-  languages share tokens with English (cognates, brand-neutral words, digits). Genuine, if
-  shallow, overlap.
+  Spanish, French, German, Italian, and Portuguese even with the placeholder removed —
+  because those languages share tokens with English (cognates, brand-neutral words,
+  digits). Genuine, if shallow, overlap (Portuguese lowest at 0.79, still an order of
+  magnitude above any non-Latin script).
 - **Every non-Latin script collapses.** Chinese 1.00 → 0.09, Russian 0.94 → 0.06, Arabic
-  1.00 → 0.00. A placeholder-stripped lure in these scripts has **almost no** tokens the
-  English-trained model has ever seen; its apparent perfect recall was *entirely* the
-  `<<link>>` artifact. The model was never reading the fraud — it was detecting that a URL
-  had been present. Three independent scripts show the same collapse, so this is a general
-  property, not a quirk of one language.
+  0.98 → 0.04 (the last on 56 lures). A placeholder-stripped lure in these scripts has
+  **almost no** tokens the English-trained model has ever seen; its apparent perfect recall
+  was *entirely* the `<<link>>` artifact. The model was never reading the fraud — it was
+  detecting that a URL had been present. Three independent scripts show the same collapse,
+  so this is a general property, not a quirk of one language.
 - **Even the keyword detector's English recall is mostly the artifact** (0.68 → 0.08) — it
   leans far more on the link/hand-off signal than on its English trigger words.
 
@@ -89,8 +90,9 @@ lurebench multilingual -d data/full/multilingual/eval.jsonl -m tfidf-logreg -m h
 
 ## Honest limitations
 
-- **Pilot scale.** ~22–32 lures for most languages, enough for a categorical effect; Arabic
-  (9) and Portuguese (3) are thin and are reported for direction only.
+- **Pilot scale.** 22–56 lures per language — enough for a categorical effect, not for
+  precise per-language rates. The effect size (Latin ≥0.79 vs non-Latin ≤0.09 under
+  control) is far larger than the sampling noise at these counts.
 - **Coverage.** Five Latin-script and three non-Latin-script languages. Further coverage
   (Hindi, Tagalog, and other languages named in GenAI-fraud advisories) is future work.
 - **Quality review.** European lures were spot-checked for fluency and guardrail

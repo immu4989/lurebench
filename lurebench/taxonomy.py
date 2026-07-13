@@ -13,11 +13,11 @@ Two honesty notes, load-bearing:
 
 - **The crosswalks are curated by LureBench, not official designations.** A mapping from
   the ``bec`` typology to MITRE T1566.002 is our editorial judgment about how these
-  vocabularies line up; it is not endorsed by MITRE, FinCEN, or the FBI. Treat the
-  external IDs as pointers to verify against the primary source, not as authority.
-- **MITRE ATT&CK IDs are stable and precise here; the FinCEN/IC3 references name real
-  programs but you should confirm the exact advisory against the issuing agency**, since
-  advisory numbering changes and this file is a snapshot.
+  vocabularies line up; it is not endorsed by MITRE, FinCEN, or the FBI.
+- **The targets are real and auditable.** Every FinCEN/IC3 reference carries its exact
+  published identifier, title, date, and URL, verified against the issuing agency on the
+  date in ``SOURCES_VERIFIED``. MITRE ATT&CK IDs are stable and versioned upstream. So the
+  mapping is editorial, but nothing points at a document you can't open and check.
 """
 
 from __future__ import annotations
@@ -27,12 +27,20 @@ from typing import Dict, List
 
 from .schema import CHANNELS, TYPOLOGIES
 
-TAXONOMY_VERSION = "1.0"
+TAXONOMY_VERSION = "1.1"
+
+# Date the FinCEN/FBI-IC3 references below were checked against the issuing agency's
+# published documents. MITRE ATT&CK IDs are stable and versioned upstream.
+SOURCES_VERIFIED = "2026-07-12"
 
 DISCLAIMER = (
-    "LureBench-curated crosswalk. External framework references are editorial pointers "
-    "for interoperability, not official designations by MITRE, FinCEN, or the FBI. "
-    "Verify each reference against its primary source before operational use."
+    "LureBench-curated crosswalk. The *mapping* from a LureBench term to an external "
+    "framework entry is our editorial judgment, not an official designation by MITRE, "
+    "FinCEN, or the FBI. The *targets*, however, are real, dated, published documents: "
+    f"every FinCEN/IC3 reference was verified against the issuing agency on {SOURCES_VERIFIED}, "
+    "and each carries its exact identifier and URL so you can audit the mapping yourself. "
+    "The cross-cutting 'AI-generated' dimension is grounded in FBI/IC3 I-120324-PSA "
+    "(Dec 3 2024) and FinCEN FIN-2024-Alert004 (Nov 13 2024)."
 )
 
 
@@ -71,10 +79,11 @@ TYPOLOGY_TAXONOMY: Dict[str, TaxonomyEntry] = {
         [
             _mitre("T1566", "Phishing"),
             _mitre("T1598", "Phishing for Information"),
-            Crosswalk("FBI/IC3", "phishing-spoofing", "Phishing/Spoofing crime type",
-                      "https://www.ic3.gov"),
-            Crosswalk("FinCEN", "", "GenAI-enabled fraud / deepfake media alert (2024)",
-                      "https://www.fincen.gov"),
+            Crosswalk("FBI/IC3", "phishing-spoofing", "Phishing/Spoofing (IC3 crime type)",
+                      "https://www.ic3.gov/AnnualReport/Reports/2024_IC3Report.pdf"),
+            Crosswalk("FBI/IC3", "I-120324-PSA",
+                      "Criminals Use Generative AI to Facilitate Financial Fraud (Dec 3 2024)",
+                      "https://www.ic3.gov/PSA/2024/PSA241203"),
         ],
     ),
     "bec": TaxonomyEntry(
@@ -84,10 +93,12 @@ TYPOLOGY_TAXONOMY: Dict[str, TaxonomyEntry] = {
         [
             _mitre("T1566.002", "Spearphishing Link"),
             _mitre("T1656", "Impersonation"),
-            Crosswalk("FBI/IC3", "bec-eac", "Business Email Compromise / Email Account Compromise",
-                      "https://www.ic3.gov"),
-            Crosswalk("FinCEN", "", "Advisory on email compromise fraud schemes",
-                      "https://www.fincen.gov"),
+            Crosswalk("FBI/IC3", "bec-eac",
+                      "Business Email Compromise / Email Account Compromise (IC3 crime type)",
+                      "https://www.ic3.gov/AnnualReport/Reports/2024_IC3Report.pdf"),
+            Crosswalk("FinCEN", "FIN-2019-A005",
+                      "Updated Advisory on Email Compromise Fraud Schemes (Jul 16 2019)",
+                      "https://www.fincen.gov/resources/advisories/fincen-advisory-fin-2019-a005"),
         ],
     ),
     "romance": TaxonomyEntry(
@@ -96,8 +107,8 @@ TYPOLOGY_TAXONOMY: Dict[str, TaxonomyEntry] = {
         "financial access from the target.",
         [
             _mitre("T1656", "Impersonation"),
-            Crosswalk("FBI/IC3", "confidence-romance", "Confidence Fraud / Romance",
-                      "https://www.ic3.gov"),
+            Crosswalk("FBI/IC3", "confidence-romance", "Confidence Fraud / Romance (IC3 crime type)",
+                      "https://www.ic3.gov/AnnualReport/Reports/2024_IC3Report.pdf"),
         ],
     ),
     "pig_butchering": TaxonomyEntry(
@@ -106,11 +117,13 @@ TYPOLOGY_TAXONOMY: Dict[str, TaxonomyEntry] = {
         "(often crypto) investment platform.",
         [
             _mitre("T1656", "Impersonation"),
-            Crosswalk("FBI/IC3", "investment", "Investment fraud (incl. crypto-investment)",
-                      "https://www.ic3.gov"),
-            Crosswalk("FinCEN", "FIN-2023-Alert006",
-                      "Alert on the virtual-currency investment scam known as pig butchering",
-                      "https://www.fincen.gov"),
+            Crosswalk("FBI/IC3", "investment",
+                      "Investment fraud, incl. crypto-investment (IC3 crime type)",
+                      "https://www.ic3.gov/AnnualReport/Reports/2024_IC3Report.pdf"),
+            Crosswalk("FinCEN", "FIN-2023-Alert005",
+                      "Alert on the virtual-currency investment scam known as pig butchering "
+                      "(Sep 8 2023)",
+                      "https://www.fincen.gov/system/files/shared/FinCEN_Alert_Pig_Butchering_FINAL_508c.pdf"),
         ],
     ),
     "benign": TaxonomyEntry(

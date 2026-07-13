@@ -32,7 +32,7 @@ from lurebench.schema import load_jsonl, save_jsonl
 CELLS = [
     ("mistral", "es"), ("mistral", "fr"), ("mistral", "de"),
     ("mistral", "it"), ("mistral", "pt"),
-    ("deepseek", "zh"), ("deepseek", "ru"), ("deepseek", "ar"),
+    ("deepseek", "zh"), ("deepseek", "ru"), ("deepseek", "ar"), ("deepseek", "pt"),
 ]
 TYPOLOGIES = ["phishing", "bec"]
 OUT = "data/full/multilingual/pilot.jsonl"
@@ -51,6 +51,8 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=15, help="target lures per (language, typology) cell")
     ap.add_argument("--engines", default="mistral,deepseek")
+    ap.add_argument("--languages", default=None,
+                    help="comma-separated ISO codes to restrict to (default: all in CELLS)")
     ap.add_argument("--delay", type=float, default=2.5, help="seconds between calls (rate-limit spacing)")
     ap.add_argument("--timeout", type=float, default=45.0)
     ap.add_argument("--retries", type=int, default=3)
@@ -70,8 +72,11 @@ def main() -> None:
     for r in list(records) + seed:
         have[r.id.rsplit("-", 1)[0]] = have.get(r.id.rsplit("-", 1)[0], 0) + 1
 
+    langs = set(args.languages.split(",")) if args.languages else None
     for engine, lang in CELLS:
         if engine not in engines:
+            continue
+        if langs is not None and lang not in langs:
             continue
         try:
             gen = get_generator(engine, max_tokens=3072 if engine == "deepseek" else 1024,

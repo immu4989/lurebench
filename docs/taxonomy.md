@@ -18,11 +18,11 @@ as STIX for machine ingestion — is high.
 
 1. **The crosswalks are curated by LureBench, not official designations.** Mapping the
    `bec` typology to MITRE `T1566.002` is our editorial judgment about how these
-   vocabularies align. It is not endorsed by MITRE, FinCEN, or the FBI. Treat every
-   external ID as a pointer to verify against the primary source.
-2. **MITRE ATT&CK IDs here are precise and stable; the FinCEN/IC3 references name real
-   programs but you should confirm the exact advisory** against the issuing agency, since
-   advisory numbering changes and this document is a snapshot.
+   vocabularies align. It is not endorsed by MITRE, FinCEN, or the FBI.
+2. **But the targets are real and auditable.** Every FinCEN/IC3 reference carries its
+   exact published identifier, title, date, and URL, verified against the issuing agency
+   on **2026-07-12**; MITRE ATT&CK IDs are stable and versioned upstream. So the *mapping*
+   is editorial, but nothing points at a document you can't open and check yourself.
 
 ## The three axes
 
@@ -33,13 +33,15 @@ single source of truth, so they cannot drift from the code.
 
 ### Typologies
 
-| Key | Label | Crosswalks |
+| Key | Label | Crosswalks (all verified 2026-07-12) |
 |---|---|---|
-| `phishing` | Phishing / credential theft | MITRE ATT&CK `T1566`; MITRE ATT&CK `T1598`; FBI/IC3 `phishing-spoofing`; FinCEN |
-| `bec` | Business email compromise (BEC/EAC) | MITRE ATT&CK `T1566.002`; MITRE ATT&CK `T1656`; FBI/IC3 `bec-eac`; FinCEN |
+| `phishing` | Phishing / credential theft | MITRE ATT&CK `T1566`, `T1598`; FBI/IC3 `phishing-spoofing`; FBI/IC3 [`I-120324-PSA`](https://www.ic3.gov/PSA/2024/PSA241203) (GenAI fraud, Dec 3 2024) |
+| `bec` | Business email compromise (BEC/EAC) | MITRE ATT&CK `T1566.002`, `T1656`; FBI/IC3 `bec-eac`; FinCEN [`FIN-2019-A005`](https://www.fincen.gov/resources/advisories/fincen-advisory-fin-2019-a005) (BEC advisory, Jul 16 2019) |
 | `romance` | Romance / confidence fraud | MITRE ATT&CK `T1656`; FBI/IC3 `confidence-romance` |
-| `pig_butchering` | Pig-butchering / investment fraud | MITRE ATT&CK `T1656`; FBI/IC3 `investment`; FinCEN `FIN-2023-Alert006` |
+| `pig_butchering` | Pig-butchering / investment fraud | MITRE ATT&CK `T1656`; FBI/IC3 `investment`; FinCEN [`FIN-2023-Alert005`](https://www.fincen.gov/system/files/shared/FinCEN_Alert_Pig_Butchering_FINAL_508c.pdf) (pig butchering, Sep 8 2023) |
 | `benign` | Benign (non-fraud) | — (negative class; no fraud framework applies) |
+
+The cross-cutting "AI-generated" dimension is grounded in FBI/IC3 [`I-120324-PSA`](https://www.ic3.gov/PSA/2024/PSA241203) (Dec 3 2024) and FinCEN [`FIN-2024-Alert004`](https://www.fincen.gov/news/news-releases/fincen-issues-alert-fraud-schemes-involving-deepfake-media-targeting-financial) (deepfake media, Nov 13 2024).
 
 ### Channels → MITRE ATT&CK phishing sub-technique
 

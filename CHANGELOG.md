@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.1
+
+Hardens the two things most likely to be questioned when the work is cited: the taxonomy
+crosswalks and the scale of the multilingual pilot.
+
+### Changed
+- **Taxonomy crosswalks verified against primary sources** (taxonomy v1.1). Every
+  FinCEN/IC3 reference now carries its exact published identifier, title, date, and URL,
+  checked against the issuing agency (see `SOURCES_VERIFIED`). This **corrected a factual
+  error**: the pig-butchering typology cited FinCEN `FIN-2023-Alert006`, which is actually
+  a terrorist-financing alert — the correct pig-butchering alert is `FIN-2023-Alert005`
+  (Sep 8 2023). BEC now cites `FIN-2019-A005` (Jul 16 2019); the GenAI-fraud dimension
+  cites FBI/IC3 `I-120324-PSA` (Dec 3 2024) and FinCEN `FIN-2024-Alert004` (Nov 13 2024).
+  The mapping remains editorial (not an official designation), but every target is now an
+  auditable, dated document rather than a vague pointer.
+- **Multilingual pilot scaled.** The two thinnest cells were generated up — Arabic 9 → 56,
+  Portuguese 3 → 28 — so no language is reported on a trivial sample (all now 22–56, 255
+  non-English lures total). The finding is unchanged and now better powered: Arabic
+  collapses 0.98 → 0.04 under artifact control on 56 lures. The script gained a
+  `--languages` filter for targeted top-ups.
+
 ## 0.5.0
 
 Extends the benchmark past English. Fraud detectors are trained almost entirely on
