@@ -8,6 +8,10 @@ English-trained detectors do when the language shifts?
 The answer turned out to be more interesting than "they fail" — and checking it carefully
 is the whole point.
 
+<p align="center">
+  <img src="assets/multilingual.svg" width="820" alt="Grouped bar chart. An English-trained TF-IDF fraud detector shows ~1.00 raw recall in all nine languages. Once the defang placeholder is stripped (artifact-controlled), Latin-script languages stay high (English 0.97, Spanish 1.00, Portuguese 0.79) while every non-Latin script collapses: Chinese 0.09, Russian 0.06, Arabic 0.04.">
+</p>
+
 ## The pilot set
 
 Controlled-generation data: hard-mode AI lures produced in each language by a provider

@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 470" font-family="system-ui,-apple-system,Segoe UI,sans-serif">
+<rect x="0" y="0" width="900" height="470" rx="12" fill="#fcfcfb"/>
+<text x="62" y="34" font-size="20" font-weight="700" fill="#0b0b0b">Strip the placeholder, and &#8220;multilingual&#8221; detection splits by script</text>
+<text x="62" y="57" font-size="13.5" fill="#52514e">English-trained TF-IDF fraud detector: recall raw vs artifact-controlled (defang placeholder removed)</text>
+<rect x="62" y="72" width="11" height="11" rx="3" fill="#c3c2b7"/>
+<text x="78" y="82" font-size="12.5" fill="#52514e">raw recall</text>
+<rect x="212" y="72" width="11" height="11" rx="3" fill="#1baf7a"/>
+<text x="228" y="82" font-size="12.5" fill="#52514e">artifact-controlled — survives</text>
+<rect x="462" y="72" width="11" height="11" rx="3" fill="#e34948"/>
+<text x="478" y="82" font-size="12.5" fill="#52514e">collapses</text>
+<line x1="62" y1="406.0" x2="876" y2="406.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="410.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">0</text>
+<line x1="62" y1="337.5" x2="876" y2="337.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="341.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">25</text>
+<line x1="62" y1="269.0" x2="876" y2="269.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="273.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">50</text>
+<line x1="62" y1="200.5" x2="876" y2="200.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="204.5" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">75</text>
+<line x1="62" y1="132.0" x2="876" y2="132.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54" y="136.0" font-size="11" fill="#898781" text-anchor="end" font-variant-numeric="tabular-nums">100</text>
+<line x1="62" y1="406" x2="876" y2="406" stroke="#c3c2b7" stroke-width="1.5"/>
+<line x1="604.7" y1="126" x2="604.7" y2="406" stroke="#898781" stroke-width="1.2" stroke-dasharray="4 4"/>
+<text x="333" y="108" font-size="12.5" font-weight="700" fill="#1baf7a" text-anchor="middle">LATIN SCRIPT — survives</text>
+<text x="740" y="108" font-size="12.5" font-weight="700" fill="#e34948" text-anchor="middle">NON-LATIN SCRIPT — collapses</text>
+<path d="M78.6,406.0 L78.6,144.2 Q78.6,140.2 82.6,140.2 L101.7,140.2 Q105.7,140.2 105.7,144.2 L105.7,406.0 Z" fill="#c3c2b7"/>
+<text x="92.2" y="135.2" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.97</text>
+<path d="M108.7,406.0 L108.7,144.2 Q108.7,140.2 112.7,140.2 L131.9,140.2 Q135.9,140.2 135.9,144.2 L135.9,406.0 Z" fill="#1baf7a"/>
+<text x="122.3" y="135.2" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.97</text>
+<text x="107.2" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">English</text>
+<path d="M169.0,406.0 L169.0,136.0 Q169.0,132.0 173.0,132.0 L192.2,132.0 Q196.2,132.0 196.2,136.0 L196.2,406.0 Z" fill="#c3c2b7"/>
+<text x="182.6" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M199.2,406.0 L199.2,136.0 Q199.2,132.0 203.2,132.0 L222.3,132.0 Q226.3,132.0 226.3,136.0 L226.3,406.0 Z" fill="#1baf7a"/>
+<text x="212.7" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<text x="197.7" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">Spanish</text>
+<path d="M259.5,406.0 L259.5,136.0 Q259.5,132.0 263.5,132.0 L282.6,132.0 Q286.6,132.0 286.6,136.0 L286.6,406.0 Z" fill="#c3c2b7"/>
+<text x="273.0" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M289.6,406.0 L289.6,147.0 Q289.6,143.0 293.6,143.0 L312.7,143.0 Q316.7,143.0 316.7,147.0 L316.7,406.0 Z" fill="#1baf7a"/>
+<text x="303.2" y="138.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.96</text>
+<text x="288.1" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">French</text>
+<path d="M349.9,406.0 L349.9,136.0 Q349.9,132.0 353.9,132.0 L373.1,132.0 Q377.1,132.0 377.1,136.0 L377.1,406.0 Z" fill="#c3c2b7"/>
+<text x="363.5" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M380.1,406.0 L380.1,136.0 Q380.1,132.0 384.1,132.0 L403.2,132.0 Q407.2,132.0 407.2,136.0 L407.2,406.0 Z" fill="#1baf7a"/>
+<text x="393.6" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<text x="378.6" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">German</text>
+<path d="M440.4,406.0 L440.4,136.0 Q440.4,132.0 444.4,132.0 L463.5,132.0 Q467.5,132.0 467.5,136.0 L467.5,406.0 Z" fill="#c3c2b7"/>
+<text x="453.9" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M470.5,406.0 L470.5,160.7 Q470.5,156.7 474.5,156.7 L493.6,156.7 Q497.6,156.7 497.6,160.7 L497.6,406.0 Z" fill="#1baf7a"/>
+<text x="484.1" y="151.7" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.91</text>
+<text x="469.0" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">Italian</text>
+<path d="M530.8,406.0 L530.8,155.2 Q530.8,151.2 534.8,151.2 L553.9,151.2 Q557.9,151.2 557.9,155.2 L557.9,406.0 Z" fill="#c3c2b7"/>
+<text x="544.4" y="146.2" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.93</text>
+<path d="M560.9,406.0 L560.9,193.5 Q560.9,189.5 564.9,189.5 L584.1,189.5 Q588.1,189.5 588.1,193.5 L588.1,406.0 Z" fill="#1baf7a"/>
+<text x="574.5" y="184.5" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.79</text>
+<text x="559.4" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">Portuguese</text>
+<path d="M621.3,406.0 L621.3,136.0 Q621.3,132.0 625.3,132.0 L644.4,132.0 Q648.4,132.0 648.4,136.0 L648.4,406.0 Z" fill="#c3c2b7"/>
+<text x="634.8" y="127.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">1.00</text>
+<path d="M651.4,406.0 L651.4,385.3 Q651.4,381.3 655.4,381.3 L674.5,381.3 Q678.5,381.3 678.5,385.3 L678.5,406.0 Z" fill="#e34948"/>
+<text x="665.0" y="376.3" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.09</text>
+<text x="649.9" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">Chinese</text>
+<path d="M711.7,406.0 L711.7,152.4 Q711.7,148.4 715.7,148.4 L734.8,148.4 Q738.8,148.4 738.8,152.4 L738.8,406.0 Z" fill="#c3c2b7"/>
+<text x="725.3" y="143.4" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.94</text>
+<path d="M741.8,406.0 L741.8,393.6 Q741.8,389.6 745.8,389.6 L765.0,389.6 Q769.0,389.6 769.0,393.6 L769.0,406.0 Z" fill="#e34948"/>
+<text x="755.4" y="384.6" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.06</text>
+<text x="740.3" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">Russian</text>
+<path d="M802.1,406.0 L802.1,141.5 Q802.1,137.5 806.1,137.5 L825.3,137.5 Q829.3,137.5 829.3,141.5 L829.3,406.0 Z" fill="#c3c2b7"/>
+<text x="815.7" y="132.5" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.98</text>
+<path d="M832.3,406.0 L832.3,399.0 Q832.3,395.0 836.3,395.0 L855.4,395.0 Q859.4,395.0 859.4,399.0 L859.4,406.0 Z" fill="#e34948"/>
+<text x="845.8" y="390.0" font-size="10.5" font-weight="600" fill="#52514e" text-anchor="middle" font-variant-numeric="tabular-nums">0.04</text>
+<text x="830.8" y="426.0" font-size="11.5" fill="#0b0b0b" text-anchor="middle">Arabic</text>
+</svg>
