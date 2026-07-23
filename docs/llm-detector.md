@@ -41,6 +41,10 @@ itself, so it should hold. It does. Per-language recall, raw and artifact-contro
 | **Russian** | Cyrillic | 0.94 → **0.06** | 0.97 → **0.97** |
 | **Arabic** | Arabic | 0.98 → **0.04** | 1.00 → **0.95** |
 
+<p align="center">
+  <img src="assets/llm-multilingual.svg" width="860" alt="Grouped bar chart, artifact-controlled recall per language for tfidf-logreg vs llm-judge. On Latin scripts the two are comparable (tfidf a touch higher). On the non-Latin scripts past a divider, tfidf collapses to 9/6/4 percent (Chinese/Russian/Arabic) while llm-judge holds at 91/97/95 percent.">
+</p>
+
 On the three non-Latin scripts, artifact-controlled recall goes from **~0.06 (tfidf) to
 ~0.94 (llm-judge)**. The LLM is reading the fraud, not the URL that got redacted.
 
