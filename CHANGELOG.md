@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.6.0
+
+Adds **`llm-judge`** — the first strong fraud detector in LureBench that a user can
+actually run without a GPU or OpenAI credits — and stress-tests it against the same checks
+that broke the baselines.
+
+### Added
+- **`llm-judge` detector** (`lurebench/detectors/llm.py`) — asks an LLM for a 0–100
+  fraud-likelihood over the OpenAI-compatible provider plumbing that powers generation
+  (DeepSeek / GLM / Mistral / …, your own key, never api.openai.com or api.anthropic.com).
+  Any provider by name; Mistral is the fast default, reasoning models (DeepSeek/GLM) need
+  the higher `max_tokens` the detector sets by default. Plugs into every existing harness.
+- **`docs/llm-detector.md`** — the detector and the two experiments below, with the honest
+  limits (pilot scale, one provider, cost/latency, the paraphrase weakness).
+- **Reproducible score caches** (`data/full/multilingual/llm_scores_deepseek.json`,
+  `llm_robust_deepseek.json`) and the concurrent scorers `scripts/score_llm_multilingual.py`
+  and `scripts/score_llm_robustness.py`.
+
+### The findings (DeepSeek, pilot scale)
+- **It closes the cross-lingual gap.** Where `tfidf-logreg`'s recall collapsed on non-Latin
+  scripts under artifact control (Chinese 0.09, Russian 0.06, Arabic 0.04 — the recall was
+  the `<<link>>` placeholder), `llm-judge` holds: **Chinese 0.91, Russian 0.97, Arabic
+  0.95**. It reads the fraud, not the redacted URL. (Honestly: its raw recall is lower than
+  tfidf's inflated ~1.00, and it uses the placeholder as a minor signal on Latin scripts.)
+- **It survives the character attacks.** The homoglyph/leet/etc. attacks that drove
+  `heuristic-v0` to ASR ~1.00 barely touch it (ASR 0.04–0.08). Its one real weakness is a
+  semantic **LLM paraphrase** (ASR 0.17) — you beat a content detector by rewriting the
+  lure, not by mangling characters.
+
 ## 0.5.1
 
 Hardens the two things most likely to be questioned when the work is cited: the taxonomy

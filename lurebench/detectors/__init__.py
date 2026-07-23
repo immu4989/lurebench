@@ -15,6 +15,7 @@ from .heuristic import HeuristicDetector
 # name -> "module:ClassName" for lazily-loaded detectors.
 _LAZY: Dict[str, str] = {
     "tfidf-logreg": "lurebench.detectors.tfidf:TfidfLogisticDetector",
+    "llm-judge": "lurebench.detectors.llm:LLMJudgeDetector",
     "binoculars": "lurebench.detectors.binoculars:BinocularsDetector",
     "llama-guard-3": "lurebench.detectors.llama_guard:LlamaGuardDetector",
     "openai-moderation": "lurebench.detectors.moderation:OpenAIModerationDetector",

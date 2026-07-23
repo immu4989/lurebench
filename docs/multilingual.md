@@ -110,3 +110,9 @@ Generation is language-aware: `lurebench generate --typology phishing --language
 `LANGUAGE_NAMES` in `lurebench/generate/base.py` for anything not yet listed). Regenerate
 the pilot with `python scripts/build_multilingual_pilot.py` (paced to respect provider
 rate limits; saves after every lure).
+
+## The fix
+
+A detector that reads meaning instead of tokens closes this gap: `llm-judge` holds
+0.91 / 0.97 / 0.95 artifact-controlled recall on Chinese / Russian / Arabic, where
+`tfidf-logreg` scored 0.09 / 0.06 / 0.04. See [docs/llm-detector.md](llm-detector.md).

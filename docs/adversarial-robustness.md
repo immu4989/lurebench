@@ -119,3 +119,11 @@ either. (Numbers regenerate from the commands above; they are not hand-entered.)
   sanitization; a fluent paraphrase is not. A detector that survives
   `llm-keyword-evasion` is genuinely robust; one that only survives `homoglyph` has
   just told you to add a normalization step.
+
+## The `llm-judge` result
+
+An LLM that reads meaning is largely immune to the character attacks above (they leave
+the meaning intact): `llm-judge`'s attack-success rate is 0.04–0.08 for homoglyph / leet /
+zero-width / whitespace, versus ~1.00 for the keyword baseline. Its one real weakness is a
+semantic **paraphrase** (ASR ~0.17) — you defeat a content detector by rewriting the lure,
+not by mangling characters. See [docs/llm-detector.md](llm-detector.md).

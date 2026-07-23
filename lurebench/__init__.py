@@ -24,7 +24,7 @@ from .multilingual import cross_lingual_detection
 from .robustness import RobustnessReport, run_robustness
 from .stix import records_to_stix, taxonomy_to_stix
 
-__version__ = "0.5.1"
+__version__ = "0.6.0"
 
 __all__ = [
     "Lure",
