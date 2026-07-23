@@ -74,6 +74,10 @@ caught fraud lures:
 | whitespace | 0.78 | 0.00 | 0.04 |
 | **paraphrase** (LLM rewrite) | — | — | **0.17** |
 
+<p align="center">
+  <img src="assets/llm-robustness.svg" width="860" alt="Grouped bar chart of attack success rate by attack for heuristic-v0, tfidf-logreg, and llm-judge. The keyword detector towers near 100 percent on the character attacks; llm-judge stays at 4 to 8 percent; its only notable bar is a 17 percent semantic paraphrase.">
+</p>
+
 Character tricks that shatter token-based detectors barely register (ASR 0.04–0.08). The
 LLM's real vulnerability is the one attack that changes *meaning* rather than characters: a
 full **LLM paraphrase** evades it ~17% of the time. That is the honest headline — you do
