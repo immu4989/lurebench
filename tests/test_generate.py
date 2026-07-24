@@ -85,7 +85,7 @@ def test_registry_and_lazy_engine():
     assert "template" in available()
     assert "anthropic" in available()
     assert "openai-compat" in available()
-    for provider in ("deepseek", "qwen", "glm", "kimi", "mistral"):
+    for provider in ("deepseek", "qwen", "glm", "kimi", "mistral", "openrouter"):
         assert provider in available()
     assert isinstance(get_generator("template"), TemplateGenerator)
     with pytest.raises(KeyError):
@@ -109,6 +109,16 @@ def test_provider_preset_builds_endpoint(monkeypatch):
     # model override flows through the preset
     gen2 = get_generator("deepseek", model="deepseek-v4-flash")
     assert gen2.model == "deepseek-v4-flash"
+
+
+def test_openrouter_preset_builds_endpoint(monkeypatch):
+    # OpenRouter is an aggregator: one key, many namespaced models. The preset must
+    # point at its base URL and pass a namespaced model through unchanged.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    gen = get_generator("openrouter", model="openai/gpt-4o-mini")
+    assert gen.endpoint == "https://openrouter.ai/api/v1/chat/completions"
+    assert gen.model == "openai/gpt-4o-mini"
+    assert gen.api_key_env == "OPENROUTER_API_KEY"
 
 
 def test_openai_compat_generate_stubbed(monkeypatch):

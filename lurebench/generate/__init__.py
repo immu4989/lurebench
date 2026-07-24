@@ -47,6 +47,14 @@ PROVIDERS: Dict[str, dict] = {
         "api_key_env": "MISTRAL_API_KEY",
         "default_model": "mistral-large-latest",
     },
+    # Aggregator: one key reaches ~300 models. Always pass an explicit ``model=``
+    # (namespaced, e.g. "openai/gpt-4o-mini", "deepseek/deepseek-chat"); the default
+    # is only a safe fallback. See https://openrouter.ai/models for current IDs.
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "default_model": "openai/gpt-4o-mini",
+    },
 }
 
 
