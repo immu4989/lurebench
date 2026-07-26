@@ -163,6 +163,22 @@ export DEEPSEEK_API_KEY=...   # or MISTRAL_API_KEY / ZHIPUAI_API_KEY
 lurebench eval -d data/full/core/test.jsonl -m llm-judge
 ```
 
+### Six models, four questions
+
+With an aggregator key (`openrouter`) one run scores a whole panel, so the LLM rows are no longer a single provider's word. Measured across `gpt-5-nano`, `gemini-2.5-flash-lite`, `deepseek-v4-flash`, `qwen-2.5-7b`, `llama-3.1-8b` and `mistral-nemo`:
+
+- **[Leaderboard](docs/leaderboard.md)** — every judge lands below the trained baseline on clean data (AUC 0.82–0.94 against tfidf's 0.99), and the `scored` column shows how many records each was willing to answer.
+- **[Multilingual](docs/multilingual_llm.md)** — the practical win. Artifact-controlled, `deepseek-v4-flash` reads Arabic 0.93 / Russian 0.78 / Chinese 0.75 at a **1% false-positive rate**, where the trained baseline collapses to 0.04 / 0.06 / 0.09. Every row carries an FPR, because on an all-fraud shard a detector that flags everything scores a perfect 1.00 in nine languages.
+- **[Provenance](docs/provenance_llm.md)** — the null result. Asked to tell AI-written fraud from human-written fraud on distribution-matched data, four of six models sit at or below chance (AUC 0.46–0.53), and three simply answer "AI" every time. The confound finding above is not something a bigger model reads its way out of.
+- **[Adaptive robustness](docs/adaptive_robustness.md)** — the inversion. Let the attacker rewrite up to five times instead of once and the ordering flips: the trained baseline holds at 9% evasion while the judges reach 26–44%. Character attacks break token models and semantic attacks break LLM judges, which is an argument for running both.
+
+```bash
+export OPENROUTER_API_KEY=...
+lurebench leaderboard -d data/full/core/test.jsonl \
+  -m tfidf-logreg -m 'llm-judge@openrouter/deepseek/deepseek-v4-flash' \
+  --cache-dir .cache/lb --workers 12
+```
+
 Twelve commands cover the pipeline: `ingest`, `generate`, `assemble-core`, `train`, `eval`, `leaderboard`, `cross-generator`, `robustness`, `multilingual`, `stix`, `manifest`, `publish`. See the [changelog](CHANGELOG.md) for what's new in `v0.6`, the [taxonomy & STIX guide](docs/taxonomy.md), and [docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute a detector.
 
 ## Why it matters

@@ -24,3 +24,6 @@ models/
 data/full/
 data/restricted/
 *.parquet
+
+# Cached detector scores from scripts/llm_experiments.py (regenerable, large)
+.cache/

@@ -87,10 +87,20 @@ class CachedDetector(Detector):
             self._pending = 0
         parent = os.path.dirname(os.path.abspath(self.path))
         os.makedirs(parent, exist_ok=True)
-        tmp = self.path + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(snapshot, fh)
-        os.replace(tmp, self.path)  # atomic, so a crash can't corrupt the cache
+        # The temp name must be unique per writer. prewarm() flushes from several
+        # worker threads at once, and with a shared "<path>.tmp" two of them race:
+        # the first os.replace consumes the file and the second dies with
+        # FileNotFoundError. That took out the fast local detectors, which flush
+        # constantly because they score thousands of records per second.
+        tmp = f"{self.path}.{os.getpid()}.{threading.get_ident()}.tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(snapshot, fh)
+            os.replace(tmp, self.path)  # atomic, so a crash can't corrupt the cache
+        except Exception:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
 
     def score(self, lure: Lure) -> Optional[float]:
         k = _key(self.name, lure.text)

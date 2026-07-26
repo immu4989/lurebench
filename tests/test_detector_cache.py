@@ -117,3 +117,20 @@ def test_prewarm_then_scoring_costs_nothing(tmp_path):
     for lure in lures:                      # what the sequential harness then does
         det.score(lure)
     assert inner.calls == calls_after_prewarm
+
+
+def test_concurrent_flushes_do_not_race(tmp_path):
+    # Regression: flush() used one shared "<path>.tmp" for every writer, so two
+    # threads flushing at once raced — the first os.replace consumed the temp file
+    # and the second raised FileNotFoundError. Fast local detectors triggered it
+    # constantly because they score thousands of records per second.
+    path = str(tmp_path / "c.json")
+    det = CachedDetector(CountingDetector(), path, flush_every=1)  # flush on every score
+    lures = [_lure(i) for i in range(300)]
+
+    prewarm(det, lures, workers=12, progress_every=0)   # must not raise
+
+    on_disk = json.loads(open(path, encoding="utf-8").read())
+    assert len(on_disk) == 300
+    # No temp files left behind.
+    assert [p.name for p in tmp_path.iterdir() if p.name.endswith(".tmp")] == []
