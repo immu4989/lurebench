@@ -145,6 +145,16 @@ def to_markdown(rows, rounds, attacker, label, threshold) -> str:
             "rewriting text to get past itself — so read the cross-vendor rows as the "
             "cleaner measurement. Each row's denominator is only the lures that detector "
             "caught clean, so rows are not scored on identical sets.",
+            "",
+            "These numbers are a **lower bound**. The attacker runs at temperature 0 so "
+            "the experiment reproduces exactly, but a deterministic rewriter can converge: "
+            "once it settles into a phrasing, further rounds rewrite that same phrasing "
+            "the same way and stop finding new ground. Where a row's cumulative columns "
+            "go flat, that is what happened — the budget was not exhausted, the attacker "
+            "was. A sampling attacker (`temperature > 0`) explores more and evades more; "
+            "an earlier temperature-1.0 run of this same setup put the judges a few points "
+            "higher. Reproducibility was worth that trade here, but do not read these "
+            "rates as the ceiling.",
             ""]
     return "\n".join(out)
 

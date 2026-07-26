@@ -30,15 +30,24 @@ _EVADE_SYS_TEMPLATE = (
 )
 
 
-def provider_complete_fn(engine: str, model: Optional[str] = None, max_tokens: int = 1024):
+def provider_complete_fn(engine: str, model: Optional[str] = None, max_tokens: int = 1024,
+                         temperature: float = 0.0):
     """Build a ``complete(system, user) -> text`` callable from a provider engine.
 
     Uses the same provider presets as generation (``deepseek``, ``glm``, ``mistral``,
     ``openai-compat``, ...). Requires that provider's key in the environment.
+
+    Temperature defaults to 0 here, unlike generation. Generating a corpus wants
+    variety across a batch, so that path samples; an attack is a *measurement*, and
+    a sampled rewrite makes the resulting robustness number irreproducible — rerun
+    the same experiment and the attacker writes something else, so the score moves
+    and every cached detector score misses. Pinning it means an attack result can be
+    reproduced exactly and rerun for free. Pass ``temperature > 0`` deliberately if
+    you want to sample several distinct rewrites per lure.
     """
     from ..generate import get_generator
 
-    kwargs = {"max_tokens": max_tokens}
+    kwargs = {"max_tokens": max_tokens, "temperature": temperature}
     if model:
         kwargs["model"] = model
     gen = get_generator(engine, **kwargs)

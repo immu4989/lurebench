@@ -99,3 +99,37 @@ def test_provenance_parse_uses_authorship_words_not_fraud_words():
     assert p("clearly written by an AI model") == 0.9
     assert p("this reads like a human wrote it") == 0.1
     assert p("") is None
+
+
+def test_attack_provider_is_deterministic_by_default(monkeypatch):
+    # An attack is a measurement: a sampled rewrite makes the robustness number
+    # irreproducible and busts every cached detector score on rerun. Generation
+    # still samples (it wants variety); the attack path must not.
+    from lurebench.attacks.llm import provider_complete_fn
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    seen = {}
+
+    from lurebench.generate import openai_compat
+
+    real_init = openai_compat.OpenAICompatibleGenerator.__init__
+
+    def spy(self, *a, **kw):
+        real_init(self, *a, **kw)
+        seen["temperature"] = self.temperature
+
+    monkeypatch.setattr(openai_compat.OpenAICompatibleGenerator, "__init__", spy)
+    provider_complete_fn("openrouter", "openai/gpt-5-nano")
+    assert seen["temperature"] == 0.0
+
+    provider_complete_fn("openrouter", "openai/gpt-5-nano", temperature=0.9)
+    assert seen["temperature"] == 0.9  # still opt-in-able for multi-sample attacks
+
+
+def test_generation_still_samples_for_variety(monkeypatch):
+    # The corpus generator deliberately keeps a non-zero default; pinning the attack
+    # path must not have changed it.
+    from lurebench.generate import get_generator
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    assert get_generator("openrouter", model="m").temperature == 1.0
