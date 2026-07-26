@@ -40,6 +40,7 @@ class OpenAICompatibleGenerator(Generator):
         max_retries: int = 5,
         retry_base: float = 2.0,
         max_delay: float = 30.0,
+        extra_params: Optional[dict] = None,
     ) -> None:
         if not base_url or not model or not api_key_env:
             raise ValueError("base_url, model, and api_key_env are all required")
@@ -51,6 +52,15 @@ class OpenAICompatibleGenerator(Generator):
         # Anthropic engine, these providers accept it.
         self.temperature = temperature
         self.timeout = timeout
+        # Provider-specific request fields merged into every payload. The case that
+        # forced this: a reasoning model spends its completion budget on hidden
+        # reasoning and returns empty content, which a detector reads as an
+        # abstention — silently, and in a way that *improves* its apparent scores,
+        # because metrics are computed only over records it answered. Passing
+        # ``extra_params={"reasoning": {"effort": "minimal"}}`` turns reasoning off
+        # and the model answers normally. Empty by default: unknown fields are
+        # rejected by some providers, so this is opt-in.
+        self.extra_params = dict(extra_params or {})
         # Retry/backoff for rate limits (429) and server errors (5xx).
         self.max_retries = max_retries
         self.retry_base = retry_base
@@ -147,6 +157,7 @@ class OpenAICompatibleGenerator(Generator):
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
+            **self.extra_params,
         }
         return self._one(payload) or ""
 
@@ -167,6 +178,7 @@ class OpenAICompatibleGenerator(Generator):
                     # Per-call prompt: in hard mode this rotates through varied angles.
                     {"role": "user", "content": build_user_prompt(spec, i)},
                 ],
+                **self.extra_params,
             }
             text = self._one(payload)
             if text:

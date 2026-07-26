@@ -16,6 +16,7 @@ from .heuristic import HeuristicDetector
 _LAZY: Dict[str, str] = {
     "tfidf-logreg": "lurebench.detectors.tfidf:TfidfLogisticDetector",
     "llm-judge": "lurebench.detectors.llm:LLMJudgeDetector",
+    "llm-judge-provenance": "lurebench.detectors.llm:LLMProvenanceJudgeDetector",
     "binoculars": "lurebench.detectors.binoculars:BinocularsDetector",
     "llama-guard-3": "lurebench.detectors.llama_guard:LlamaGuardDetector",
     "openai-moderation": "lurebench.detectors.moderation:OpenAIModerationDetector",

@@ -95,7 +95,10 @@ def _cmd_cross_generator(args: argparse.Namespace) -> int:
 def _cmd_leaderboard(args: argparse.Namespace) -> int:
     dataset = load_jsonl(args.dataset)
     names = args.detector or available()
-    results = evaluate_detectors(dataset, names, threshold=args.threshold, task=args.task)
+    results = evaluate_detectors(
+        dataset, names, threshold=args.threshold, task=args.task,
+        cache_dir=args.cache_dir, workers=args.workers,
+    )
     markdown = render_markdown(results, dataset_label=args.dataset, n_records=len(dataset))
 
     if args.out:
@@ -417,7 +420,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_lb = sub.add_parser("leaderboard", help="run detectors and render a leaderboard")
     p_lb.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
-    p_lb.add_argument("--detector", "-m", action="append", help="detector name (repeatable); default: all")
+    p_lb.add_argument("--detector", "-m", action="append",
+                      help="detector spec (repeatable); default: all. Accepts a plain "
+                           "name or name@engine/model, e.g. "
+                           "'llm-judge@openrouter/openai/gpt-5-nano', so one run can "
+                           "score several models")
+    p_lb.add_argument("--cache-dir", default=None,
+                      help="cache detector scores here and pre-warm them concurrently; "
+                           "makes API-backed detectors practical and reruns free")
+    p_lb.add_argument("--workers", type=int, default=8,
+                      help="concurrent requests when pre-warming (with --cache-dir)")
     p_lb.add_argument("--threshold", type=float, default=0.5)
     p_lb.add_argument("--task", "-t", choices=["fraud", "provenance"], default=None,
                       help="override each detector's task (score any dataset on either question)")
