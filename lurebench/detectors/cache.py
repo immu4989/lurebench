@@ -28,15 +28,12 @@ from __future__ import annotations
 
 import concurrent.futures
 import hashlib
-import json
-import os
 import threading
 from typing import Iterable, List, Optional
 
+from ..diskcache import JsonDiskCache
 from ..schema import Lure
 from .base import Detector
-
-_MISS = object()
 
 
 def _key(name: str, text: str) -> str:
@@ -59,67 +56,36 @@ class CachedDetector(Detector):
                  flush_every: int = 100) -> None:
         self.inner = inner
         self.path = path
-        self.flush_every = flush_every
         self.name = getattr(inner, "name", "detector")
         self.task = getattr(inner, "task", "fraud")
-        self._lock = threading.Lock()
-        self._pending = 0
-        self.hits = 0
-        self.misses = 0
-        self._cache = self._load()
+        self.store = JsonDiskCache(path, flush_every=flush_every)
 
-    def _load(self) -> dict:
-        if not self.path or not os.path.exists(self.path):
-            return {}
-        try:
-            with open(self.path, encoding="utf-8") as fh:
-                return json.load(fh)
-        except (OSError, json.JSONDecodeError):
-            # A truncated cache from an interrupted run is not fatal; start clean.
-            return {}
+    # Cache statistics, kept as attributes so callers can read them directly.
+    @property
+    def hits(self) -> int:
+        return self.store.hits
+
+    @property
+    def misses(self) -> int:
+        return self.store.misses
+
+    @property
+    def _cache(self) -> dict:
+        """The raw mapping. prewarm() consults it to decide what still needs scoring."""
+        return self.store._data
 
     def flush(self) -> None:
         """Persist the cache. No-op when constructed without a path."""
-        if not self.path:
-            return
-        with self._lock:
-            snapshot = dict(self._cache)
-            self._pending = 0
-        parent = os.path.dirname(os.path.abspath(self.path))
-        os.makedirs(parent, exist_ok=True)
-        # The temp name must be unique per writer. prewarm() flushes from several
-        # worker threads at once, and with a shared "<path>.tmp" two of them race:
-        # the first os.replace consumes the file and the second dies with
-        # FileNotFoundError. That took out the fast local detectors, which flush
-        # constantly because they score thousands of records per second.
-        tmp = f"{self.path}.{os.getpid()}.{threading.get_ident()}.tmp"
-        try:
-            with open(tmp, "w", encoding="utf-8") as fh:
-                json.dump(snapshot, fh)
-            os.replace(tmp, self.path)  # atomic, so a crash can't corrupt the cache
-        except Exception:
-            if os.path.exists(tmp):
-                os.unlink(tmp)
-            raise
+        self.store.flush()
 
     def score(self, lure: Lure) -> Optional[float]:
-        k = _key(self.name, lure.text)
-        with self._lock:
-            cached = self._cache.get(k, _MISS)
-        if cached is not _MISS:
-            with self._lock:
-                self.hits += 1
+        key = _key(self.name, lure.text)
+        hit, cached = self.store.lookup(key)
+        if hit:
             return cached  # may legitimately be None (a cached abstention)
-
         value = self.inner.score(lure)
         value = None if value is None else float(value)
-        with self._lock:
-            self._cache[k] = value
-            self.misses += 1
-            self._pending += 1
-            due = self.flush_every and self._pending >= self.flush_every
-        if due:
-            self.flush()
+        self.store.set(key, value)
         return value
 
 

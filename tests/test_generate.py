@@ -217,3 +217,42 @@ def test_openai_compat_skips_content_filter(monkeypatch):
     })
     spec = GenerationSpec(typology="bec", generator="deepseek-v4-pro")
     assert generate_records(gen, spec, 2) == []
+
+
+def test_truncated_response_is_retried_not_fatal(monkeypatch):
+    # Regression: http.client.IncompleteRead (a truncated response) and
+    # RemoteDisconnected subclass HTTPException, not OSError, so they escaped the
+    # retry loop and killed an entire multi-thousand-call sweep on one blip.
+    import http.client
+
+    from lurebench.generate import get_generator
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    gen = get_generator("openrouter", model="m", max_retries=2, retry_base=0)
+    calls = {"n": 0}
+
+    def flaky_post(payload):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise http.client.IncompleteRead(b"partial")
+        return {"choices": [{"finish_reason": "stop", "message": {"content": "88"}}]}
+
+    monkeypatch.setattr(gen, "_post", flaky_post)
+    assert gen.complete("sys", "user") == "88"   # recovered instead of raising
+    assert calls["n"] == 2
+
+
+def test_persistent_truncation_gives_up_cleanly(monkeypatch):
+    import http.client
+
+    from lurebench.generate import get_generator
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    gen = get_generator("openrouter", model="m", max_retries=1, retry_base=0)
+
+    def always_truncated(payload):
+        raise http.client.IncompleteRead(b"")
+
+    monkeypatch.setattr(gen, "_post", always_truncated)
+    assert gen.complete("sys", "user") == ""     # empty, not an exception
+    assert gen.stats["http_error"] == 1

@@ -16,6 +16,7 @@ environment variable you name (e.g. ``DEEPSEEK_API_KEY``).
 
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import time
@@ -118,10 +119,14 @@ class OpenAICompatibleGenerator(Generator):
                     continue
                 self.stats["rate_limited" if exc.code == 429 else "http_error"] += 1
                 return None
-            except (OSError, json.JSONDecodeError):
+            except (OSError, json.JSONDecodeError, http.client.HTTPException):
                 # Transient network errors — incl. urllib.error.URLError and read
                 # timeouts (socket.timeout, which on Python 3.9 is NOT a TimeoutError
                 # subclass). Retryable, then counted rather than crashing the batch.
+                # http.client.HTTPException covers a truncated response
+                # (IncompleteRead) and a dropped keep-alive (RemoteDisconnected).
+                # Neither is an OSError, so before this they escaped the retry loop
+                # and killed the whole sweep on a single blip mid-run.
                 if attempt < self.max_retries:
                     time.sleep(min(delay, self.max_delay))
                     delay *= 2
