@@ -217,5 +217,8 @@ Release history is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Citation
 
-See [CITATION.cff](CITATION.cff), or [paper.md](paper.md) for the accompanying
-software paper. Licensed under Apache-2.0.
+See [CITATION.cff](CITATION.cff). Licensed under Apache-2.0.
+
+[paper.md](paper.md) is an unsubmitted draft of a software paper, kept in the repo
+so the framing evolves with the code. It has not been peer reviewed and should not
+be cited as a publication.

@@ -6,8 +6,7 @@ authors:
   - family-names: Ahamed
     given-names: Imran
     email: immu4989@gmail.com
-    # Add your ORCID here once registered; JOSS requires it for submission.
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0009-0002-7717-7480"
 repository-code: "https://github.com/immu4989/lurebench"
 url: "https://github.com/immu4989/lurebench"
 abstract: >-

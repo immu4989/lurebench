@@ -9,7 +9,7 @@ tags:
   - adversarial robustness
 authors:
   - name: Imran Ahamed
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0002-7717-7480
     affiliation: 1
 affiliations:
   - name: Independent Researcher
@@ -17,6 +17,14 @@ affiliations:
 date: 27 July 2026
 bibliography: paper.bib
 ---
+
+<!--
+STATUS: unsubmitted draft. Kept in the repository so the framing stays in step
+with the code, not because a submission is pending. Before submitting anywhere,
+re-verify: every citation in paper.bib (none were checked against the published
+record), the numbers quoted below against the current docs/, and the target
+venue's own criteria for scope and project maturity.
+-->
 
 # Summary
 
