@@ -1,0 +1,35 @@
+{
+  "title": "LureBench: A Benchmark and Evaluation Harness for Detecting AI-Generated Fraud Lures",
+  "description": "<p>LureBench is a Python benchmark and evaluation harness for detecting AI-generated fraud lures across phishing, business email compromise, romance and pig-butchering typologies. It ships a distribution-matched corpus in nine languages, detector baselines from keyword rules through a trained classifier to LLM-as-classifier judges, and an adversarial layer of character-level and LLM-driven evasion attacks. Detectors are scored on two tasks: <em>fraud</em> (is this a lure?) and <em>provenance</em> (did a machine write it?).</p><p>The project documents several measurement results, including a corpus confound that makes AI-vs-human fraud detection look trivially easy until the classes are distribution-matched, a defang artifact that inflates apparent multilingual recall, and a robustness ordering that inverts depending on whether the attack changes spelling or meaning.</p><p>Everything runs without model downloads or API keys; provider keys are needed only to generate new lures or to run LLM-backed detectors and attacks.</p>",
+  "upload_type": "software",
+  "license": "Apache-2.0",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Ahamed, Imran",
+      "orcid": "0009-0002-7717-7480"
+    }
+  ],
+  "keywords": [
+    "fraud detection",
+    "phishing",
+    "business email compromise",
+    "machine-generated text detection",
+    "adversarial robustness",
+    "large language models",
+    "AI security",
+    "benchmark"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/immu4989/lurebench",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/immu4989/lurescope",
+      "relation": "isSourceOf",
+      "scheme": "url"
+    }
+  ]
+}
