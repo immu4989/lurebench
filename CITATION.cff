@@ -1,16 +1,29 @@
 cff-version: 1.2.0
 title: "LureBench: A Benchmark and Evaluation Harness for Detecting AI-Generated Fraud Lures"
-message: "If you use LureBench, please cite it."
+message: "If you use LureBench in your work, please cite it."
 type: software
 authors:
   - family-names: Ahamed
     given-names: Imran
+    email: immu4989@gmail.com
+    # Add your ORCID here once registered; JOSS requires it for submission.
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
 repository-code: "https://github.com/immu4989/lurebench"
-version: 0.2.0
+url: "https://github.com/immu4989/lurebench"
+abstract: >-
+  LureBench is a benchmark and evaluation harness for detecting AI-generated
+  fraud lures across phishing, business email compromise, romance and
+  pig-butchering typologies. It ships a distribution-matched corpus, detector
+  baselines from keyword rules to LLM-as-classifier judges, and an adversarial
+  layer of character-level and LLM-driven evasion attacks, scored on both a
+  fraud task and a text-provenance task.
+version: 0.7.0
+date-released: "2026-07-27"
 license: Apache-2.0
 keywords:
   - fraud detection
   - phishing
   - large language models
   - machine-generated text detection
+  - adversarial robustness
   - AI security

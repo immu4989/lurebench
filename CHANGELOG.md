@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.7.0
+
+Makes LLM-backed detectors measurable, then measures them. Six models scored
+across the fraud, multilingual and provenance tasks, plus an adaptive attack.
+Two of the changes below are corrections to results this project previously
+published.
+
+### Added
+- **Score caching** (`lurebench/detectors/cache.py`, `lurebench/diskcache.py`).
+  `CachedDetector` memoises to disk; `prewarm()` fills the cache concurrently so
+  the sequential harness then runs at cache speed. Re-running an evaluation to
+  regenerate a table is free, and an interrupted sweep resumes.
+- **Completion caching** (`lurebench/generate/completion_cache.py`) for attack
+  rewrites, cutting a re-run of the adaptive experiment from 292 new calls to 13.
+- **Detector specs.** `evaluate_detectors` accepts `name@engine/model`, so one
+  leaderboard carries a row per model. Exposed as `--detector/--cache-dir/--workers`.
+- **`llm-judge-provenance`** detector: asks whether an AI wrote the text, ruling
+  out scamminess and the uniform defang placeholders as proxies.
+- **`AdaptiveParaphraseAttack`**: rewrites until the detector stops flagging,
+  reporting attempts-to-evade rather than a single yes/no.
+- **`openrouter` provider preset**, reaching many models through one key.
+- **`extra_params`** on `OpenAICompatibleGenerator`, so callers can send
+  `reasoning.effort` and stop reasoning models returning empty answers.
+- New result docs: `docs/leaderboard.md` (now eight rows), `docs/multilingual_llm.md`,
+  `docs/provenance_llm.md`, `docs/adaptive_robustness.md`.
+- Community infrastructure: `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue and PR
+  templates, Dependabot, pre-commit, and a JOSS `paper.md`.
+
+### Fixed
+- **Silent abstentions inflated every metric.** A detector that declined a record
+  returned `None`, and the harness excluded those from the metrics, so a model
+  answering half the corpus scored a flawless 1.000 MCC/TPR/AUC. The only symptom
+  was a per-typology recall that disagreed with the headline TPR. `n_skipped` is
+  now carried into results and rendered as a `scored` column, and slice recall
+  excludes abstentions so it agrees with TPR. On a 60-record probe, `gpt-5-nano`
+  went from 31/60 abstained and a fake-perfect 1.000 to 0 abstained and an honest
+  0.614 MCC at a 29% false-positive rate.
+- **Truncated responses killed whole sweeps.** `http.client.IncompleteRead` and
+  `RemoteDisconnected` subclass `HTTPException`, not `OSError`, so they escaped
+  the retry loop. Now retried.
+- **A cache flush race** dropped detectors from a leaderboard: every writer staged
+  to one shared temp filename, so concurrent flushes collided in `os.replace`.
+  Temp files are now per-thread.
+- Attack generation is pinned to `temperature=0` (generation still samples at 1.0),
+  so an attack is a measurement rather than a draw.
+
+### Changed
+- **Adaptive robustness now reports replicates, not point estimates.** Hosted
+  providers are not deterministic even at temperature 0: re-running the identical
+  setup moved one model's evasion rate by 17 points. Rates are the mean of three
+  runs with the observed range. The finding survives (`tfidf-logreg` 9% [9-10]
+  against judges at 35% [29-46] and 40% [37-42]) but the two judges cannot be
+  told apart, which the earlier point estimates hid.
+
+
 ## 0.6.0
 
 Adds **`llm-judge`** — the first strong fraud detector in LureBench that a user can

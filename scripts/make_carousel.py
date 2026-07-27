@@ -1,8 +1,11 @@
 """Build the LinkedIn carousel (1080x1080 slides + combined PDF) for the LureBench
 LLM-panel results. Palette and mark rules follow the dataviz reference instance."""
 
+import os
+
 import matplotlib
-matplotlib.use("Agg")
+
+matplotlib.use("Agg")  # headless: must precede pyplot
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
@@ -88,10 +91,13 @@ for b, v, note in zip(bars, vals, ["scored 29/60", "scored 60/60"]):
             fontsize=21, fontweight="bold", color=INK)
     ax.text(b.get_x() + b.get_width()/2, v - 0.09, note, ha="center",
             fontsize=12, color="white", fontweight="bold")
-ax.set_ylim(0, 1.18); ax.set_ylabel("MCC", fontsize=12)
+ax.set_ylim(0, 1.18)
+ax.set_ylabel("MCC", fontsize=12)
 ax.set_yticks([0, 0.5, 1.0])
-for s in ("top", "right"): ax.spines[s].set_visible(False)
-ax.grid(axis="y", color=LINE, linewidth=0.9); ax.set_axisbelow(True)
+for s in ("top", "right"):
+    ax.spines[s].set_visible(False)
+ax.grid(axis="y", color=LINE, linewidth=0.9)
+ax.set_axisbelow(True)
 ax.tick_params(axis="x", labelsize=12.5)
 footer(fig)
 slides.append(fig)
@@ -114,8 +120,10 @@ for i, a in enumerate(auc):
 ax.axvline(0.5, color=INK, linewidth=1.6, linestyle=(0, (4, 3)), zorder=4)
 ax.text(0.5, len(models) - 0.25, " chance", fontsize=12, color=INK,
         fontweight="bold", va="center")
-ax.set_xlim(0.40, 0.80); ax.set_xlabel("AUC (provenance task)", fontsize=12)
-bare(ax); ax.tick_params(axis="y", labelsize=12.5)
+ax.set_xlim(0.40, 0.80)
+ax.set_xlabel("AUC (provenance task)", fontsize=12)
+bare(ax)
+ax.tick_params(axis="y", labelsize=12.5)
 footer(fig)
 slides.append(fig)
 
@@ -127,7 +135,8 @@ ax = fig.add_axes([0.10, 0.15, 0.84, 0.43])
 langs = ["Arabic", "Russian", "Chinese", "Spanish", "French", "German"]
 tfidf = [0.04, 0.06, 0.09, 1.00, 0.96, 1.00]
 judge = [0.93, 0.78, 0.75, 0.91, 0.96, 0.96]
-x = range(len(langs)); w = 0.38
+x = range(len(langs))
+w = 0.38
 b1 = ax.bar([i - w/2 for i in x], tfidf, w, label="tfidf-logreg (trained)",
             color=BLUE, zorder=3, edgecolor=SURFACE, linewidth=2)
 b2 = ax.bar([i + w/2 for i in x], judge, w, label="LLM judge (deepseek)",
@@ -139,11 +148,15 @@ for bars in (b1, b2):
 ax.axvspan(-0.5, 2.5, color="#f0efec", zorder=0)
 ax.text(1.0, 1.18, "non-Latin script", fontsize=12, color=MUTED,
         ha="center", fontweight="bold")
-ax.set_xticks(list(x)); ax.set_xticklabels(langs, fontsize=12)
-ax.set_ylim(0, 1.30); ax.set_ylabel("detection rate", fontsize=12)
+ax.set_xticks(list(x))
+ax.set_xticklabels(langs, fontsize=12)
+ax.set_ylim(0, 1.30)
+ax.set_ylabel("detection rate", fontsize=12)
 ax.set_yticks([0, 0.5, 1.0])
-for s in ("top", "right"): ax.spines[s].set_visible(False)
-ax.grid(axis="y", color=LINE, linewidth=0.9); ax.set_axisbelow(True)
+for s in ("top", "right"):
+    ax.spines[s].set_visible(False)
+ax.grid(axis="y", color=LINE, linewidth=0.9)
+ax.set_axisbelow(True)
 ax.legend(frameon=False, fontsize=12, ncol=2, loc="lower center",
           bbox_to_anchor=(0.5, 1.06))
 footer(fig)
@@ -165,7 +178,8 @@ for k, (ttl, data, note) in enumerate([
     for i, v in enumerate(data):
         ax.text(i, v + 0.025, f"{v:.0%}", ha="center", fontsize=14,
                 fontweight="bold", color=INK)
-    ax.set_ylim(0, 0.68); ax.set_title(ttl, fontsize=16, fontweight="bold",
+    ax.set_ylim(0, 0.68)
+    ax.set_title(ttl, fontsize=16, fontweight="bold",
                                        color=INK, pad=14)
     ax.text(0.5, 1.02, note, transform=ax.transAxes, ha="center",
             fontsize=11, color=MUTED)
@@ -173,9 +187,12 @@ for k, (ttl, data, note) in enumerate([
     ax.set_xticklabels(names, fontsize=10.5, rotation=28, ha="right")
     ax.set_yticks([0, 0.25, 0.5])
     ax.set_yticklabels(["0%", "25%", "50%"])
-    if k == 0: ax.set_ylabel("evaded", fontsize=12)
-    for s in ("top", "right"): ax.spines[s].set_visible(False)
-    ax.grid(axis="y", color=LINE, linewidth=0.9); ax.set_axisbelow(True)
+    if k == 0:
+        ax.set_ylabel("evaded", fontsize=12)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+    ax.grid(axis="y", color=LINE, linewidth=0.9)
+    ax.set_axisbelow(True)
 footer(fig)
 slides.append(fig)
 
@@ -199,8 +216,10 @@ ax.scatter(tprbest, list(y), s=150, color=BLUE, zorder=4,
 for i, (a, b) in enumerate(zip(tpr50, tprbest)):
     ax.text(a - 0.018, i, f"{a:.2f}", ha="right", va="center", fontsize=12, color=INK)
     ax.text(b + 0.018, i, f"{b:.2f}", ha="left", va="center", fontsize=12, color=INK)
-ax.set_yticks(list(y)); ax.set_yticklabels(js, fontsize=12.5)
-ax.set_xlim(0.48, 0.96); ax.set_xlabel("recall on fraud lures", fontsize=12)
+ax.set_yticks(list(y))
+ax.set_yticklabels(js, fontsize=12.5)
+ax.set_xlim(0.48, 0.96)
+ax.set_xlabel("recall on fraud lures", fontsize=12)
 bare(ax)
 ax.legend(frameon=False, fontsize=11.5, loc="upper center",
           bbox_to_anchor=(0.45, 1.22), ncol=2)
@@ -231,7 +250,6 @@ fig.text(0.07, 0.085, "github.com/immu4989/lurebench", fontsize=17,
 slides.append(fig)
 
 # ---------- write ----------
-import os
 os.makedirs(OUT, exist_ok=True)
 for i, fig in enumerate(slides, 1):
     fig.savefig(f"{OUT}/slide{i}.png", dpi=DPI)

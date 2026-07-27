@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lurebench"
-version = "0.6.0"
+version = "0.7.0"
 description = "A maintained benchmark and evaluation harness for detecting AI-generated fraud lures (phishing, BEC, romance / pig-butchering)."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -26,7 +26,12 @@ classifiers = [
     "Topic :: Security",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = []   # the core harness and heuristic baseline run dependency-free
 

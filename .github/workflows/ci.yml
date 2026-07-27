@@ -20,5 +20,7 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[dev,train]"
+      - name: Lint
+        run: ruff check lurebench tests scripts
       - name: Tests
         run: pytest -q

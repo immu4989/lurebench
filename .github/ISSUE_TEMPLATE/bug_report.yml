@@ -1,0 +1,38 @@
+name: Bug report
+description: Something behaves differently from what the docs say
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a **security vulnerability**, do not file here. See
+        [SECURITY.md](../blob/main/SECURITY.md) and email the maintainer.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The exact command or code. A failing snippet beats a description.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: "0.6.0, or a commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version and OS
+      placeholder: "3.11 on macOS 14"
+    validations:
+      required: true
