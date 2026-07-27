@@ -14,6 +14,7 @@ Phishing, business email compromise, romance and pig-butchering scams, generated
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![Security policy](https://img.shields.io/badge/security-policy-5c6470)](SECURITY.md)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21631777.svg)](https://doi.org/10.5281/zenodo.21631777)
 
 </div>
 
@@ -217,7 +218,7 @@ Release history is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Citation
 
-See [CITATION.cff](CITATION.cff). Licensed under Apache-2.0.
+See [CITATION.cff](CITATION.cff). Archived releases carry a DOI: cite the concept DOI [10.5281/zenodo.21631777](https://doi.org/10.5281/zenodo.21631777), which always resolves to the latest version. Licensed under Apache-2.0.
 
 [paper.md](paper.md) is an unsubmitted draft of a software paper, kept in the repo
 so the framing evolves with the code. It has not been peer reviewed and should not
