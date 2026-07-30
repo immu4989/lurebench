@@ -35,6 +35,14 @@ record as `meta.legacy_id`.
   documented as a known gap rather than silently enabled: 59 lines exceed the
   configured limit and fixing them belongs in its own pass.
 
+- The STIX validator test failed CI on correct output. `stix2-validator` loads its
+  schemas from a git submodule that is not in the published wheel, so a
+  pip-installed copy reports every bundle invalid, including the example copied
+  from the STIX 2.1 specification. The test now checks the validator against
+  known-good input and skips if it disagrees, rather than asserting against a tool
+  that cannot work. (This was masked until now: the lint step runs first, so the
+  test step never executed while lint was red.)
+
 - Two tests asserted that `openai-moderation` raises without its extra, which is
   only true when no key is present. They passed in CI and failed for anyone with
   `OPENAI_API_KEY` exported. Now hermetic.

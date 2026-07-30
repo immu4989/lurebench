@@ -78,11 +78,46 @@ def test_attack_patterns_carry_external_references():
         assert any(r["source_name"] == "LureBench" for r in ap["external_references"])
 
 
+# A bundle taken verbatim from the STIX 2.1 specification. Used to check that the
+# validator itself works before its verdict on our output is trusted.
+_SPEC_EXAMPLE = {
+    "type": "bundle",
+    "id": "bundle--44af6c39-c09b-49c5-9de2-394224b04982",
+    "objects": [{
+        "type": "indicator",
+        "spec_version": "2.1",
+        "id": "indicator--8e2e2d2b-17d4-4cbf-938f-98ee46b3cd3f",
+        "created": "2016-04-06T20:03:48.000Z",
+        "modified": "2016-04-06T20:03:48.000Z",
+        "name": "Poison Ivy Malware",
+        "pattern": ("[file:hashes.'SHA-256' = 'aec070645fe53ee3b3763059376134f058"
+                    "cc337247c978add178b6ccdfb0019f']"),
+        "pattern_type": "stix",
+        "valid_from": "2016-01-01T00:00:00Z",
+        "indicator_types": ["malicious-activity"],
+    }],
+}
+
+
 def test_passes_official_stix_validator_if_available():
     import pytest
 
     pytest.importorskip("stix2validator")
     from stix2validator import ValidationOptions, validate_string
+
+    # "Available" has to mean "usable", not merely "importable". stix2-validator
+    # loads its JSON schemas from a git submodule that is not included in the
+    # published wheel, so a pip-installed copy reports every bundle invalid with
+    # "Cannot locate a schema for the object's type" - including the example above,
+    # copied straight out of the specification. Asserting against a validator in
+    # that state tests nothing and fails CI on correct output, so the tool is
+    # checked against known-good input first and the test skips if it disagrees.
+    probe = validate_string(json.dumps(_SPEC_EXAMPLE), ValidationOptions())
+    if not probe.is_valid:
+        pytest.skip(
+            "stix2validator cannot validate the STIX 2.1 spec example itself "
+            f"({[str(e) for e in probe.errors][:1]}); its schemas are missing"
+        )
 
     for bundle in (stix.to_bundle(stix.taxonomy_to_stix()),
                    stix.records_to_stix(_records())):
