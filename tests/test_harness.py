@@ -63,8 +63,14 @@ def test_registry_lists_heuristic():
     assert isinstance(get_detector("heuristic-v0"), HeuristicDetector)
 
 
-def test_lazy_detector_missing_dep_raises_cleanly():
-    # Without the extras installed, constructing these must raise a helpful error,
-    # never an AttributeError / silent success.
+def test_lazy_detector_missing_dep_raises_cleanly(monkeypatch):
+    # Without the extras installed *or* a key configured, constructing these must
+    # raise a helpful error, never an AttributeError / silent success.
+    #
+    # The key is unset explicitly rather than assumed absent: the detector only
+    # raises when the extra is missing or the key is unset, so on a machine that
+    # happens to have `openai` installed and OPENAI_API_KEY exported this passed by
+    # accident of environment and failed for the developer who had both.
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     with pytest.raises((ImportError, RuntimeError)):
         get_detector("openai-moderation")

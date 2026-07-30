@@ -8,7 +8,6 @@ from lurebench.detectors.base import Detector
 from lurebench.detectors.cache import CachedDetector, prewarm
 from lurebench.schema import Lure
 
-
 _UNSET = object()
 
 

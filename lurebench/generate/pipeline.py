@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from typing import List, Sequence, Tuple
 
-from ..ingest.base import defang, dedupe
+from ..ingest.base import dedupe, defang
 from ..schema import Lure
 from .base import GenerationSpec, Generator
 
@@ -43,7 +43,12 @@ def generate_records(
             continue
         records.append(
             Lure(
-                id=f"gen-{spec.typology}-{start_index + i:06d}",
+                # The generator label is part of the id, not decoration. Without it
+                # every generator restarts the same counter, so running the same
+                # typology across three models mints three different records called
+                # gen-bec-000006. That is how ~500 colliding ids reached the shipped
+                # shards. ``rewrite_records`` below already had this right.
+                id=f"gen-{spec.typology}-{spec.generator}-{start_index + i:06d}",
                 text=text,
                 label=1,
                 source="ai",

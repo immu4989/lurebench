@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lurebench"
-version = "0.7.0"
+version = "0.8.0"
 description = "A maintained benchmark and evaluation harness for detecting AI-generated fraud lures (phishing, BEC, romance / pig-butchering)."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -42,7 +42,7 @@ openai = ["openai>=1.0"]
 hub = ["huggingface_hub>=0.23"]
 generate = ["anthropic>=0.40"]
 train = ["scikit-learn>=1.3", "joblib>=1.3"]
-dev = ["pytest>=7", "ruff>=0.4", "stix2-validator>=3.2"]
+dev = ["pytest>=7", "ruff>=0.15,<0.17", "stix2-validator>=3.2"]
 all = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26", "openai>=1.0", "huggingface_hub>=0.23", "anthropic>=0.40", "scikit-learn>=1.3", "joblib>=1.3"]
 
 [project.scripts]
@@ -59,3 +59,17 @@ packages = ["lurebench"]
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+
+[tool.ruff.lint]
+# Pinned explicitly rather than inheriting ruff's defaults, which change between
+# releases: the unpinned default set turned CI red when ruff 0.16 enabled the UP
+# rules, while the same commit passed locally on 0.15.
+#
+# E4/E7/E9 + F is ruff's historical default (what this code was actually written
+# against), plus I for import order and B for bugbear. UP is deliberately omitted:
+# the package targets 3.9, so typing.List/Optional stay as they are.
+#
+# E501 (line length) is not enabled yet. It is a real gap - line-length is set to
+# 100 and 59 lines exceed it - but turning it on touches 20+ otherwise-unrelated
+# files, so it is left for a dedicated pass rather than smuggled into a data fix.
+select = ["E4", "E7", "E9", "F", "I", "B"]

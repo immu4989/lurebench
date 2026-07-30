@@ -58,7 +58,7 @@ def build() -> str:
 
     # legend (own row, above the group labels)
     ly = 82
-    for i, (name, col, wdt) in enumerate([("raw recall", BASE, 150),
+    for i, (name, col, _wdt) in enumerate([("raw recall", BASE, 150),
                                           ("artifact-controlled — survives", GREEN, 250),
                                           ("collapses", RED, 0)]):
         lx = L + (0 if i == 0 else (150 if i == 1 else 400))
@@ -86,7 +86,7 @@ def build() -> str:
     p.append(f'<text x="{non_cx:.0f}" y="{gly}" font-size="12.5" font-weight="700" '
              f'fill="{RED}" text-anchor="middle">NON-LATIN SCRIPT — collapses</text>')
 
-    for ci, (name, group, raw, ctrl) in enumerate(DATA):
+    for ci, (name, _group, raw, ctrl) in enumerate(DATA):
         cx = X0 + gw * (ci + 0.5)
         start = cx - cluster / 2
         ctrl_color = GREEN if ctrl >= 0.5 else RED

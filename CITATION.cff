@@ -17,7 +17,7 @@ abstract: >-
   baselines from keyword rules to LLM-as-classifier judges, and an adversarial
   layer of character-level and LLM-driven evasion attacks, scored on both a
   fraud task and a text-provenance task.
-version: 0.7.0
+version: 0.8.0
 date-released: "2026-07-27"
 license: Apache-2.0
 keywords:

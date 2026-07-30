@@ -25,7 +25,10 @@ def test_evaluate_produces_slices_for_fraud_detector():
     assert entry["slices"]["phishing"] is not None
 
 
-def test_evaluate_records_error_for_missing_extra():
+def test_evaluate_records_error_for_missing_extra(monkeypatch):
+    # Unset explicitly: see the note in test_harness.py. Without this the assertion
+    # depends on the developer's environment rather than on the code.
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     data = load_jsonl(SAMPLES)
     results = evaluate_detectors(data, ["openai-moderation"])
     assert "error" in results[0]

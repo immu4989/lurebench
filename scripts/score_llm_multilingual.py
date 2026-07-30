@@ -21,8 +21,8 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from lurebench.detectors import get_detector
-from lurebench.multilingual import strip_artifacts
 from lurebench.generate.base import language_name
+from lurebench.multilingual import strip_artifacts
 from lurebench.schema import Lure, load_jsonl
 
 EVAL = "data/full/multilingual/eval.jsonl"

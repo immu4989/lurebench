@@ -64,7 +64,12 @@ def test_promote_only_returns_approved():
 
 
 def test_hard_mode_varies_prompt_and_system():
-    from lurebench.generate.base import build_user_prompt, system_prompt_for, SYSTEM_PROMPT, SYSTEM_PROMPT_HARD
+    from lurebench.generate.base import (
+        SYSTEM_PROMPT,
+        SYSTEM_PROMPT_HARD,
+        build_user_prompt,
+        system_prompt_for,
+    )
 
     soft = GenerationSpec(typology="phishing", hard=False)
     hard = GenerationSpec(typology="phishing", hard=True)

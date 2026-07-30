@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.8.0
+
+**Breaking data change.** Record ids in the shipped shards have changed. Anything
+that pinned a specific id needs updating; the previous value is preserved on each
+record as `meta.legacy_id`.
+
+### Fixed
+- **Generated records had colliding ids.** `generate_records` minted
+  `gen-{typology}-{seq}` with no generator in the id, so every model restarted the
+  same counter and running one typology across three models produced three
+  different records all called `gen-bec-000006`. `rewrite_records`, two functions
+  below, already did this correctly, which is why the `paired/` shards were clean.
+
+  Scope: 170 colliding ids in `core/train`, 30 in `core/test`, 13 in
+  `multilingual/eval`, and the same in the `core/hub/` copy published to the Hub.
+  Every AI-generated record was affected (87/87 in `core/test`).
+
+  This is not cosmetic. The train/test split hashes the record id, so colliding
+  records were forced into the same split instead of being assigned
+  independently, and anything building a dict keyed by id silently kept only the
+  last record. That is exactly what happened downstream in LureScope's
+  cross-model scorecard, where a stated 120-lure sample was really 73 distinct
+  records.
+
+  Ids are now `gen-{typology}-{generator}-{seq}`, matching the `rw-` convention.
+  `scripts/fix_duplicate_ids.py` migrates existing shards; it asserts that row
+  counts, text, labels and every non-id field are unchanged, and is idempotent.
+
+- **CI was not linting, then linted with an unpinned ruff.** The lint step added
+  in 0.7.0 installed whatever ruff was latest, so CI picked up 0.16's changed
+  default rule set and went red on a commit that passed locally on 0.15. The rule
+  set is now declared explicitly and ruff is pinned to a range. `E501` is
+  documented as a known gap rather than silently enabled: 59 lines exceed the
+  configured limit and fixing them belongs in its own pass.
+
+- Two tests asserted that `openai-moderation` raises without its extra, which is
+  only true when no key is present. They passed in CI and failed for anyone with
+  `OPENAI_API_KEY` exported. Now hermetic.
+
+### Added
+- `duplicate_ids()` plus `n_unique_ids` / `n_duplicate_ids` in the manifest, and a
+  `check_balance` warning, so a shard with colliding ids says so.
+- `tests/test_record_ids.py`, including a guard asserting every shipped shard has
+  unique ids. It fails against the pre-migration data, which is the check that was
+  missing when the collisions were introduced.
+
+
 ## 0.7.0
 
 Makes LLM-backed detectors measurable, then measures them. Six models scored

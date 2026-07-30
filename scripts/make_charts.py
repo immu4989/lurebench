@@ -81,7 +81,7 @@ def grouped_bar(title, subtitle, categories, series, fmt=lambda v: f"{v * 100:.0
     for ci, cat in enumerate(categories):
         cx = X0 + gw * (ci + 0.5)
         start = cx - cluster / 2
-        for si, (name, color, vals) in enumerate(series):
+        for si, (_name, color, vals) in enumerate(series):
             v = vals[ci]
             bx = start + si * (bw + gap)
             bh = v * PLOTH

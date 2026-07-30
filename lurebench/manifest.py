@@ -12,10 +12,25 @@ from typing import Dict, List, Sequence
 from .schema import Lure
 
 
+def duplicate_ids(records: Sequence[Lure]) -> Dict[str, int]:
+    """Ids appearing more than once, mapped to how many times. Empty when clean.
+
+    The schema documents ``id`` as a stable unique identifier, and a good deal of
+    tooling quietly assumes it: anything that builds a dict keyed by id keeps only
+    the last record for a colliding key, and the train/test split hashes the id, so
+    duplicates land in the same split rather than being assigned independently.
+
+    Both failures are silent, which is why this is checked rather than assumed.
+    """
+    counts: Counter = Counter(r.id for r in records)
+    return {rid: c for rid, c in counts.items() if c > 1}
+
+
 def build_manifest(records: Sequence[Lure]) -> dict:
     n = len(records)
     n_fraud = sum(1 for r in records if r.label == 1)
     n_ai = sum(1 for r in records if r.source == "ai")
+    dups = duplicate_ids(records)
 
     by_typology: Counter = Counter(r.typology for r in records)
     by_source: Counter = Counter(r.source for r in records)
@@ -40,12 +55,26 @@ def build_manifest(records: Sequence[Lure]) -> dict:
         "by_generator": dict(by_generator),
         "by_language": dict(by_language),
         "cells": dict(cells),
+        "n_unique_ids": n - sum(c - 1 for c in dups.values()),
+        "n_duplicate_ids": len(dups),
     }
 
 
 def check_balance(manifest: dict) -> List[str]:
     """Return human-readable warnings when v1 balance targets are violated."""
     warnings: List[str] = []
+
+    # Integrity before balance: a shard with colliding ids is broken in a way that
+    # silently corrupts anything keyed by id, so it is worth saying loudly.
+    n_dup = manifest.get("n_duplicate_ids", 0)
+    if n_dup:
+        n = manifest.get("n", 0)
+        uniq = manifest.get("n_unique_ids", n)
+        warnings.append(
+            f"{n_dup} duplicate record ids ({n} rows, {uniq} unique) - anything keyed "
+            "by id will silently drop rows"
+        )
+
     fr = manifest.get("fraud_ratio", 0.0)
     if not (0.45 <= fr <= 0.55):
         warnings.append(f"fraud_ratio {fr:.2f} outside target 0.45-0.55")
