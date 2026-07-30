@@ -96,10 +96,17 @@ def test_check_balance_silent_on_clean_ids():
 
 @pytest.mark.parametrize("shard", SHIPPED_SHARDS, ids=lambda p: p.name and str(p.parent.name) + "/" + p.name)
 def test_shipped_shard_has_unique_ids(shard):
-    """Every shard in the repo must have unique ids. This is the check that was
-    missing; it would have caught the collisions on the commit that introduced them."""
+    """Every shard present must have unique ids.
+
+    Coverage is uneven and worth being explicit about. ``data/full/`` is
+    gitignored - the corpus is distributed through the Hub, not through git - so
+    in a fresh CI checkout only ``multilingual/eval.jsonl`` and
+    ``samples/lures.jsonl`` exist and the rest of these cases skip. That is still
+    a real guard: ``multilingual/eval.jsonl`` was one of the shards that carried
+    collisions, so this would have gone red in CI. For the shards CI never sees,
+    the protection is the generator tests above, which need no data at all."""
     if not shard.exists():
-        pytest.skip(f"{shard} not present")
+        pytest.skip(f"{shard} not present (data/full is gitignored; fetched from the Hub)")
     records = load_jsonl(shard)
     dups = duplicate_ids(records)
     assert not dups, (
