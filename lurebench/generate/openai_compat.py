@@ -45,13 +45,38 @@ class ProviderConfigurationError(RuntimeError):
     """
 
 
-def _config_error_message(model: str, endpoint: str, api_key_env: str,
-                          exc: "urllib.error.HTTPError") -> str:
+def _read_body(exc: "urllib.error.HTTPError") -> str:
+    """Read an error body once. It is a stream, so a second read returns nothing."""
     try:
-        detail = exc.read().decode("utf-8", "replace")[:300]
-    except Exception:  # noqa: BLE001 - body already consumed or unreadable
-        detail = ""
+        return exc.read().decode("utf-8", "replace")[:500]
+    except Exception:  # noqa: BLE001 - already consumed or unreadable
+        return ""
+
+
+def _is_model_rejection(exc: "urllib.error.HTTPError", body: str, model: str) -> bool:
+    """Whether a 400 is the provider rejecting the *model*, not the record.
+
+    400 is ambiguous in a way 401/403/404 are not: it covers both "no such model",
+    which fails identically for every record, and per-record problems like an
+    over-long message, where abstaining really is the right response. Escalating
+    every 400 would crash a whole sweep over one oversized record.
+
+    So this only escalates when the provider names the model we sent, which is
+    what an unknown-model rejection does. DeepSeek's official API answers a dated
+    snapshot id with 400 and "The supported API model names are ... but you passed
+    deepseek-v4-flash-0731". A miss here is harmless: behaviour falls back to the
+    previous abstention path.
+    """
+    if exc.code != 400 or not body:
+        return False
+    low = body.lower()
+    return model.lower() in low or "model" in low
+
+
+def _config_error_message(model: str, endpoint: str, api_key_env: str,
+                          exc: "urllib.error.HTTPError", detail: str = "") -> str:
     hints = {
+        400: "the provider rejected this model id",
         401: f"check that {api_key_env} is set and valid",
         403: f"the key in {api_key_env} lacks access to this model",
         404: ("unknown model id, or no provider route is available for it - on "
@@ -151,10 +176,12 @@ class OpenAICompatibleGenerator(Generator):
             try:
                 response = self._post(payload)
             except urllib.error.HTTPError as exc:
-                if exc.code in _CONFIG_ERROR_CODES:
+                body = _read_body(exc)
+                if exc.code in _CONFIG_ERROR_CODES or _is_model_rejection(exc, body,
+                                                                          self.model):
                     raise ProviderConfigurationError(
                         _config_error_message(self.model, self.endpoint,
-                                              self.api_key_env, exc)
+                                              self.api_key_env, exc, body)
                     ) from exc
                 retryable = exc.code == 429 or exc.code >= 500
                 if retryable and attempt < self.max_retries:

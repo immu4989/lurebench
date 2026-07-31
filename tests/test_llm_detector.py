@@ -139,3 +139,59 @@ def test_rate_limit_and_server_errors_are_still_retried_not_raised(monkeypatch):
         gen = get_generator("openrouter", model="m", max_retries=1, retry_base=0)
         monkeypatch.setattr(gen, "_post", lambda p, c=code: (_ for _ in ()).throw(_http_error(c)))
         assert gen.complete("sys", "user") == ""   # empty, not an exception
+
+
+def test_model_rejection_400_raises_but_record_level_400_still_abstains(monkeypatch):
+    """400 is ambiguous where 401/403/404 are not.
+
+    It covers both "no such model", which fails identically for every record, and
+    per-record problems like an over-long message, where abstaining is correct.
+    Escalating every 400 would crash a 2,000-record sweep over one oversized
+    record, so only a rejection that names the model is escalated.
+
+    The real case: DeepSeek's official API answers a dated snapshot id with 400 and
+    "The supported API model names are deepseek-v4-pro or deepseek-v4-flash, but
+    you passed deepseek-v4-flash-0731".
+    """
+    import pytest
+
+    from lurebench.generate import get_generator
+    from lurebench.generate.openai_compat import ProviderConfigurationError
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+
+    model_rejection = (b'{"error":{"message":"The supported API model names are '
+                       b'deepseek-v4-pro or deepseek-v4-flash, but you passed '
+                       b'deepseek-v4-flash-0731.","type":"invalid_request_error"}}')
+    gen = get_generator("deepseek", model="deepseek-v4-flash-0731",
+                        max_retries=2, retry_base=0)
+    monkeypatch.setattr(gen, "_post",
+                        lambda p: (_ for _ in ()).throw(_http_error(400, model_rejection)))
+    with pytest.raises(ProviderConfigurationError) as ei:
+        gen.complete("sys", "user")
+    assert "deepseek-v4-flash-0731" in str(ei.value)
+
+    # A per-record 400 that says nothing about the model must still abstain, so one
+    # bad record cannot take down a sweep.
+    record_problem = b'{"error":{"message":"input exceeds maximum context length"}}'
+    gen2 = get_generator("deepseek", model="deepseek-v4-flash", max_retries=1, retry_base=0)
+    monkeypatch.setattr(gen2, "_post",
+                        lambda p: (_ for _ in ()).throw(_http_error(400, record_problem)))
+    assert gen2.complete("sys", "user") == ""   # abstains, does not raise
+
+
+def test_error_body_is_read_once_and_surfaced(monkeypatch):
+    # The body is a stream; reading it twice yields nothing the second time, which
+    # would silently drop the provider's explanation from the message.
+    import pytest
+
+    from lurebench.generate import get_generator
+    from lurebench.generate.openai_compat import ProviderConfigurationError
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    gen = get_generator("openrouter", model="m", max_retries=1, retry_base=0)
+    body = b'{"error":{"message":"data policy blocks all endpoints"}}'
+    monkeypatch.setattr(gen, "_post", lambda p: (_ for _ in ()).throw(_http_error(404, body)))
+    with pytest.raises(ProviderConfigurationError) as ei:
+        gen.complete("sys", "user")
+    assert "data policy blocks all endpoints" in str(ei.value)

@@ -16,9 +16,17 @@
   per-record abstentions, transient network failures, and 429/5xx retries are all
   unchanged.
 
-  Found while testing `deepseek/deepseek-v4-flash-0731`, released 2026-07-31,
-  which returns 404 on OpenRouter for accounts that have not opted into the
-  provider's data policy. It scored a clean 40/40 "abstentions" before this fix.
+  A model rejection carried on a 400 is escalated the same way, but only when the
+  provider's message names the model we sent. 400 is ambiguous where 401/403/404
+  are not: it also covers per-record problems such as an over-long message, where
+  abstaining is the right response, and escalating every 400 would end a sweep
+  over one oversized record.
+
+  Found while testing `deepseek/deepseek-v4-flash-0731`, released 2026-07-31.
+  OpenRouter answers it with 404 for accounts that have not opted into the
+  provider's data policy; DeepSeek's official API answers it with 400 and "The
+  supported API model names are deepseek-v4-pro or deepseek-v4-flash". Both
+  scored clean columns of "abstentions" before this fix.
 
 
 ## 0.8.0
