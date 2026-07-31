@@ -26,6 +26,44 @@ from typing import List, Optional
 
 from .base import GenerationSpec, Generator, build_user_prompt, system_prompt_for
 
+# Status codes that mean "this request will never work as configured": bad or missing
+# key, no entitlement, unknown model, or no provider route. Unlike a 429 or a 5xx
+# there is nothing to retry, and unlike a content filter it is not a property of the
+# record being sent.
+_CONFIG_ERROR_CODES = frozenset({401, 403, 404})
+
+
+class ProviderConfigurationError(RuntimeError):
+    """The provider cannot serve this model as configured.
+
+    Raised rather than returning ``None`` so the failure cannot be mistaken for a
+    detector abstention. That distinction matters: an abstention is per-record and
+    is legitimately excluded from metrics, whereas this fails identically on every
+    record. Swallowed, it produces a plausible-looking row of 100% abstentions
+    after burning one request per record — which is exactly what a mistyped model
+    name or a missing entitlement used to look like.
+    """
+
+
+def _config_error_message(model: str, endpoint: str, api_key_env: str,
+                          exc: "urllib.error.HTTPError") -> str:
+    try:
+        detail = exc.read().decode("utf-8", "replace")[:300]
+    except Exception:  # noqa: BLE001 - body already consumed or unreadable
+        detail = ""
+    hints = {
+        401: f"check that {api_key_env} is set and valid",
+        403: f"the key in {api_key_env} lacks access to this model",
+        404: ("unknown model id, or no provider route is available for it - on "
+              "aggregators this is often a data-policy or privacy setting rather "
+              "than a bad name"),
+    }
+    hint = hints.get(exc.code, "check the model id and credentials")
+    return (f"provider returned HTTP {exc.code} for model {model!r} at {endpoint}: "
+            f"{hint}. This is a configuration error, not a detector abstention, so "
+            f"it is raised rather than counted as one."
+            + (f" Provider said: {detail}" if detail else ""))
+
 
 class OpenAICompatibleGenerator(Generator):
     name = "openai-compat"
@@ -101,12 +139,23 @@ class OpenAICompatibleGenerator(Generator):
         return content.strip() if isinstance(content, str) else ""
 
     def _one(self, payload: dict) -> Optional[str]:
-        """Return one lure text, or None. Retries 429/5xx with backoff; updates stats."""
+        """Return one lure text, or None. Retries 429/5xx with backoff; updates stats.
+
+        Authentication and routing failures raise :class:`ProviderConfigurationError`
+        instead of returning ``None``. They are a property of the configuration, not
+        of the record being scored, so they fail identically every time and must not
+        be reported as the detector declining to answer.
+        """
         delay = self.retry_base
         for attempt in range(self.max_retries + 1):
             try:
                 response = self._post(payload)
             except urllib.error.HTTPError as exc:
+                if exc.code in _CONFIG_ERROR_CODES:
+                    raise ProviderConfigurationError(
+                        _config_error_message(self.model, self.endpoint,
+                                              self.api_key_env, exc)
+                    ) from exc
                 retryable = exc.code == 429 or exc.code >= 500
                 if retryable and attempt < self.max_retries:
                     retry_after = exc.headers.get("Retry-After") if exc.headers else None

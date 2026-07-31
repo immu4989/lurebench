@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.1
+
+### Fixed
+- **Provider configuration errors were reported as detector abstentions.** A 401,
+  403 or 404 from the provider returned `None`, which the harness counts as the
+  detector declining that record. Because such a failure is a property of the
+  configuration rather than of the record, it fails identically every time: a
+  mistyped model id, an expired key, or a model the account cannot route to
+  produced a plausible-looking row of 100% abstentions after burning one request
+  per record.
+
+  These now raise `ProviderConfigurationError`, are not retried (there is nothing
+  to retry), and carry the model id, the status code and a hint. Genuine
+  per-record abstentions, transient network failures, and 429/5xx retries are all
+  unchanged.
+
+  Found while testing `deepseek/deepseek-v4-flash-0731`, released 2026-07-31,
+  which returns 404 on OpenRouter for accounts that have not opted into the
+  provider's data policy. It scored a clean 40/40 "abstentions" before this fix.
+
+
 ## 0.8.0
 
 **Breaking data change.** Record ids in the shipped shards have changed. Anything

@@ -24,6 +24,7 @@ from __future__ import annotations
 import re
 from typing import Callable, Optional
 
+from ..generate.openai_compat import ProviderConfigurationError
 from ..schema import Lure
 from .base import Detector
 
@@ -93,6 +94,12 @@ class LLMJudgeDetector(Detector):
     def score(self, lure: Lure) -> Optional[float]:
         try:
             out = self._complete(self.system_prompt, lure.text)
+        except ProviderConfigurationError:
+            # A bad key, missing entitlement or unroutable model fails the same way
+            # for every record. Abstaining here would turn it into a full column of
+            # abstentions that reads like the model declining, after one wasted
+            # request per record, so it propagates.
+            raise
         except Exception:  # noqa: BLE001 - provider/network failure -> abstain, don't crash
             return None
         return self._parse(out)
