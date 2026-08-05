@@ -7,9 +7,9 @@ shard) and approved generated staging files — and:
      generated records must be human-``approved``. ``pending`` / ``flagged`` are
      dropped and **counted** (never silently), per the review protocol.
   2. **dedups** across all sources by normalized-text hash.
-  3. **splits** into train/test by a stable hash of the record ``id`` — the test
-     split is frozen because it keys on the id, so adding a new generator never
-     shuffles what was already in test.
+  3. **splits** into train/validation/test by stable hashes of the record ``id``.
+     Test membership uses the original rule and remains frozen. Validation is
+     carved only from records that would previously have been in training.
 
 This is the last step before ``lurebench publish`` uploads the shards to the Hub.
 """
@@ -26,6 +26,7 @@ from .ingest.base import dedupe
 from .schema import Lure, load_jsonl, save_jsonl
 
 TEST_MODULUS = 10  # ~10% held out; frozen because it keys on the stable record id
+VALIDATION_MODULUS = 10  # ~10% of the remaining training pool
 
 
 def assign_test(record_id: str, modulus: int = TEST_MODULUS) -> bool:
@@ -34,9 +35,31 @@ def assign_test(record_id: str, modulus: int = TEST_MODULUS) -> bool:
     return digest % modulus == 0
 
 
+def assign_validation(record_id: str, modulus: int = VALIDATION_MODULUS) -> bool:
+    """Deterministically carve validation from the non-test training pool.
+
+    A domain-separated hash ensures this can be introduced without changing the
+    benchmark's frozen test membership.
+    """
+    if modulus < 2:
+        raise ValueError("validation modulus must be at least 2")
+    digest = int(hashlib.sha1(f"validation:{record_id}".encode("utf-8")).hexdigest(), 16)
+    return digest % modulus == 0
+
+
+def split_key(record: Lure) -> str:
+    """Stable family-level key, including across the v0.8 id migration."""
+    for key in ("family_id", "scenario_id", "parent_id", "seed_id"):
+        value = record.meta.get(key)
+        if value:
+            return f"family:{value}"
+    return str(record.meta.get("legacy_id") or record.id)
+
+
 @dataclass
 class CoreBuild:
     train: List[Lure]
+    validation: List[Lure]
     test: List[Lure]
     dropped_pending: int = 0
     dropped_flagged: int = 0
@@ -46,7 +69,7 @@ class CoreBuild:
 
     @property
     def n(self) -> int:
-        return len(self.train) + len(self.test)
+        return len(self.train) + len(self.validation) + len(self.test)
 
 
 def gate(records: Sequence[Lure]) -> Tuple[List[Lure], int, int]:
@@ -65,7 +88,11 @@ def gate(records: Sequence[Lure]) -> Tuple[List[Lure], int, int]:
     return kept, pending, flagged
 
 
-def build_core(source_paths: Sequence[str], test_modulus: int = TEST_MODULUS) -> CoreBuild:
+def build_core(
+    source_paths: Sequence[str],
+    test_modulus: int = TEST_MODULUS,
+    validation_modulus: int = VALIDATION_MODULUS,
+) -> CoreBuild:
     """Gate, dedup, and split all sources into a :class:`CoreBuild`."""
     kept_all: List[Lure] = []
     per_source: Counter = Counter()
@@ -85,11 +112,18 @@ def build_core(source_paths: Sequence[str], test_modulus: int = TEST_MODULUS) ->
     n_before = len(kept_all)
     deduped = dedupe(kept_all)
 
-    train = [r for r in deduped if not assign_test(r.id, test_modulus)]
-    test = [r for r in deduped if assign_test(r.id, test_modulus)]
+    test = [r for r in deduped if assign_test(split_key(r), test_modulus)]
+    training_pool = [r for r in deduped if not assign_test(split_key(r), test_modulus)]
+    validation = [
+        r for r in training_pool if assign_validation(split_key(r), validation_modulus)
+    ]
+    train = [
+        r for r in training_pool if not assign_validation(split_key(r), validation_modulus)
+    ]
 
     return CoreBuild(
         train=train,
+        validation=validation,
         test=test,
         dropped_pending=dropped_pending,
         dropped_flagged=dropped_flagged,
@@ -100,10 +134,15 @@ def build_core(source_paths: Sequence[str], test_modulus: int = TEST_MODULUS) ->
 
 
 def write_core(build: CoreBuild, out_dir: str) -> Dict[str, str]:
-    """Write ``train.jsonl`` / ``test.jsonl`` under ``out_dir``. Returns split->path."""
+    """Write all three benchmark splits under ``out_dir``. Returns split->path."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    paths = {"train": str(out / "train.jsonl"), "test": str(out / "test.jsonl")}
+    paths = {
+        "train": str(out / "train.jsonl"),
+        "validation": str(out / "validation.jsonl"),
+        "test": str(out / "test.jsonl"),
+    }
     save_jsonl(build.train, paths["train"])
+    save_jsonl(build.validation, paths["validation"])
     save_jsonl(build.test, paths["test"])
     return paths

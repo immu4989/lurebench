@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.0
+
+### Added
+- A deterministic validation split carved exclusively from the former training
+  pool. Frozen test membership is preserved across the v0.8 id migration by
+  hashing `meta.legacy_id` where present.
+- `audit-splits`: dependency-free cross-split family and near-duplicate detection.
+  The first v1 core audit found 321 train/test pairs at five-word-shingle Jaccard
+  similarity >= 0.8; this limitation is documented rather than hidden.
+- `calibrate`: validation-only selection of maximum-MCC or target-FPR thresholds,
+  exporting a versioned policy with validation provenance.
+- Brier score, expected calibration error, reliability bins and deterministic
+  paired-bootstrap confidence intervals for MCC, recall, FPR and AUC.
+
+### Fixed
+- Recall-at-FPR no longer processes equal scores one record at a time. Tied scores
+  now move together, so every reported operating point can be realized by a
+  threshold.
+- The `train`/`all` extras now constrain scikit-learn to the 1.6 series used to
+  serialize the bundled LureScope model, avoiding unsupported cross-version
+  unpickling in unconstrained future environments.
+
 ## 0.8.1
 
 ### Fixed

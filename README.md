@@ -182,7 +182,12 @@ lurebench leaderboard -d data/full/core/test.jsonl \
   --cache-dir .cache/lb --workers 12
 ```
 
-Twelve commands cover the pipeline: `ingest`, `generate`, `assemble-core`, `train`, `eval`, `leaderboard`, `cross-generator`, `robustness`, `multilingual`, `stix`, `manifest`, `publish`. See the [changelog](CHANGELOG.md) for what's new in `v0.6`, the [taxonomy & STIX guide](docs/taxonomy.md), and [docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute a detector.
+Fourteen commands cover the pipeline, including `audit-splits` for cross-split
+near-duplicate detection and `calibrate` for validation-only policy export.
+`assemble-core` produces frozen train/validation/test splits, and `eval
+--bootstrap 2000` adds uncertainty intervals. See [benchmark validity](docs/VALIDITY.md),
+the [changelog](CHANGELOG.md), the [taxonomy & STIX guide](docs/taxonomy.md), and
+[docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute a detector.
 
 ## Why it matters
 

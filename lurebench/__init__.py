@@ -24,7 +24,7 @@ from .robustness import RobustnessReport, run_robustness
 from .schema import Lure, load_jsonl, save_jsonl
 from .stix import records_to_stix, taxonomy_to_stix
 
-__version__ = "0.6.0"
+__version__ = "0.9.0"
 
 __all__ = [
     "Lure",

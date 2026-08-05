@@ -58,6 +58,14 @@ def test_heuristic_beats_floor_on_fraud_task():
     assert report.task == "fraud"
 
 
+def test_report_bootstrap_intervals_are_available():
+    data = load_jsonl(SAMPLES)
+    report = run(HeuristicDetector(), data, task="fraud")
+    intervals = report.confidence_intervals(replicates=50, seed=3)
+    assert set(intervals) == {"mcc", "recall", "fpr", "auc"}
+    assert intervals["mcc"].lower <= report.metrics.mcc <= intervals["mcc"].upper
+
+
 def test_registry_lists_heuristic():
     assert "heuristic-v0" in available()
     assert isinstance(get_detector("heuristic-v0"), HeuristicDetector)

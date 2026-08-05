@@ -20,11 +20,13 @@ def load_core(split: str = "test", repo_id: str = HUB_REPO) -> List[Lure]:
     """Download a split of ``lurebench-core`` from the Hub and return ``list[Lure]``.
 
     Args:
-        split: ``"train"`` or ``"test"``.
+        split: ``"train"``, ``"validation"`` or ``"test"``.
         repo_id: Hub dataset repo (defaults to the canonical LureBench corpus).
     """
-    if split not in ("train", "test"):
-        raise ValueError(f"split must be 'train' or 'test', got {split!r}")
+    if split not in ("train", "validation", "test"):
+        raise ValueError(
+            f"split must be 'train', 'validation' or 'test', got {split!r}"
+        )
     try:
         from huggingface_hub import hf_hub_download
     except ImportError as exc:  # pragma: no cover

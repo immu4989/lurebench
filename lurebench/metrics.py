@@ -99,16 +99,26 @@ def recall_at_fpr(
     allowed_fp = max_fpr * n_neg
     tp = fp = 0
     best_recall = 0.0
-    # Descending score = progressively lower threshold (more predicted-positive).
-    for _, t in sorted(zip(scores, y_true), key=lambda x: -x[0]):
-        if t == 1:
-            tp += 1
-        else:
-            fp += 1
+    # Process tied scores as one threshold. Counting records within a tie one by
+    # one would report an operating point that no threshold can actually attain.
+    ranked = sorted(zip(scores, y_true), key=lambda x: -x[0])
+    i = 0
+    while i < len(ranked):
+        j = i
+        group_tp = group_fp = 0
+        while j < len(ranked) and ranked[j][0] == ranked[i][0]:
+            if ranked[j][1] == 1:
+                group_tp += 1
+            else:
+                group_fp += 1
+            j += 1
+        tp += group_tp
+        fp += group_fp
         if fp <= allowed_fp:
             best_recall = max(best_recall, tp / n_pos)
         else:
             break  # fp only grows from here
+        i = j
     return best_recall
 
 

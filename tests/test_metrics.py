@@ -26,6 +26,11 @@ def test_recall_at_fpr_none_when_class_absent():
     assert recall_at_fpr([0, 0, 0], [0.9, 0.5, 0.1], 0.05) is None
 
 
+def test_recall_at_fpr_does_not_split_tied_scores():
+    # The positive and negative at 0.9 cannot be separated by any threshold.
+    assert recall_at_fpr([1, 0, 1], [0.9, 0.9, 0.8], 0.0) == 0.0
+
+
 def test_balanced_accuracy_averages_recall_and_specificity():
     # 2 pos both caught, 2 neg both correctly rejected -> bal acc 1.0
     y_true = [1, 1, 0, 0]

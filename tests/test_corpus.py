@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import json
 
-from lurebench.corpus import assign_test, build_core, gate, write_core
+from lurebench.corpus import (
+    assign_test,
+    assign_validation,
+    build_core,
+    gate,
+    split_key,
+    write_core,
+)
 from lurebench.schema import Lure
 
 
@@ -59,11 +66,14 @@ def test_build_core_merges_gates_and_splits(tmp_path):
     assert build.dropped_pending == 1
     assert build.per_source["controlled-generation"] == 1
     assert build.per_source["phishtext"] == 80
-    # Both splits present, no overlap.
+    # All splits present, no overlap.
     train_ids = {r.id for r in build.train}
+    validation_ids = {r.id for r in build.validation}
     test_ids = {r.id for r in build.test}
-    assert train_ids and test_ids
+    assert train_ids and validation_ids and test_ids
     assert train_ids.isdisjoint(test_ids)
+    assert train_ids.isdisjoint(validation_ids)
+    assert validation_ids.isdisjoint(test_ids)
 
 
 def test_split_is_frozen_by_id():
@@ -77,7 +87,47 @@ def test_split_is_frozen_by_id():
     assert 5 <= n_test <= 35
 
 
-def test_write_core_emits_both_splits(tmp_path):
+def test_validation_never_changes_frozen_test_membership():
+    ids = [f"record-{i}" for i in range(500)]
+    test_before = {record_id for record_id in ids if assign_test(record_id)}
+    validation = {
+        record_id for record_id in ids
+        if not assign_test(record_id) and assign_validation(record_id)
+    }
+    assert test_before.isdisjoint(validation)
+    assert test_before == {record_id for record_id in ids if assign_test(record_id)}
+
+
+def test_split_key_preserves_pre_migration_membership():
+    record = Lure(
+        id="gen-bec-deepseek-000001",
+        text="approved account lure",
+        label=1,
+        source="ai",
+        typology="bec",
+        meta={"legacy_id": "gen-bec-000001", "review": "approved"},
+    )
+    assert split_key(record) == "gen-bec-000001"
+    assert assign_test(split_key(record)) == assign_test("gen-bec-000001")
+
+
+def test_declared_family_is_kept_in_one_partition(tmp_path):
+    records = [
+        Lure(
+            id=f"variant-{i}", text=f"distinct variant text {i}", label=1,
+            source="ai", typology="phishing",
+            meta={"review": "approved", "family_id": "shared-scenario"},
+        )
+        for i in range(3)
+    ]
+    path = tmp_path / "family.jsonl"
+    _write(path, records)
+    build = build_core([str(path)])
+    occupied = sum(bool(part) for part in (build.train, build.validation, build.test))
+    assert occupied == 1
+
+
+def test_write_core_emits_all_splits(tmp_path):
     recs = [Lure(id=f"x-{i}", text=f"lure {i} at <<link>>", label=1, source="ai",
                  typology="phishing", meta={"review": "approved"}) for i in range(20)]
     p = tmp_path / "in.jsonl"
@@ -85,5 +135,6 @@ def test_write_core_emits_both_splits(tmp_path):
     build = build_core([str(p)])
     paths = write_core(build, str(tmp_path / "core"))
     assert (tmp_path / "core" / "train.jsonl").exists()
+    assert (tmp_path / "core" / "validation.jsonl").exists()
     assert (tmp_path / "core" / "test.jsonl").exists()
-    assert set(paths) == {"train", "test"}
+    assert set(paths) == {"train", "validation", "test"}

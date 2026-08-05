@@ -9,13 +9,15 @@ from typing import List
 
 from .attacks import available as attacks_available
 from .attacks import get_attack
+from .audit import audit_splits
+from .calibration import build_policy, calibration_metrics
 from .corpus import build_core, write_core
 from .crossgen import cross_generator_provenance
 from .crossgen import render_markdown as render_crossgen
 from .detectors import available, get_detector
 from .generate import GenerationSpec, generate_records, get_generator, screen
 from .generate import available as gen_available
-from .harness import Report, run
+from .harness import Report, collect_scores, run
 from .hub import assemble, push
 from .ingest import available as ingest_available
 from .ingest import dedupe, get_adapter
@@ -121,6 +123,65 @@ def _cmd_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_audit_splits(args: argparse.Namespace) -> int:
+    try:
+        split_paths = _parse_splits(args.split)
+    except ValueError as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    audit = audit_splits(
+        {name: load_jsonl(path) for name, path in split_paths.items()},
+        threshold=args.threshold,
+        shingle_size=args.shingle_size,
+    )
+    payload = json.dumps(audit.as_dict(), indent=2)
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as handle:
+            handle.write(payload + "\n")
+        print(f"wrote {args.out}")
+    else:
+        print(payload)
+    if not audit.passed:
+        print(
+            f"! leakage: {len(audit.family_overlaps)} family overlaps, "
+            f"{len(audit.near_duplicates)} near-duplicate pairs",
+            file=sys.stderr,
+        )
+    return int(args.fail_on_leakage and not audit.passed)
+
+
+def _cmd_calibrate(args: argparse.Namespace) -> int:
+    kwargs = {"model_path": args.model_path} if args.model_path else {}
+    try:
+        detector = get_detector(args.detector, **kwargs)
+        records = load_jsonl(args.validation)
+        ids, truths, scores = collect_scores(detector, records, task=args.task)
+        policy, metrics = build_policy(
+            detector=getattr(detector, "name", args.detector),
+            task=args.task,
+            record_ids=ids,
+            y_true=truths,
+            scores=scores,
+            objective=args.objective,
+            target_fpr=args.target_fpr,
+        )
+        diagnostics = calibration_metrics(truths, scores, n_bins=args.bins)
+    except (ImportError, KeyError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    policy.save(args.out)
+    print(f"wrote policy {policy.policy_id} to {args.out}")
+    print(
+        f"  threshold={policy.threshold:.6g} validation_MCC={metrics.mcc:.3f} "
+        f"TPR={metrics.recall:.3f} FPR={metrics.fpr:.3f}"
+    )
+    print(
+        f"  Brier={diagnostics.brier:.4f} "
+        f"ECE={diagnostics.expected_calibration_error:.4f}"
+    )
+    return 0
+
+
 def _parse_splits(pairs: List[str]) -> dict:
     splits = {}
     for pair in pairs:
@@ -177,12 +238,17 @@ def _cmd_generate(args: argparse.Namespace) -> int:
 
 
 def _cmd_assemble_core(args: argparse.Namespace) -> int:
-    build = build_core(args.source, test_modulus=args.test_modulus)
+    build = build_core(
+        args.source,
+        test_modulus=args.test_modulus,
+        validation_modulus=args.validation_modulus,
+    )
     paths = write_core(build, args.out)
     manifest = build_manifest(build.train + build.test)
 
     print(f"assembled lurebench-core: {build.n} records "
-          f"({len(build.train)} train / {len(build.test)} test)")
+          f"({len(build.train)} train / {len(build.validation)} validation / "
+          f"{len(build.test)} test)")
     print(f"  deduped {build.n_before_dedup} -> {build.n_after_dedup}")
     if build.dropped_pending or build.dropped_flagged:
         print(f"  dropped {build.dropped_pending} pending + {build.dropped_flagged} "
@@ -192,9 +258,10 @@ def _cmd_assemble_core(args: argparse.Namespace) -> int:
     for warning in check_balance(manifest):
         print(f"  ! balance: {warning}", file=sys.stderr)
 
-    print(f"\nwrote {paths['train']} and {paths['test']}")
+    print(f"\nwrote {paths['train']}, {paths['validation']} and {paths['test']}")
     print("Next — assemble the Hub dir and (optionally) push:")
-    print(f"  lurebench publish -s train={paths['train']} -s test={paths['test']} "
+    print(f"  lurebench publish -s train={paths['train']} "
+          f"-s validation={paths['validation']} -s test={paths['test']} "
           f"-r lurebench/core -o {args.out}/hub --push")
     return 0
 
@@ -241,21 +308,33 @@ def _cmd_eval(args: argparse.Namespace) -> int:
         return 1
 
     if args.json:
-        payload = [
-            {
+        payload = []
+        for r in reports:
+            item = {
                 "detector": r.detector,
                 "task": r.task,
                 "threshold": r.threshold,
                 "n_skipped": r.n_skipped,
                 "metrics": r.metrics.as_dict(),
             }
-            for r in reports
-        ]
+            if args.bootstrap:
+                item["confidence_intervals"] = {
+                    name: interval.__dict__ for name, interval in
+                    r.confidence_intervals(args.bootstrap, args.confidence).items()
+                }
+            payload.append(item)
         print(json.dumps(payload, indent=2))
     else:
         print(f"\nLureBench eval — {len(dataset)} records — {args.dataset}\n")
         for r in reports:
             print("  " + r.summary_line())
+            if args.bootstrap:
+                intervals = r.confidence_intervals(args.bootstrap, args.confidence)
+                rendered = "  ".join(
+                    f"{name.upper()} {ci.estimate:.3f} [{ci.lower:.3f}, {ci.upper:.3f}]"
+                    for name, ci in intervals.items()
+                )
+                print(f"    {int(args.confidence * 100)}% paired bootstrap: {rendered}")
         print()
     return 0
 
@@ -404,6 +483,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--task", "-t", choices=["fraud", "provenance"], default=None)
     p_eval.add_argument("--threshold", type=float, default=0.5)
     p_eval.add_argument("--json", action="store_true", help="emit JSON instead of a table")
+    p_eval.add_argument("--bootstrap", type=int, default=0,
+                        help="paired bootstrap replicates for MCC/TPR/FPR/AUC intervals")
+    p_eval.add_argument("--confidence", type=float, default=0.95,
+                        help="confidence level used with --bootstrap")
     p_eval.set_defaults(func=_cmd_eval)
 
     p_det = sub.add_parser("detectors", help="list registered detectors")
@@ -492,6 +575,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
     p_man.set_defaults(func=_cmd_manifest)
 
+    p_audit = sub.add_parser(
+        "audit-splits", help="detect family overlap and near-duplicate text across splits"
+    )
+    p_audit.add_argument("--split", "-s", action="append", required=True,
+                         help="name=path (repeatable)")
+    p_audit.add_argument("--threshold", type=float, default=0.8,
+                         help="word-shingle Jaccard threshold (default: 0.8)")
+    p_audit.add_argument("--shingle-size", type=int, default=5)
+    p_audit.add_argument("--out", "-o", default=None, help="write JSON report here")
+    p_audit.add_argument("--fail-on-leakage", action="store_true",
+                         help="exit non-zero when any cross-split leakage is found")
+    p_audit.set_defaults(func=_cmd_audit_splits)
+
+    p_cal = sub.add_parser(
+        "calibrate", help="select a decision threshold on validation data and export a policy"
+    )
+    p_cal.add_argument("--validation", "-d", required=True, help="validation JSONL")
+    p_cal.add_argument("--detector", "-m", required=True)
+    p_cal.add_argument("--model-path", default=None,
+                       help="serialized model path for detectors such as tfidf-logreg")
+    p_cal.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
+    p_cal.add_argument("--objective", choices=["max_mcc", "target_fpr"], default="max_mcc")
+    p_cal.add_argument("--target-fpr", type=float, default=None)
+    p_cal.add_argument("--bins", type=int, default=10)
+    p_cal.add_argument("--out", "-o", required=True, help="versioned policy JSON")
+    p_cal.set_defaults(func=_cmd_calibrate)
+
     p_train = sub.add_parser("train", help="train the tfidf-logreg baseline detector")
     p_train.add_argument("--dataset", "-d", required=True, help="training JSONL (use the train split)")
     p_train.add_argument("--out", "-o", default="models/tfidf-logreg-fraud.joblib", help="model output path")
@@ -528,6 +638,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_core.add_argument("--source", "-s", action="append", required=True, help="input JSONL (repeatable)")
     p_core.add_argument("--out", "-o", required=True, help="output dir for train.jsonl / test.jsonl")
     p_core.add_argument("--test-modulus", type=int, default=10, help="1/N held out as the frozen test split")
+    p_core.add_argument("--validation-modulus", type=int, default=10,
+                        help="1/N of the non-test pool held out for validation")
     p_core.set_defaults(func=_cmd_assemble_core)
 
     return parser

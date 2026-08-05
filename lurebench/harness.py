@@ -16,13 +16,32 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence
 
-from .metrics import Metrics, evaluate
+from .calibration import ConfidenceInterval, bootstrap_ci
+from .metrics import Metrics, evaluate, roc_auc
 from .schema import Lure
 
 TASK_TARGET: Dict[str, Callable[[Lure], int]] = {
     "fraud": lambda lure: lure.label,
     "provenance": lambda lure: 1 if lure.source == "ai" else 0,
 }
+
+
+def collect_scores(detector, dataset: Sequence[Lure], task: Optional[str] = None):
+    """Return answered record ids, targets and scores for reusable analysis."""
+    task = task or getattr(detector, "task", "fraud")
+    if task not in TASK_TARGET:
+        raise ValueError(f"unknown task {task!r}; expected one of {sorted(TASK_TARGET)}")
+    target = TASK_TARGET[task]
+    ids: List[str] = []
+    y_true: List[int] = []
+    scores: List[float] = []
+    for lure in dataset:
+        score = detector.score(lure)
+        if score is not None:
+            ids.append(lure.id)
+            y_true.append(target(lure))
+            scores.append(float(score))
+    return ids, y_true, scores
 
 
 @dataclass
@@ -32,6 +51,7 @@ class Report:
     threshold: float
     metrics: Metrics
     n_skipped: int = 0
+    observations: Optional[List[tuple[int, float]]] = None
 
     def summary_line(self) -> str:
         m = self.metrics
@@ -41,6 +61,32 @@ class Report:
             f"MCC={m.mcc:+.3f}  TPR={m.recall:.3f}  FPR={m.fpr:.3f}  "
             f"F1={m.f1:.3f}  AUC={auc}  n={m.n}"
         )
+
+    def confidence_intervals(
+        self, replicates: int = 2000, confidence: float = 0.95, seed: int = 4989
+    ) -> Dict[str, ConfidenceInterval]:
+        if not self.observations:
+            raise ValueError("report has no scored observations")
+
+        def metric(name: str):
+            def statistic(truths, scores):
+                predictions = [int(score >= self.threshold) for score in scores]
+                return float(getattr(evaluate(truths, predictions, scores), name))
+            return statistic
+
+        def auc(truths, scores):
+            value = roc_auc(truths, scores)
+            return float("nan") if value is None else value
+
+        statistics = {"mcc": metric("mcc"), "recall": metric("recall"),
+                      "fpr": metric("fpr"), "auc": auc}
+        return {
+            name: bootstrap_ci(
+                self.observations, statistic, replicates=replicates,
+                confidence=confidence, seed=seed,
+            )
+            for name, statistic in statistics.items()
+        }
 
 
 def run(
@@ -85,4 +131,5 @@ def run(
         threshold=threshold,
         metrics=metrics,
         n_skipped=skipped,
+        observations=list(zip(y_true, scores)),
     )
