@@ -3,6 +3,8 @@
 ## 0.9.0
 
 ### Added
+- A new research-console visual identity, accessible SVG repository hero, and a
+  clearer README path from headline finding to benchmark and live lab.
 - A deterministic validation split carved exclusively from the former training
   pool. Frozen test membership is preserved across the v0.8 id migration by
   hashing `meta.legacy_id` where present.

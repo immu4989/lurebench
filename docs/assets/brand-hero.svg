@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">LureBench — measure what survives the attack</title>
+  <desc id="desc">A dark research dashboard showing clean detection, adversarial stress, and calibrated evaluation.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071218"/><stop offset=".52" stop-color="#0a2026"/><stop offset="1" stop-color="#10151d"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#57f2c1"/><stop offset="1" stop-color="#62c7ff"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <pattern id="grid" width="34" height="34" patternUnits="userSpaceOnUse"><path d="M34 0H0V34" fill="none" stroke="#8cebd0" stroke-opacity=".055"/></pattern>
+  </defs>
+  <rect width="1200" height="420" rx="28" fill="url(#bg)"/>
+  <rect width="1200" height="420" rx="28" fill="url(#grid)"/>
+  <circle cx="1035" cy="34" r="260" fill="#19d5a3" opacity=".05"/>
+  <circle cx="1160" cy="360" r="230" fill="#4ebaff" opacity=".05"/>
+  <g transform="translate(72 68)">
+    <g fill="none" stroke="url(#accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
+      <path d="M30 2v45c0 25 20 45 45 45h21"/>
+      <path d="M30 2c31 7 48 25 48 48-25 2-48-17-48-48Z"/>
+      <path d="M96 92c0 20 16 36 36 36 16 0 29-10 34-24"/>
+      <path d="m155 101 15 3-4 15"/>
+    </g>
+    <text x="0" y="192" fill="#f2fbf8" font-family="Inter,Segoe UI,sans-serif" font-size="60" font-weight="750" letter-spacing="-2">LureBench</text>
+    <text x="2" y="231" fill="#9bb3b2" font-family="Inter,Segoe UI,sans-serif" font-size="21">MEASURE WHAT SURVIVES THE ATTACK</text>
+    <rect x="2" y="260" width="390" height="2" fill="url(#accent)"/>
+    <text x="2" y="295" fill="#c5d4d2" font-family="Inter,Segoe UI,sans-serif" font-size="16">fraud detection  ·  provenance  ·  adversarial robustness</text>
+  </g>
+  <g transform="translate(638 54)" font-family="Inter,Segoe UI,sans-serif">
+    <rect width="490" height="312" rx="20" fill="#0c171d" stroke="#2a4146"/>
+    <circle cx="24" cy="23" r="4" fill="#ff716b"/><circle cx="39" cy="23" r="4" fill="#f6c45a"/><circle cx="54" cy="23" r="4" fill="#57f2c1"/>
+    <text x="24" y="62" fill="#78918f" font-size="11" letter-spacing="1.8">EVALUATION / VALIDATED</text>
+    <text x="24" y="103" fill="#effbf7" font-size="24" font-weight="700">Deployment truth, not demo accuracy.</text>
+    <g transform="translate(24 132)">
+      <text y="15" fill="#9bb3b2" font-size="13">CLEAN RECALL</text><text x="418" y="15" fill="#effbf7" font-size="14" text-anchor="end">97%</text>
+      <rect y="26" width="418" height="7" rx="4" fill="#17262c"/><rect y="26" width="405" height="7" rx="4" fill="#57f2c1"/>
+      <text y="65" fill="#9bb3b2" font-size="13">HOMOGLYPH EVASION</text><text x="418" y="65" fill="#ff716b" font-size="14" text-anchor="end">38%</text>
+      <rect y="76" width="418" height="7" rx="4" fill="#17262c"/><rect y="76" width="159" height="7" rx="4" fill="#ff716b"/>
+      <text y="115" fill="#9bb3b2" font-size="13">AFTER NORMALIZATION</text><text x="418" y="115" fill="#57f2c1" font-size="14" text-anchor="end">0%</text>
+      <rect y="126" width="418" height="7" rx="4" fill="#17262c"/><rect y="126" width="5" height="7" rx="4" fill="#57f2c1"/>
+    </g>
+    <g transform="translate(24 280)" font-size="11" letter-spacing="1">
+      <rect width="118" height="22" rx="11" fill="#12302c"/><text x="59" y="15" fill="#57f2c1" text-anchor="middle">CALIBRATED</text>
+      <rect x="128" width="124" height="22" rx="11" fill="#112934"/><text x="190" y="15" fill="#62c7ff" text-anchor="middle">LEAKAGE AUDIT</text>
+    </g>
+  </g>
+</svg>
