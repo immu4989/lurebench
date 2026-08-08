@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/brand-hero.svg" width="100%" alt="LureBench — measure what survives the attack. Fraud detection, provenance, and adversarial robustness.">
+<img src="docs/assets/lurebench-atlas.gif" width="100%" alt="Animated LureBench research atlas moving from corpus construction through adversarial stress, calibration, and reporting.">
 
 ### The adversarial benchmark for AI-generated fraud
 
@@ -21,7 +21,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 <p align="center">
   <a href="#the-finding"><strong>See the finding</strong></a> ·
   <a href="#quickstart"><strong>Run the benchmark</strong></a> ·
-  <a href="https://huggingface.co/spaces/immu4989/lurescope"><strong>Open the live lab ↗</strong></a>
+  <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
 
 ---

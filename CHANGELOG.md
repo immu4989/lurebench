@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Replaced the console-style repository banner with a distinct animated research
+  atlas that moves through corpus construction, adversarial stress, calibration,
+  and reporting.
+- Pointed the live-lab call to LureScope's install-free GitHub Pages edition.
+- Updated the CI checkout and Python setup actions to their Node 24 releases.
+
 ## 0.9.0
 
 ### Added
