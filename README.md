@@ -30,6 +30,12 @@ Fraud detectors that score well on classic spam corpora fall apart on lures writ
 
 More than a corpus, it is a **method for building the corpus honestly**. Getting a credible answer to "can you detect AI-generated fraud?" turned out to require finding, and removing, a dataset confound that makes the problem look far easier than it is. That story is below.
 
+> **New — thresholds with evidence, not just point estimates.** LureBench can now
+> export a policy only when exact finite-sample tests support a requested
+> population false-positive rate. A 1% target at 95% confidence fails closed with
+> fewer than 299 benign validation examples even after zero false alarms. See
+> [risk-controlled deployment policies](docs/RISK_CONTROL.md).
+
 ### Who it's for
 
 | You are… | Use LureBench to… |
@@ -192,6 +198,7 @@ Fourteen commands cover the pipeline, including `audit-splits` for cross-split
 near-duplicate detection and `calibrate` for validation-only policy export.
 `assemble-core` produces frozen train/validation/test splits, and `eval
 --bootstrap 2000` adds uncertainty intervals. See [benchmark validity](docs/VALIDITY.md),
+the [finite-sample FPR control method](docs/RISK_CONTROL.md),
 the [changelog](CHANGELOG.md), the [taxonomy & STIX guide](docs/taxonomy.md), and
 [docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute a detector.
 

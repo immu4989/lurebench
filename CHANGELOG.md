@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+- `risk_controlled_fpr` threshold selection with exact binomial p-values,
+  fixed-sequence Learn-then-Test error control, one-sided Clopper-Pearson bounds,
+  explicit minimum-sample failure, and a dependency-free implementation.
+- Decision-policy schema v2 with machine-checkable risk evidence and a canonical
+  digest over validation IDs, labels, and detector scores.
+- A statistical-method guide documenting the guarantee, assumptions, sample-size
+  requirements, distribution-shift boundary, and deployment monitoring duties.
+
 ### Changed
 - Replaced the console-style repository banner with a distinct animated research
   atlas that moves through corpus construction, adversarial stress, calibration,
