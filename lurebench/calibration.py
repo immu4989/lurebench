@@ -203,7 +203,9 @@ def select_risk_controlled_threshold(
     if not 2 <= threshold_grid_size <= 100_001:
         raise ValueError("threshold_grid_size must be between 2 and 100001")
 
-    negative_scores = sorted(float(score) for truth, score in zip(y_true, scores) if truth == 0)
+    negative_scores = sorted(
+        float(score) for truth, score in zip(y_true, scores, strict=True) if truth == 0
+    )
     n_negative = len(negative_scores)
     if not n_negative:
         raise ValueError("risk-controlled FPR requires validation negatives")
@@ -270,9 +272,11 @@ def calibration_metrics(
         raise ValueError("n_bins must be positive")
     if any(score < 0.0 or score > 1.0 for score in scores):
         raise ValueError("scores must be probabilities in [0, 1]")
-    brier = sum((score - truth) ** 2 for truth, score in zip(y_true, scores)) / len(y_true)
+    brier = sum(
+        (score - truth) ** 2 for truth, score in zip(y_true, scores, strict=True)
+    ) / len(y_true)
     buckets: List[List[Tuple[int, float]]] = [[] for _ in range(n_bins)]
-    for truth, score in zip(y_true, scores):
+    for truth, score in zip(y_true, scores, strict=True):
         index = min(int(score * n_bins), n_bins - 1)
         buckets[index].append((truth, score))
     bins: List[ReliabilityBin] = []
@@ -382,7 +386,7 @@ def build_policy(
         threshold, metrics = select_threshold(y_true, scores, objective, target_fpr)
     digest = hashlib.sha256("\n".join(record_ids).encode("utf-8")).hexdigest()
     evaluation = hashlib.sha256()
-    for record_id, truth, score in zip(record_ids, y_true, scores):
+    for record_id, truth, score in zip(record_ids, y_true, scores, strict=True):
         row = json.dumps(
             {"id": record_id, "label": int(truth), "score_hex": float(score).hex()},
             ensure_ascii=True,

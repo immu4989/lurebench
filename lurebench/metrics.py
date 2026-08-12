@@ -42,7 +42,7 @@ def _safe_div(a: float, b: float) -> float:
 
 def confusion(y_true: Sequence[int], y_pred: Sequence[int]) -> Tuple[int, int, int, int]:
     tp = fp = tn = fn = 0
-    for t, p in zip(y_true, y_pred):
+    for t, p in zip(y_true, y_pred, strict=True):
         if p == 1 and t == 1:
             tp += 1
         elif p == 1 and t == 0:
@@ -65,7 +65,9 @@ def roc_auc(y_true: Sequence[int], scores: Sequence[float]) -> Optional[float]:
 
     Returns ``None`` when only one class is present.
     """
-    paired = sorted(zip(scores, y_true), key=lambda x: x[0])
+    if len(y_true) != len(scores):
+        raise ValueError("y_true and scores length mismatch")
+    paired = sorted(zip(scores, y_true, strict=True), key=lambda x: x[0])
     n = len(paired)
     ranks = [0.0] * n
     i = 0
@@ -81,7 +83,7 @@ def roc_auc(y_true: Sequence[int], scores: Sequence[float]) -> Optional[float]:
     n_neg = n - n_pos
     if n_pos == 0 or n_neg == 0:
         return None
-    sum_pos_ranks = sum(r for r, (_, t) in zip(ranks, paired) if t == 1)
+    sum_pos_ranks = sum(r for r, (_, t) in zip(ranks, paired, strict=True) if t == 1)
     return (sum_pos_ranks - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg)
 
 
@@ -92,6 +94,8 @@ def recall_at_fpr(
     threshold. This is the operating-point view a deployment cares about: how much
     fraud you catch at a tolerable false-alarm budget. ``None`` if a class is absent.
     """
+    if len(y_true) != len(scores):
+        raise ValueError("y_true and scores length mismatch")
     n_pos = sum(1 for t in y_true if t == 1)
     n_neg = len(y_true) - n_pos
     if n_pos == 0 or n_neg == 0:
@@ -101,7 +105,7 @@ def recall_at_fpr(
     best_recall = 0.0
     # Process tied scores as one threshold. Counting records within a tie one by
     # one would report an operating point that no threshold can actually attain.
-    ranked = sorted(zip(scores, y_true), key=lambda x: -x[0])
+    ranked = sorted(zip(scores, y_true, strict=True), key=lambda x: -x[0])
     i = 0
     while i < len(ranked):
         j = i
@@ -130,6 +134,8 @@ def evaluate(
     """Compute the full metric bundle from labels, predictions and optional scores."""
     if len(y_true) != len(y_pred):
         raise ValueError("y_true and y_pred length mismatch")
+    if scores is not None and len(y_true) != len(scores):
+        raise ValueError("y_true and scores length mismatch")
     tp, fp, tn, fn = confusion(y_true, y_pred)
     n = len(y_true)
     precision = _safe_div(tp, tp + fp)

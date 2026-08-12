@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from lurebench.metrics import evaluate, recall_at_fpr
 
 
@@ -29,6 +31,11 @@ def test_recall_at_fpr_none_when_class_absent():
 def test_recall_at_fpr_does_not_split_tied_scores():
     # The positive and negative at 0.9 cannot be separated by any threshold.
     assert recall_at_fpr([1, 0, 1], [0.9, 0.9, 0.8], 0.0) == 0.0
+
+
+def test_recall_at_fpr_rejects_mismatched_scores():
+    with pytest.raises(ValueError, match="length mismatch"):
+        recall_at_fpr([1, 0], [0.9], 0.0)
 
 
 def test_balanced_accuracy_averages_recall_and_specificity():

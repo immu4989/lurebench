@@ -86,7 +86,7 @@ labels = ["Reported\n(abstentions hidden)", "Actual\n(all 60 scored)"]
 vals = [1.000, 0.614]
 bars = ax.bar(labels, vals, width=0.42, color=[RED, BLUE],
               zorder=3, edgecolor=SURFACE, linewidth=2)
-for b, v, note in zip(bars, vals, ["scored 29/60", "scored 60/60"]):
+for b, v, note in zip(bars, vals, ["scored 29/60", "scored 60/60"], strict=True):
     ax.text(b.get_x() + b.get_width()/2, v + 0.03, f"{v:.3f}", ha="center",
             fontsize=21, fontweight="bold", color=INK)
     ax.text(b.get_x() + b.get_width()/2, v - 0.09, note, ha="center",
@@ -207,13 +207,13 @@ js = ["qwen-2.5-7b", "gemini-2.5-flash-lite", "deepseek-v4-flash"]
 tpr50 = [0.576, 0.726, 0.750]
 tprbest = [0.832, 0.870, 0.856]
 y = range(len(js))
-for i, (a, b) in enumerate(zip(tpr50, tprbest)):
+for i, (a, b) in enumerate(zip(tpr50, tprbest, strict=True)):
     ax.plot([a, b], [i, i], color=LINE, linewidth=3, zorder=2,
             solid_capstyle="round")
 ax.scatter(tpr50, list(y), s=150, color=RED, zorder=4, label="recall at 0.50 cutoff")
 ax.scatter(tprbest, list(y), s=150, color=BLUE, zorder=4,
            label="recall at tuned cutoff")
-for i, (a, b) in enumerate(zip(tpr50, tprbest)):
+for i, (a, b) in enumerate(zip(tpr50, tprbest, strict=True)):
     ax.text(a - 0.018, i, f"{a:.2f}", ha="right", va="center", fontsize=12, color=INK)
     ax.text(b + 0.018, i, f"{b:.2f}", ha="left", va="center", fontsize=12, color=INK)
 ax.set_yticks(list(y))

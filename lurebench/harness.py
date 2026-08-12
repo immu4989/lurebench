@@ -131,5 +131,5 @@ def run(
         threshold=threshold,
         metrics=metrics,
         n_skipped=skipped,
-        observations=list(zip(y_true, scores)),
+        observations=list(zip(y_true, scores, strict=True)),
     )

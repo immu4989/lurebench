@@ -7,6 +7,14 @@
   lockfile-backed environments.
 - Restricted the CI token to read-only repository contents and pinned every
   third-party action to an immutable commit SHA.
+- Raised the minimum Python version from 3.9 to 3.10. Python 3.9 is end-of-life,
+  and its last-compatible Torch, Transformers, pytest, requests, setuptools,
+  urllib3, and filelock branches contain known vulnerabilities. The maintained
+  Python resolution uses fixed releases.
+
+### Fixed
+- Metric helpers now reject unequal label, prediction, and score lengths instead
+  of silently truncating paired inputs through `zip`.
 
 ## 0.9.0 — 2026-08-12
 
