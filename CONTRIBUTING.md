@@ -25,10 +25,14 @@ All contributed fraud samples must be **defanged** per [DATA.md](DATA.md): URLs 
 ## Development
 
 ```bash
-pip install -e ".[dev]"
-pytest
-ruff check .
+uv sync --extra dev --extra train
+uv run pytest
+uv run ruff check .
 ```
+
+CI uses `uv 0.12.3` and `uv sync --frozen`. If a dependency changes, run
+`uv lock`, review the package and hash changes in `uv.lock`, and commit the
+updated lockfile with the manifest change.
 
 A new detector should come with a test that at least constructs it (or asserts a
 clean error when its extra is absent) and runs it over the sample shard.
