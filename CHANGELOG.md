@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-08-12
+
 ### Added
 - CodeQL and OpenSSF Scorecard workflows, private vulnerability reporting, and
   structured benchmark-submission and Q&A forms.
@@ -12,17 +14,6 @@
   digest over validation IDs, labels, and detector scores.
 - A statistical-method guide documenting the guarantee, assumptions, sample-size
   requirements, distribution-shift boundary, and deployment monitoring duties.
-
-### Changed
-- Replaced the console-style repository banner with a distinct animated research
-  atlas that moves through corpus construction, adversarial stress, calibration,
-  and reporting.
-- Pointed the live-lab call to LureScope's install-free GitHub Pages edition.
-- Updated the CI checkout and Python setup actions to their Node 24 releases.
-
-## 0.9.0
-
-### Added
 - A new research-console visual identity, accessible SVG repository hero, and a
   clearer README path from headline finding to benchmark and live lab.
 - A deterministic validation split carved exclusively from the former training
@@ -35,6 +26,14 @@
   exporting a versioned policy with validation provenance.
 - Brier score, expected calibration error, reliability bins and deterministic
   paired-bootstrap confidence intervals for MCC, recall, FPR and AUC.
+
+### Changed
+- Replaced the console-style repository banner with a distinct animated research
+  atlas that moves through corpus construction, adversarial stress, calibration,
+  and reporting.
+- Pointed the live-lab call to LureScope's install-free GitHub Pages edition.
+- Updated the CI checkout and Python setup actions to their Node 24 releases.
+- Added source-distribution and wheel builds to the Python 3.12 release gate.
 
 ### Fixed
 - Recall-at-FPR no longer processes equal scores one record at a time. Tied scores
