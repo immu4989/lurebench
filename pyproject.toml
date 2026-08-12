@@ -7,7 +7,7 @@ name = "lurebench"
 version = "0.9.0"
 description = "A maintained benchmark and evaluation harness for detecting AI-generated fraud lures (phishing, BEC, romance / pig-butchering)."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "Imran Ahamed" }]
 keywords = [
@@ -28,10 +28,10 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 dependencies = []   # the core harness and heuristic baseline run dependency-free
 
@@ -58,7 +58,7 @@ packages = ["lurebench"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 
 [tool.ruff.lint]
 # Pinned explicitly rather than inheriting ruff's defaults, which change between
@@ -66,8 +66,8 @@ target-version = "py39"
 # rules, while the same commit passed locally on 0.15.
 #
 # E4/E7/E9 + F is ruff's historical default (what this code was actually written
-# against), plus I for import order and B for bugbear. UP is deliberately omitted:
-# the package targets 3.9, so typing.List/Optional stay as they are.
+# against), plus I for import order and B for bugbear. UP remains deliberately
+# omitted so modernization does not obscure functional benchmark changes.
 #
 # E501 (line length) is not enabled yet. It is a real gap - line-length is set to
 # 100 and 59 lines exceed it - but turning it on touches 20+ otherwise-unrelated

@@ -80,7 +80,9 @@ def lerp(a, b, x):
 def hexlerp(c1, c2, x):
     a = [int(c1[i:i + 2], 16) for i in (1, 3, 5)]
     b = [int(c2[i:i + 2], 16) for i in (1, 3, 5)]
-    return "#" + "".join(f"{int(lerp(p, q, x)):02x}" for p, q in zip(a, b))
+    return "#" + "".join(
+        f"{int(lerp(p, q, x)):02x}" for p, q in zip(a, b, strict=True)
+    )
 
 
 fig = plt.figure(figsize=(9, 9), dpi=120)

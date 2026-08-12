@@ -93,7 +93,7 @@ def migrate(path: str, write: bool) -> dict:
 
     # Assertions, not hopes: the migration must be conservative in every respect.
     assert len(migrated) == len(records), "row count changed"
-    for before, after in zip(records, migrated):
+    for before, after in zip(records, migrated, strict=True):
         assert before["text"] == after["text"], "text changed"
         assert before.get("label") == after.get("label"), "label changed"
         assert before.get("source") == after.get("source"), "source changed"

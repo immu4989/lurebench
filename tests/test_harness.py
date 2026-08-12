@@ -47,6 +47,10 @@ def test_auc_single_class_is_none():
 def test_evaluate_shapes_must_match():
     with pytest.raises(ValueError):
         evaluate([1, 0], [1])
+    with pytest.raises(ValueError):
+        evaluate([1, 0], [1, 0], scores=[0.9])
+    with pytest.raises(ValueError):
+        roc_auc([1, 0], [0.9])
 
 
 def test_heuristic_beats_floor_on_fraud_task():
