@@ -17,6 +17,16 @@ with a separate, domain-separated hash only from the former training pool.
 Changing the validation objective after inspecting test results is test-set
 overfitting even if the model weights do not change.
 
+> **Current published-snapshot limitation.** The tracked v1 `data/full/core`
+> snapshot predates materialization of this three-way build and still contains
+> only `train.jsonl` and `test.jsonl`. The bundled TF-IDF model was trained on
+> that full tracked training file. Do not carve a validation subset from it after
+> the fact and claim independence. For a risk-controlled policy, either supply a
+> newly collected external validation set or rebuild all three splits with
+> `assemble-core` and retrain the detector on the resulting `train.jsonl`. A
+> future versioned corpus release should publish the materialized validation
+> shard and matching retrained artifacts together.
+
 ## Leakage audit
 
 Exact normalized-text deduplication does not catch messages that differ only in
@@ -71,10 +81,30 @@ lurebench calibrate \
   -o policies/tfidf-1pct-fpr.json
 ```
 
-The policy records its objective, detector, threshold, validation row count and a
-SHA-256 digest of the ordered validation IDs. LureBench also reports Brier score
-and expected calibration error. A policy is not called calibrated merely because
-someone placed a threshold in a configuration file.
+For a finite-sample statement about the population FPR—not only an empirical
+validation constraint—use the risk-controlled objective:
+
+```bash
+lurebench calibrate \
+  -d validation.jsonl -m tfidf-logreg \
+  --model-path models/tfidf-logreg-fraud.joblib \
+  --objective risk_controlled_fpr --target-fpr 0.01 \
+  --confidence 0.95 --threshold-grid-size 1001 \
+  -o policies/tfidf-1pct-fpr-95.json
+```
+
+This command uses exact binomial tests in a predeclared fixed sequence and fails
+closed when the benign sample is too small. At 1% FPR and 95% confidence, even
+zero false positives require at least 299 validation negatives. Read the
+[method, assumptions, sample-size table, and non-guarantees](RISK_CONTROL.md)
+before treating the artifact as a deployment gate.
+
+Every policy records its objective, detector, threshold, validation row count and
+a SHA-256 digest of the ordered validation IDs. Risk-controlled schema-v2
+policies also commit to ordered labels and scores and carry the exact counts,
+p-value, and one-sided FPR bound. LureBench also reports Brier score and expected
+calibration error. A policy is not called calibrated merely because someone
+placed a threshold in a configuration file.
 
 ## Confidence intervals
 

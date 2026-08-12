@@ -164,6 +164,8 @@ def _cmd_calibrate(args: argparse.Namespace) -> int:
             scores=scores,
             objective=args.objective,
             target_fpr=args.target_fpr,
+            confidence=args.confidence,
+            threshold_grid_size=args.threshold_grid_size,
         )
         diagnostics = calibration_metrics(truths, scores, n_bins=args.bins)
     except (ImportError, KeyError, RuntimeError, ValueError) as exc:
@@ -179,6 +181,13 @@ def _cmd_calibrate(args: argparse.Namespace) -> int:
         f"  Brier={diagnostics.brier:.4f} "
         f"ECE={diagnostics.expected_calibration_error:.4f}"
     )
+    if policy.risk_control is not None:
+        control = policy.risk_control
+        print(
+            f"  risk-control={control.confidence:.1%} one-sided FPR bound "
+            f"{control.upper_confidence_bound:.4f} <= target {policy.target_fpr:.4f} "
+            f"({control.false_positives}/{control.validation_negatives} validation negatives)"
+        )
     return 0
 
 
@@ -596,8 +605,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_cal.add_argument("--model-path", default=None,
                        help="serialized model path for detectors such as tfidf-logreg")
     p_cal.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
-    p_cal.add_argument("--objective", choices=["max_mcc", "target_fpr"], default="max_mcc")
+    p_cal.add_argument(
+        "--objective",
+        choices=["max_mcc", "target_fpr", "risk_controlled_fpr"],
+        default="max_mcc",
+    )
     p_cal.add_argument("--target-fpr", type=float, default=None)
+    p_cal.add_argument(
+        "--confidence", type=float, default=0.95,
+        help="confidence for risk_controlled_fpr (default: 0.95)",
+    )
+    p_cal.add_argument(
+        "--threshold-grid-size", type=int, default=1001,
+        help="predeclared [0,1] threshold grid for risk control (default: 1001)",
+    )
     p_cal.add_argument("--bins", type=int, default=10)
     p_cal.add_argument("--out", "-o", required=True, help="versioned policy JSON")
     p_cal.set_defaults(func=_cmd_calibrate)

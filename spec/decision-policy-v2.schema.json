@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/immu4989/lurebench/main/spec/decision-policy-v2.schema.json",
+  "title": "LureBench risk-controlled decision policy v2",
+  "description": "A fraud-detector threshold selected with finite-sample false-positive risk control.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "detector",
+    "task",
+    "threshold",
+    "objective",
+    "target_fpr",
+    "validation_records",
+    "validation_sha256",
+    "evaluation_sha256",
+    "validation_true_positives",
+    "validation_recall",
+    "created_at",
+    "risk_control"
+  ],
+  "properties": {
+    "schema_version": {"const": 2},
+    "policy_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "detector": {"type": "string", "minLength": 1, "maxLength": 256},
+    "task": {"enum": ["fraud", "provenance"]},
+    "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+    "objective": {"const": "risk_controlled_fpr"},
+    "target_fpr": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+    "validation_records": {"type": "integer", "minimum": 1},
+    "validation_sha256": {"$ref": "#/$defs/sha256"},
+    "evaluation_sha256": {"$ref": "#/$defs/sha256"},
+    "validation_true_positives": {"type": "integer", "minimum": 0},
+    "validation_recall": {"type": "number", "minimum": 0, "maximum": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "risk_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "risk",
+        "confidence",
+        "validation_negatives",
+        "false_positives",
+        "empirical_fpr",
+        "upper_confidence_bound",
+        "hypothesis_p_value",
+        "threshold_grid_size"
+      ],
+      "properties": {
+        "method": {"const": "learn_then_test_fixed_sequence_exact_binomial_v1"},
+        "risk": {"const": "false_positive_rate"},
+        "confidence": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1},
+        "validation_negatives": {"type": "integer", "minimum": 1},
+        "false_positives": {"type": "integer", "minimum": 0},
+        "empirical_fpr": {"type": "number", "minimum": 0, "maximum": 1},
+        "upper_confidence_bound": {"type": "number", "minimum": 0, "maximum": 1},
+        "hypothesis_p_value": {"type": "number", "minimum": 0, "maximum": 1},
+        "threshold_grid_size": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100001
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
