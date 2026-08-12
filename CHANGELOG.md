@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Security
+- Added a universal `uv.lock` with artifact hashes and moved CI to frozen,
+  lockfile-backed environments.
+- Restricted the CI token to read-only repository contents and pinned every
+  third-party action to an immutable commit SHA.
+
 ## 0.9.0 — 2026-08-12
 
 ### Added
