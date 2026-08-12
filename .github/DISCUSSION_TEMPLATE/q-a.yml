@@ -1,0 +1,34 @@
+title: "[Question] "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Installation or CLI
+        - Dataset or licensing
+        - Evaluation methodology
+        - Adding a detector
+        - Reproducing a published result
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.9.0 or a commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Include the outcome you need and enough context to reproduce the situation.
+    validations:
+      required: true
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      description: Redact provider keys, personal data, and live malicious infrastructure.

@@ -1,0 +1,63 @@
+name: Benchmark submission
+description: Propose a detector or published result for reproducible evaluation.
+title: "[Benchmark]: "
+labels: [benchmark-submission]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for contributing a result. Do not include live credentials, working
+        malicious links, private messages, or data you are not allowed to share.
+  - type: input
+    id: detector
+    attributes:
+      label: Detector and version
+      placeholder: example-detector 1.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: task
+    attributes:
+      label: Evaluation task
+      options:
+        - Fraud detection
+        - AI-authorship provenance
+        - Adversarial robustness
+        - Multilingual generalization
+        - Calibration or risk control
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction command or code
+      description: Include the exact dataset version, split, detector configuration, and command.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: results
+    attributes:
+      label: Results and uncertainty
+      description: Report denominators and confidence intervals or replicate variation where available.
+    validations:
+      required: true
+  - type: input
+    id: implementation
+    attributes:
+      label: Public implementation or paper
+      placeholder: https://...
+    validations:
+      required: true
+  - type: checkboxes
+    id: integrity
+    attributes:
+      label: Submission checks
+      options:
+        - label: I evaluated on the documented frozen split and did not tune on the test labels.
+          required: true
+        - label: I have disclosed provider/model versions, abstentions, failures, and paid API use.
+          required: true
+        - label: The submission contains no secrets, personal data, or actionable fraud infrastructure.
+          required: true

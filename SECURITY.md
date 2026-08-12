@@ -8,8 +8,13 @@ project.
 
 ## Reporting a vulnerability
 
-Report privately to **immu4989@gmail.com**. Please do not open a public issue for
-anything that could be exploited before a fix ships.
+Use GitHub's [private vulnerability reporting form][report] whenever possible.
+Reports submitted there are visible only to the reporter and repository
+maintainers. If GitHub reporting is unavailable, email **immu4989@gmail.com**.
+Please do not open a public issue for anything that could be exploited before a
+fix ships.
+
+[report]: https://github.com/immu4989/lurebench/security/advisories/new
 
 Include what you have: affected version or commit, reproduction steps, and the
 impact you see. A rough report sent promptly is more useful than a polished one

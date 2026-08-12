@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/immu4989/lurebench/blob/main/SECURITY.md
-    about: Report privately by email. Please do not open a public issue.
+    url: https://github.com/immu4989/lurebench/security/advisories/new
+    about: Report privately through GitHub. Please do not open a public issue.
   - name: Question or idea
     url: https://github.com/immu4989/lurebench/discussions
     about: Open a discussion for usage questions and proposals.

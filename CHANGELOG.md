@@ -3,6 +3,8 @@
 ## Unreleased
 
 ### Added
+- CodeQL and OpenSSF Scorecard workflows, private vulnerability reporting, and
+  structured benchmark-submission and Q&A forms.
 - `risk_controlled_fpr` threshold selection with exact binomial p-values,
   fixed-sequence Learn-then-Test error control, one-sided Clopper-Pearson bounds,
   explicit minimum-sample failure, and a dependency-free implementation.
