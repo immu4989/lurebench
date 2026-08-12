@@ -8,6 +8,14 @@ updates:
     groups:
       python-dependencies:
         patterns: ["*"]
+    # The bundled classifier is serialized with scikit-learn 1.6.1. Minor/major
+    # deserializer upgrades require an explicit model-compatibility validation.
+    # Dependabot security updates are unaffected by version-update ignores.
+    ignore:
+      - dependency-name: scikit-learn
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-major
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
