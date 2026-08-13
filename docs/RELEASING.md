@@ -6,16 +6,13 @@ reachable from protected `main`. The release workflow verifies `pyproject.toml`,
 building. It runs `twine check`, creates GitHub build-provenance attestations, and
 attaches the wheel and source distribution to the GitHub release.
 
-## One-time PyPI Trusted Publisher setup
+## PyPI Trusted Publisher
 
-The `lurebench` name is currently unclaimed on PyPI. Before enabling publication:
-
-1. Sign in to [PyPI's pending publisher page](https://pypi.org/manage/account/publishing/).
-2. Enter project name `lurebench`, owner `immu4989`, repository `lurebench`,
-   workflow `release.yml`, and environment `pypi`.
-3. In the GitHub repository, create a `pypi` environment and require manual
-   approval for deployments.
-4. Set the repository Actions variable `PYPI_PUBLISH` to `true`.
+The [`lurebench` PyPI project](https://pypi.org/project/lurebench/) publishes
+through OpenID Connect from GitHub Actions. PyPI trusts only owner `immu4989`,
+repository `lurebench`, workflow `release.yml`, and environment `pypi`. The
+GitHub environment requires manual approval and the repository Actions variable
+`PYPI_PUBLISH` enables the publish job.
 
 This follows the Python Packaging Authority's
 [Trusted Publishing guide](https://packaging.python.org/en/latest/guides/publishing-package-distribution-releases-using-github-actions-ci-cd-workflows/).
