@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1 — 2026-08-12
+
 ### Security
 - Added a universal `uv.lock` with artifact hashes and moved CI to frozen,
   lockfile-backed environments.
@@ -15,6 +17,12 @@
 ### Fixed
 - Metric helpers now reject unequal label, prediction, and score lengths instead
   of silently truncating paired inputs through `zip`.
+
+### Changed
+- Corrected the public Python support badge to 3.10+ and added a fail-closed
+  release workflow that verifies version metadata and protected-tag ancestry,
+  attests wheel and source distributions, attaches them to GitHub releases, and
+  supports opt-in secretless PyPI Trusted Publishing.
 
 ## 0.9.0 — 2026-08-12
 
