@@ -7,6 +7,7 @@
 One schema. Three evaluation regimes. Honest answers about what survives deployment.
 
 [![CI](https://github.com/immu4989/lurebench/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/lurebench?color=2a78d6)](https://pypi.org/project/lurebench/)
 ![Version](https://img.shields.io/badge/version-0.9.1-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
@@ -117,8 +118,16 @@ Typologies: phishing, BEC, romance, pig-butchering. The AI lures are hard-mode: 
 ## Quickstart
 
 ```bash
+python -m pip install lurebench
+lurebench --help
+```
+
+Clone the repository when you want the bundled sample data, research artifacts,
+and reproducibility commands:
+
+```bash
 git clone https://github.com/immu4989/lurebench && cd lurebench
-pip install -e .
+python -m pip install -e .
 
 # score the dependency-free heuristic on the sample shard (ships in the repo)
 lurebench eval --dataset data/samples/lures.jsonl --detector heuristic-v0
@@ -137,7 +146,7 @@ print(run(HeuristicDetector(), test).metrics.mcc)
 Reproduce the headline finding — the leave-one-generator-out provenance collapse — with one command. Point it at a naive corpus and AUC stays near 1.00 (the confound); point it at the distribution-matched set and it falls to the 0.50 chance line:
 
 ```bash
-pip install -e ".[train]"
+python -m pip install -e ".[train]"
 lurebench cross-generator -d data/full/paired/human.jsonl -d data/full/paired/deepseek-v4-pro.jsonl \
   -d data/full/paired/glm-4.6.jsonl -d data/full/paired/mistral-large-latest.jsonl
 ```
