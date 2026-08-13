@@ -7,9 +7,9 @@
 One schema. Three evaluation regimes. Honest answers about what survives deployment.
 
 [![CI](https://github.com/immu4989/lurebench/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.9.0-57f2c1)
+![Version](https://img.shields.io/badge/version-0.9.1-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
-![Python](https://img.shields.io/badge/python-3.9%2B-1baf7a)
+![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
