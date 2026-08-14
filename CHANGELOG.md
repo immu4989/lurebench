@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- Added a weekly, source-checkout-free installation and dependency-free scoring
+  smoke test for the public PyPI wheel on Python 3.10, 3.12, and 3.13.
+
 ## 0.9.1 — 2026-08-12
 
 ### Security

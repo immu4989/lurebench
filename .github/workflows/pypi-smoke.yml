@@ -1,0 +1,32 @@
+name: Public PyPI install smoke test
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install the public wheel without a source checkout
+        run: >-
+          python -m pip install --disable-pip-version-check --no-cache-dir
+          --only-binary=:all: lurebench
+      - name: Verify imports, dependency-free scoring, and CLI
+        run: |
+          python -c 'import importlib.metadata as m, lurebench; from lurebench import Lure; from lurebench.detectors import HeuristicDetector; record=Lure(id="smoke", text="Verify your account immediately at <<link>>", label=1, source="human", typology="phishing"); score=HeuristicDetector().score(record); assert m.version("lurebench") == lurebench.__version__; assert score is not None and 0.0 <= score <= 1.0; print({"lurebench": lurebench.__version__, "score": score})'
+          lurebench detectors

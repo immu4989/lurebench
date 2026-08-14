@@ -7,6 +7,7 @@
 One schema. Three evaluation regimes. Honest answers about what survives deployment.
 
 [![CI](https://github.com/immu4989/lurebench/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/ci.yml)
+[![PyPI install](https://github.com/immu4989/lurebench/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurebench?color=2a78d6)](https://pypi.org/project/lurebench/)
 ![Version](https://img.shields.io/badge/version-0.9.1-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
