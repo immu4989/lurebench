@@ -46,6 +46,9 @@
   exclusive mode-0600 permissions, refuses placement under the public output,
   detects contradictory normalized-identical text, and requires its own leakage
   audit to pass before writing.
+- Core-v2 creates every local split and manifest with exclusive mode-0600
+  permissions; publishing the intended public subset is therefore an explicit
+  operator action rather than an ambient filesystem disclosure.
 
 ## 0.9.1 — 2026-08-12
 

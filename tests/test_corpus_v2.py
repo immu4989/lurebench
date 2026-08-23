@@ -161,7 +161,7 @@ def test_write_separates_private_heldout_and_validates_manifest(tmp_path):
     paths = write_core_v2(build, str(public), str(private))
 
     assert set(paths) == {"train", "validation", "test", "heldout", "manifest"}
-    assert stat.S_IMODE(private.stat().st_mode) == 0o600
+    assert all(stat.S_IMODE(Path(path).stat().st_mode) == 0o600 for path in paths.values())
     assert not (public / "heldout.jsonl").exists()
     manifest = json.loads((public / "manifest.json").read_text(encoding="utf-8"))
     schema = json.loads(Path("spec/core-v2-build-v1.schema.json").read_text(encoding="utf-8"))

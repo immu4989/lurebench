@@ -374,12 +374,13 @@ def _profile(records: Sequence[Lure]) -> dict:
     }
 
 
-def _write_exclusive(path: Path, content: bytes, mode: int) -> None:
+def _write_private_exclusive(path: Path, content: bytes) -> None:
+    """Create one artifact mode 0600 without following or replacing a path."""
     path.parent.mkdir(parents=True, exist_ok=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
-    descriptor = os.open(path, flags, mode)
+    descriptor = os.open(path, flags, 0o600)
     try:
         with os.fdopen(descriptor, "wb") as stream:
             descriptor = -1
@@ -392,7 +393,7 @@ def _write_exclusive(path: Path, content: bytes, mode: int) -> None:
 
 
 def write_core_v2(build: CoreV2Build, out_dir: str, heldout_path: str) -> Dict[str, str]:
-    """Write public splits separately from the mode-0600 held-out evaluator shard."""
+    """Write mode-0600 release artifacts with held-out data physically separate."""
     out = Path(out_dir)
     heldout = Path(heldout_path)
     resolved_out = out.resolve(strict=False)
@@ -414,9 +415,9 @@ def write_core_v2(build: CoreV2Build, out_dir: str, heldout_path: str) -> Dict[s
     paths: Dict[str, str] = {}
     for split in ("train", "validation", "test"):
         path = out / f"{split}.jsonl"
-        _write_exclusive(path, payloads[split], 0o644)
+        _write_private_exclusive(path, payloads[split])
         paths[split] = str(path)
-    _write_exclusive(heldout, payloads["heldout"], 0o600)
+    _write_private_exclusive(heldout, payloads["heldout"])
     paths["heldout"] = str(heldout)
 
     manifest = {
@@ -464,6 +465,6 @@ def write_core_v2(build: CoreV2Build, out_dir: str, heldout_path: str) -> Dict[s
     }
     manifest_bytes = (json.dumps(manifest, sort_keys=True, indent=2) + "\n").encode("utf-8")
     manifest_path = out / "manifest.json"
-    _write_exclusive(manifest_path, manifest_bytes, 0o644)
+    _write_private_exclusive(manifest_path, manifest_bytes)
     paths["manifest"] = str(manifest_path)
     return paths
