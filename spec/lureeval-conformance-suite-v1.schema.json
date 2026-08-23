@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureeval-conformance-suite/v1",
+  "title": "LureEval semantic conformance suite v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "suite_id",
+    "suite_version",
+    "protocol",
+    "description",
+    "cases"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurebench/spec/lureeval-conformance-suite/v1"
+    },
+    "schema_version": { "const": 1 },
+    "suite_id": { "const": "lureeval-v1-semantic" },
+    "suite_version": { "const": "1.0.0" },
+    "protocol": { "const": "lureeval-v1" },
+    "description": { "type": "string", "minLength": 20, "maxLength": 500 },
+    "cases": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "artifact",
+          "sha256",
+          "expected",
+          "kind",
+          "category",
+          "description"
+        ],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$",
+            "maxLength": 96
+          },
+          "artifact": {
+            "type": "string",
+            "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?/)(?!.*//)[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\\.json$",
+            "maxLength": 240
+          },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "expected": { "enum": ["accept", "reject"] },
+          "kind": { "enum": ["receipt", "aggregate"] },
+          "category": {
+            "enum": [
+              "baseline",
+              "privacy-boundary",
+              "schema-boundary",
+              "semantic-integrity",
+              "serialization",
+              "statistical-consistency"
+            ]
+          },
+          "description": { "type": "string", "minLength": 12, "maxLength": 300 }
+        }
+      }
+    }
+  }
+}

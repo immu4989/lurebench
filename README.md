@@ -13,6 +13,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
+![LureEval conformance](https://img.shields.io/badge/LureEval_conformance-12%2F12-1baf7a)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![Security policy](https://img.shields.io/badge/security-policy-5c6470)](SECURITY.md)
@@ -44,6 +45,12 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > [LureEval receipts](docs/LUREEVAL.md) carry signed, privacy-minimized aggregate
 > operational evidence across organizations. Neither requires messages or
 > row-level scores to leave their owner.
+
+> **New — an executable interoperability contract.** The
+> [LureEval conformance kit](docs/CONFORMANCE.md) gives any language or vendor 12
+> digest-bound accept/reject vectors for strict JSON, privacy boundaries, schema
+> enforcement, and metric recomputation. Run `lurebench conformance` offline;
+> passing tests protocol behavior, not detector quality or compliance.
 
 ### Who it's for
 
@@ -129,6 +136,7 @@ Typologies: phishing, BEC, romance, pig-butchering. The AI lures are hard-mode: 
 ```bash
 python -m pip install lurebench
 lurebench --help
+lurebench conformance
 ```
 
 Clone the repository when you want the bundled sample data, research artifacts,

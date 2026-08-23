@@ -55,6 +55,19 @@ confidence levels, slice suppression thresholds, controls, or decision boundarie
 differ. Pooled rates and confidence bounds are recomputed from counts; source
 percentages are never averaged.
 
+## Test an independent implementation
+
+The [LureEval conformance kit](CONFORMANCE.md) publishes digest-bound positive and
+negative vectors so implementations in other languages can test strict JSON,
+privacy allowlists, schema boundaries, and arithmetic recomputation:
+
+```bash
+lurebench conformance --out lureeval-conformance-report.json
+```
+
+This semantic profile does not test DSSE key identity or detector performance.
+Those are separate trust and measurement questions.
+
 ## Trust model and non-guarantees
 
 A valid signature authenticates a statement to a key; it does not prove the
@@ -70,3 +83,5 @@ The normative artifacts are:
 - [`lureeval-receipt-v1.schema.json`](../spec/lureeval-receipt-v1.schema.json)
 - [`lureeval-aggregate-v1.schema.json`](../spec/lureeval-aggregate-v1.schema.json)
 - [`lureeval-dsse-v1.schema.json`](../spec/lureeval-dsse-v1.schema.json)
+- [`lureeval-conformance-suite-v1.schema.json`](../spec/lureeval-conformance-suite-v1.schema.json)
+- [`lureeval-conformance-report-v1.schema.json`](../spec/lureeval-conformance-report-v1.schema.json)

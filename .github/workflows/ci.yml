@@ -31,6 +31,11 @@ jobs:
         run: uv run --frozen ruff check lurebench tests scripts
       - name: Tests
         run: uv run --frozen pytest -q
+      - name: Run packaged LureEval semantic conformance
+        if: matrix.python-version == '3.12'
+        run: >-
+          uv run --frozen lurebench conformance
+          --out "${RUNNER_TEMP}/lureeval-conformance-report.json"
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: uv build

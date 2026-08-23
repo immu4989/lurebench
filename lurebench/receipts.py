@@ -78,6 +78,31 @@ class VerifiedReceipt:
     key_ids: Tuple[str, ...]
 
 
+def loads_strict_json(payload: bytes) -> Any:
+    """Decode UTF-8 JSON while rejecting duplicate keys and non-finite constants."""
+
+    def object_no_duplicates(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
+        result: Dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON object key: {key}")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"non-standard JSON constant: {value}")
+
+    try:
+        text = payload.decode("utf-8")
+        return json.loads(
+            text,
+            object_pairs_hook=object_no_duplicates,
+            parse_constant=reject_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("artifact is not strict UTF-8 JSON") from exc
+
+
 def canonical_json(value: Mapping[str, Any]) -> bytes:
     """Return the deterministic JSON encoding committed to by LureEval."""
 
@@ -732,10 +757,7 @@ def load_verified_artifact(
         raise FileNotFoundError(path)
     if path.stat().st_size > MAX_ARTIFACT_BYTES:
         raise ValueError("LureEval artifact exceeds the 8 MiB safety limit")
-    try:
-        artifact = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError("LureEval artifact is not valid JSON") from exc
+    artifact = loads_strict_json(path.read_bytes())
     if not isinstance(artifact, dict):
         raise ValueError("LureEval artifact must contain a JSON object")
 
@@ -743,10 +765,7 @@ def load_verified_artifact(
     key_ids: Tuple[str, ...] = ()
     if signed:
         payload, signatures = _decode_envelope(artifact)
-        try:
-            statement = json.loads(payload)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise ValueError("DSSE payload is not a UTF-8 JSON object") from exc
+        statement = loads_strict_json(payload)
         if canonical_json(statement) != payload:
             raise ValueError("DSSE payload is not canonical LureEval JSON")
         if public_key_pem is not None:

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+- Added the deterministic, language-neutral LureEval v1 semantic conformance kit:
+  12 digest-bound vectors, strict suite/report schemas, an offline CLI runner,
+  packaged wheel data, and independent-implementer guidance.
+- Added a preregistered operational adversarial-robustness measurement method and
+  a locally validated NIST AI Metrology 1.0 submission draft with an intentional
+  non-submittable contact placeholder.
+
+### Security
+- LureEval artifact and DSSE payload parsing now rejects duplicate JSON object
+  keys, non-finite constants, malformed UTF-8, symlinked external vectors, path
+  traversal, digest substitution, oversized files, and report overwrite.
+
 ## 0.10.0 — 2026-08-23
 
 ### Added

@@ -63,6 +63,9 @@ packages = ["lurebench"]
 "spec/lureeval-dsse-v1.schema.json" = "lurebench/spec/lureeval-dsse-v1.schema.json"
 "spec/container-evaluation-v1.schema.json" = "lurebench/spec/container-evaluation-v1.schema.json"
 "spec/core-v2-build-v1.schema.json" = "lurebench/spec/core-v2-build-v1.schema.json"
+"spec/lureeval-conformance-suite-v1.schema.json" = "lurebench/spec/lureeval-conformance-suite-v1.schema.json"
+"spec/lureeval-conformance-report-v1.schema.json" = "lurebench/spec/lureeval-conformance-report-v1.schema.json"
+"conformance/lureeval-v1" = "lurebench/conformance_data/lureeval-v1"
 
 [tool.ruff]
 line-length = 100

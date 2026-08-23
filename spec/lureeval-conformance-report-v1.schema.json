@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureeval-conformance-report/v1",
+  "title": "LureEval semantic conformance report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "suite",
+    "implementation",
+    "summary",
+    "cases",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://github.com/immu4989/lurebench/spec/lureeval-conformance-report/v1"
+    },
+    "schema_version": { "const": 1 },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_id", "suite_version", "manifest_sha256"],
+      "properties": {
+        "suite_id": { "const": "lureeval-v1-semantic" },
+        "suite_version": { "const": "1.0.0" },
+        "manifest_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$",
+          "maxLength": 96
+        },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "passed",
+        "failed",
+        "accept_cases",
+        "reject_cases",
+        "verdict"
+      ],
+      "properties": {
+        "total": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "passed": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "failed": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "accept_cases": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "reject_cases": { "type": "integer", "minimum": 0, "maximum": 64 },
+        "verdict": { "enum": ["pass", "fail"] }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "expected", "actual", "passed"],
+        "properties": {
+          "case_id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$",
+            "maxLength": 96
+          },
+          "expected": { "enum": ["accept", "reject"] },
+          "actual": { "enum": ["accept", "reject"] },
+          "passed": { "type": "boolean" }
+        }
+      }
+    },
+    "limitations": {
+      "const": [
+        "suite_tests_protocol_conformance_not_detector_quality",
+        "passing_does_not_establish_security_compliance_or_deployment_effectiveness",
+        "dsse_authentication_is_outside_the_semantic_v1_profile"
+      ]
+    }
+  }
+}
