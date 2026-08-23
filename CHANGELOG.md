@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-08-23
+
 ### Added
 - Added the deterministic, language-neutral LureEval v1 semantic conformance kit:
   12 digest-bound vectors, strict suite/report schemas, an offline CLI runner,

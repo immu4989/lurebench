@@ -9,7 +9,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 [![CI](https://github.com/immu4989/lurebench/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/ci.yml)
 [![PyPI install](https://github.com/immu4989/lurebench/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurebench?color=2a78d6)](https://pypi.org/project/lurebench/)
-![Version](https://img.shields.io/badge/version-0.10.0-57f2c1)
+![Version](https://img.shields.io/badge/version-0.11.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
@@ -49,9 +49,9 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > **New — an executable interoperability contract.** The
 > [LureEval conformance kit](docs/CONFORMANCE.md) gives any language or vendor 12
 > digest-bound accept/reject vectors for strict JSON, privacy boundaries, schema
-> enforcement, and metric recomputation. It is available on `main` and will ship
-> in the next tagged release. Run `lurebench conformance` offline; passing tests
-> protocol behavior, not detector quality or compliance.
+> enforcement, and metric recomputation. Install `lurebench==0.11.0` and run
+> `lurebench conformance` offline; passing tests protocol behavior, not detector
+> quality or compliance.
 
 ### Who it's for
 
