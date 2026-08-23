@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/container-evaluation/v1",
+  "title": "LureBench isolated container evaluation v1",
+  "type": "object",
+  "required": [
+    "schema", "schema_version", "generated_at", "protocol", "runtime",
+    "image_reference", "image_id", "mutable_reference_allowed", "isolation",
+    "dataset", "evaluation", "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/container-evaluation/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "protocol": {"const": "lurebench-detector-v1"},
+    "runtime": {"enum": ["docker", "podman"]},
+    "image_reference": {"type": "string", "minLength": 1, "maxLength": 500},
+    "image_id": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "mutable_reference_allowed": {"type": "boolean"},
+    "isolation": {
+      "type": "object",
+      "required": [
+        "network", "read_only_root", "capabilities_dropped", "no_new_privileges",
+        "host_mounts", "memory", "cpus"
+      ],
+      "properties": {
+        "network": {"const": "none"},
+        "read_only_root": {"const": true},
+        "capabilities_dropped": {"const": "ALL"},
+        "no_new_privileges": {"const": true},
+        "host_mounts": {"const": false},
+        "memory": {"type": "string", "pattern": "^[1-9][0-9]{0,5}[kmg]$"},
+        "cpus": {"type": "number", "minimum": 0.1, "maximum": 32}
+      },
+      "additionalProperties": false
+    },
+    "dataset": {
+      "type": "object",
+      "required": [
+        "sha256", "record_count", "ground_truth_transmitted",
+        "original_record_ids_transmitted"
+      ],
+      "properties": {
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "record_count": {"type": "integer", "minimum": 1},
+        "ground_truth_transmitted": {"const": false},
+        "original_record_ids_transmitted": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "evaluation": {
+      "type": "object",
+      "required": ["task", "threshold", "n_skipped", "metrics"],
+      "properties": {
+        "task": {"enum": ["fraud", "provenance"]},
+        "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+        "n_skipped": {"type": "integer", "minimum": 0},
+        "metrics": {
+          "type": "object",
+          "required": [
+            "n", "tp", "fp", "tn", "fn", "accuracy", "precision", "recall",
+            "fpr", "f1", "mcc", "balanced_accuracy", "auc",
+            "recall_at_1pct_fpr", "recall_at_01pct_fpr"
+          ],
+          "properties": {
+            "n": {"type": "integer", "minimum": 0},
+            "tp": {"type": "integer", "minimum": 0},
+            "fp": {"type": "integer", "minimum": 0},
+            "tn": {"type": "integer", "minimum": 0},
+            "fn": {"type": "integer", "minimum": 0},
+            "accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+            "precision": {"type": "number", "minimum": 0, "maximum": 1},
+            "recall": {"type": "number", "minimum": 0, "maximum": 1},
+            "fpr": {"type": "number", "minimum": 0, "maximum": 1},
+            "f1": {"type": "number", "minimum": 0, "maximum": 1},
+            "mcc": {"type": "number", "minimum": -1, "maximum": 1},
+            "balanced_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+            "auc": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "recall_at_1pct_fpr": {
+              "type": ["number", "null"], "minimum": 0, "maximum": 1
+            },
+            "recall_at_01pct_fpr": {
+              "type": ["number", "null"], "minimum": 0, "maximum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "const": [
+        "container_isolation_depends_on_the_local_runtime_and_kernel",
+        "image_id_records_content_but_does_not_identify_the_vendor",
+        "benchmark_results_do_not_establish_deployment_performance"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

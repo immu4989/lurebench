@@ -16,11 +16,11 @@ abstract: >-
   pig-butchering typologies. It ships a distribution-matched corpus, detector
   baselines from keyword rules to LLM-as-classifier judges, and an adversarial
   layer of character-level and LLM-driven evasion attacks, scored on both a
-  fraud task and a text-provenance task. Version 0.9 adds validation-only
-  calibration, split auditing, uncertainty estimates, and exact finite-sample
-  false-positive risk control for exported deployment policies.
-version: 0.9.1
-date-released: "2026-08-12"
+  fraud task and a text-provenance task. Version 0.10 adds privacy-minimized
+  operational evaluation receipts, isolated proprietary-detector containers, and
+  leakage-clustered corpus-v2 release infrastructure with a private held-out split.
+version: 0.10.0
+date-released: "2026-08-23"
 license: Apache-2.0
 keywords:
   - fraud detection

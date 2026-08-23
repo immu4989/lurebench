@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lurebench"
-version = "0.9.1"
+version = "0.10.0"
 description = "A maintained benchmark and evaluation harness for detecting AI-generated fraud lures (phishing, BEC, romance / pig-butchering)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -42,8 +42,9 @@ openai = ["openai>=1.0"]
 hub = ["huggingface_hub>=0.23"]
 generate = ["anthropic>=0.40"]
 train = ["scikit-learn>=1.6,<1.7", "joblib>=1.3"]
-dev = ["pytest>=7", "ruff>=0.15,<0.17", "stix2-validator>=3.2", "jsonschema>=4.23", "build>=1.2"]
-all = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26", "openai>=1.0", "huggingface_hub>=0.23", "anthropic>=0.40", "scikit-learn>=1.6,<1.7", "joblib>=1.3"]
+receipts = ["cryptography>=42"]
+dev = ["pytest>=7", "ruff>=0.15,<0.17", "stix2-validator>=3.2", "jsonschema>=4.23", "cryptography>=42", "build>=1.2"]
+all = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26", "openai>=1.0", "huggingface_hub>=0.23", "anthropic>=0.40", "scikit-learn>=1.6,<1.7", "joblib>=1.3", "cryptography>=42"]
 
 [project.scripts]
 lurebench = "lurebench.cli:main"
@@ -55,6 +56,13 @@ Issues = "https://github.com/immu4989/lurebench/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["lurebench"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"spec/lureeval-receipt-v1.schema.json" = "lurebench/spec/lureeval-receipt-v1.schema.json"
+"spec/lureeval-aggregate-v1.schema.json" = "lurebench/spec/lureeval-aggregate-v1.schema.json"
+"spec/lureeval-dsse-v1.schema.json" = "lurebench/spec/lureeval-dsse-v1.schema.json"
+"spec/container-evaluation-v1.schema.json" = "lurebench/spec/container-evaluation-v1.schema.json"
+"spec/core-v2-build-v1.schema.json" = "lurebench/spec/core-v2-build-v1.schema.json"
 
 [tool.ruff]
 line-length = 100

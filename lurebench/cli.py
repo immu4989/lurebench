@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
+import os
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import List
 
 from .attacks import available as attacks_available
@@ -12,6 +17,7 @@ from .attacks import get_attack
 from .audit import audit_splits
 from .calibration import build_policy, calibration_metrics
 from .corpus import build_core, write_core
+from .corpus_v2 import build_core_v2, write_core_v2
 from .crossgen import cross_generator_provenance
 from .crossgen import render_markdown as render_crossgen
 from .detectors import available, get_detector
@@ -477,6 +483,234 @@ def _cmd_stix(args: argparse.Namespace) -> int:
     return 0
 
 
+def _read_bounded_key(path: str) -> bytes:
+    resolved = Path(path)
+    if resolved.is_symlink():
+        raise ValueError(f"refusing symbolic-link key: {resolved}")
+    if not resolved.is_file():
+        raise FileNotFoundError(resolved)
+    if resolved.stat().st_size > 64 * 1024:
+        raise ValueError(f"key file exceeds 64 KiB: {resolved}")
+    return resolved.read_bytes()
+
+
+def _write_new_private(path: str, payload: str) -> None:
+    target = Path(path)
+    descriptor = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(payload)
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+
+
+def _cmd_verify_receipt(args: argparse.Namespace) -> int:
+    from .receipts import load_verified_artifact
+
+    try:
+        public_key = _read_bounded_key(args.public_key) if args.public_key else None
+        verified = load_verified_artifact(
+            Path(args.artifact),
+            public_key_pem=public_key,
+            require_signature=args.require_signature,
+        )
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    predicate = verified.statement["predicate"]
+    kind = predicate["spec"]
+    identifier = predicate.get("receipt_id", predicate.get("aggregate_id"))
+    authentication = (
+        "authenticated"
+        if verified.authenticated
+        else "signed-unverified"
+        if verified.signed
+        else "unsigned"
+    )
+    print(
+        f"verified {kind} {identifier} — sha256={verified.statement_sha256} "
+        f"authentication={authentication}"
+    )
+    return 0
+
+
+def _parse_source_keys(values: List[str]) -> dict[str, bytes]:
+    result: dict[str, bytes] = {}
+    for value in values:
+        if "=" not in value:
+            raise ValueError("--source-key expects RECEIPT=PUBLIC_KEY")
+        receipt, key = value.split("=", 1)
+        identity = str(Path(receipt).absolute())
+        if identity in result:
+            raise ValueError(f"duplicate source-key mapping for {receipt}")
+        result[identity] = _read_bounded_key(key)
+    return result
+
+
+def _cmd_aggregate_receipts(args: argparse.Namespace) -> int:
+    from . import __version__
+    from .receipts import (
+        aggregate_receipts,
+        dumps_artifact,
+        load_verified_artifact,
+        sign_statement,
+    )
+
+    try:
+        source_keys = _parse_source_keys(args.source_key or [])
+        receipts = []
+        for value in args.receipt:
+            identity = str(Path(value).absolute())
+            public_key = source_keys.get(identity)
+            receipts.append(
+                load_verified_artifact(
+                    Path(value),
+                    public_key_pem=public_key,
+                    require_signature=args.require_source_signatures,
+                )
+            )
+        aggregate = aggregate_receipts(
+            receipts,
+            producer_version=__version__,
+            issuer=args.issuer,
+            require_authenticated_sources=args.require_source_signatures,
+        )
+        artifact = (
+            sign_statement(aggregate, _read_bounded_key(args.signing_key))
+            if args.signing_key
+            else aggregate
+        )
+        _write_new_private(args.out, dumps_artifact(artifact))
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    predicate = aggregate["predicate"]
+    metrics = predicate["pooled"]["metrics"]
+    print(
+        f"wrote {args.out} — {predicate['source_receipt_count']} compatible receipts, "
+        f"recall={metrics['recall_estimate']} "
+        f"FPR={metrics['false_positive_rate_estimate']}"
+    )
+    return 0
+
+
+def _sha256_regular_file(path: Path) -> str:
+    if path.is_symlink():
+        raise ValueError(f"refusing symbolic-link dataset: {path}")
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _cmd_container_eval(args: argparse.Namespace) -> int:
+    from .detectors.container import PROTOCOL, ContainerDetector
+
+    detector = None
+    try:
+        dataset_path = Path(args.dataset)
+        dataset_digest = _sha256_regular_file(dataset_path)
+        dataset = load_jsonl(args.dataset)
+        if not dataset:
+            raise ValueError("dataset must contain at least one record")
+        if not math.isfinite(args.threshold) or not 0 <= args.threshold <= 1:
+            raise ValueError("threshold must be finite and between zero and one")
+        detector = ContainerDetector(
+            args.image,
+            task=args.task,
+            runtime=args.runtime,
+            timeout_seconds=args.timeout,
+            memory=args.memory,
+            cpus=args.cpus,
+            allow_mutable_image=args.allow_mutable_image,
+        )
+        report = run(detector, dataset, threshold=args.threshold, task=args.task)
+        payload = {
+            "schema": (
+                "https://github.com/immu4989/lurebench/spec/container-evaluation/v1"
+            ),
+            "schema_version": 1,
+            "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+            "protocol": PROTOCOL,
+            "runtime": args.runtime,
+            "image_reference": args.image,
+            "image_id": detector.image_id,
+            "mutable_reference_allowed": bool(args.allow_mutable_image),
+            "isolation": {
+                "network": "none",
+                "read_only_root": True,
+                "capabilities_dropped": "ALL",
+                "no_new_privileges": True,
+                "host_mounts": False,
+                "memory": detector.memory,
+                "cpus": detector.cpus,
+            },
+            "dataset": {
+                "sha256": dataset_digest,
+                "record_count": len(dataset),
+                "ground_truth_transmitted": False,
+                "original_record_ids_transmitted": False,
+            },
+            "evaluation": {
+                "task": args.task,
+                "threshold": args.threshold,
+                "n_skipped": report.n_skipped,
+                "metrics": report.metrics.as_dict(),
+            },
+            "limitations": [
+                "container_isolation_depends_on_the_local_runtime_and_kernel",
+                "image_id_records_content_but_does_not_identify_the_vendor",
+                "benchmark_results_do_not_establish_deployment_performance",
+            ],
+        }
+        rendered = json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+        if args.out:
+            _write_new_private(args.out, rendered)
+            print(
+                f"wrote {args.out} — image={detector.image_id} "
+                f"MCC={report.metrics.mcc:+.3f} TPR={report.metrics.recall:.3f} "
+                f"FPR={report.metrics.fpr:.3f}"
+            )
+        else:
+            print(rendered, end="")
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    finally:
+        if detector is not None:
+            detector.close()
+    return 0
+
+
+def _cmd_assemble_core_v2(args: argparse.Namespace) -> int:
+    weights = {
+        "train": args.train_weight,
+        "validation": args.validation_weight,
+        "test": args.test_weight,
+        "heldout": args.heldout_weight,
+    }
+    try:
+        build = build_core_v2(
+            args.source,
+            threshold=args.near_duplicate_threshold,
+            shingle_size=args.shingle_size,
+            weights=weights,
+        )
+        paths = write_core_v2(build, args.out, args.heldout_out)
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"wrote core v2 — {build.n} records in {build.cluster_count} leakage-bound "
+        f"clusters; audit=pass; heldout={paths['heldout']} (private, mode 0600)"
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lurebench", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -580,6 +814,65 @@ def build_parser() -> argparse.ArgumentParser:
     p_stix.add_argument("--out", "-o", default=None, help="write the bundle here (else stdout)")
     p_stix.set_defaults(func=_cmd_stix)
 
+    p_verify_receipt = sub.add_parser(
+        "verify-receipt",
+        help="strictly verify a LureEval receipt or compatible aggregate",
+    )
+    p_verify_receipt.add_argument("artifact", help="receipt, aggregate, or DSSE JSON")
+    p_verify_receipt.add_argument("--public-key", help="trusted ECDSA P-256 public PEM")
+    p_verify_receipt.add_argument(
+        "--require-signature",
+        action="store_true",
+        help="reject unsigned or unauthenticated artifacts",
+    )
+    p_verify_receipt.set_defaults(func=_cmd_verify_receipt)
+
+    p_aggregate = sub.add_parser(
+        "aggregate-receipts",
+        help="pool only compatible privacy-minimized LureEval receipts",
+    )
+    p_aggregate.add_argument(
+        "--receipt", "-r", action="append", required=True, help="source receipt (repeatable)"
+    )
+    p_aggregate.add_argument("--out", "-o", required=True, help="new aggregate JSON path")
+    p_aggregate.add_argument("--issuer", help="optional issuer label")
+    p_aggregate.add_argument(
+        "--source-key",
+        action="append",
+        help="RECEIPT=PUBLIC_KEY mapping for a signed source (repeatable)",
+    )
+    p_aggregate.add_argument(
+        "--require-source-signatures",
+        action="store_true",
+        help="require every receipt to authenticate with its mapped trusted key",
+    )
+    p_aggregate.add_argument(
+        "--signing-key", help="optional ECDSA P-256 private PEM for the aggregate"
+    )
+    p_aggregate.set_defaults(func=_cmd_aggregate_receipts)
+
+    p_container = sub.add_parser(
+        "container-eval",
+        help="evaluate an isolated language-independent detector container",
+    )
+    p_container.add_argument("--dataset", "-d", required=True, help="benchmark JSONL")
+    p_container.add_argument(
+        "--image", required=True, help="local image pinned as name@sha256:<digest>"
+    )
+    p_container.add_argument("--runtime", choices=["docker", "podman"], default="docker")
+    p_container.add_argument("--task", choices=["fraud", "provenance"], default="fraud")
+    p_container.add_argument("--threshold", type=float, default=0.5)
+    p_container.add_argument("--timeout", type=float, default=10.0)
+    p_container.add_argument("--memory", default="512m")
+    p_container.add_argument("--cpus", type=float, default=1.0)
+    p_container.add_argument(
+        "--allow-mutable-image",
+        action="store_true",
+        help="permit a local tag for development; the immutable image id is still recorded",
+    )
+    p_container.add_argument("--out", "-o", help="new evaluation JSON path")
+    p_container.set_defaults(func=_cmd_container_eval)
+
     p_man = sub.add_parser("manifest", help="print the composition manifest for a dataset")
     p_man.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
     p_man.set_defaults(func=_cmd_manifest)
@@ -662,6 +955,24 @@ def build_parser() -> argparse.ArgumentParser:
     p_core.add_argument("--validation-modulus", type=int, default=10,
                         help="1/N of the non-test pool held out for validation")
     p_core.set_defaults(func=_cmd_assemble_core)
+
+    p_core_v2 = sub.add_parser(
+        "assemble-core-v2",
+        help="build leakage-clustered public splits plus a separate private held-out split",
+    )
+    p_core_v2.add_argument("--source", "-s", action="append", required=True,
+                           help="input JSONL (repeatable)")
+    p_core_v2.add_argument("--out", "-o", required=True,
+                           help="new/empty public output directory")
+    p_core_v2.add_argument("--heldout-out", required=True,
+                           help="private held-out JSONL outside --out; created mode 0600")
+    p_core_v2.add_argument("--near-duplicate-threshold", type=float, default=0.8)
+    p_core_v2.add_argument("--shingle-size", type=int, default=5)
+    p_core_v2.add_argument("--train-weight", type=float, default=0.7)
+    p_core_v2.add_argument("--validation-weight", type=float, default=0.1)
+    p_core_v2.add_argument("--test-weight", type=float, default=0.1)
+    p_core_v2.add_argument("--heldout-weight", type=float, default=0.1)
+    p_core_v2.set_defaults(func=_cmd_assemble_core_v2)
 
     return parser
 

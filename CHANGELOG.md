@@ -2,9 +2,50 @@
 
 ## Unreleased
 
+## 0.10.0 — 2026-08-23
+
 ### Added
+- Added LureEval v1, a cross-organization private operational evaluation
+  protocol using strict in-toto Statements and optional ECDSA P-256 DSSE
+  authentication. Receipts contain aggregate confusion, exact one-sided bounds,
+  workload, resilience, Pilot Gate outcomes, protocol/control provenance, cohort
+  commitments, and k-suppressed slices—never messages, case IDs, addresses,
+  paths, raw hashes, or row-level scores.
+- Added `verify-receipt` and `aggregate-receipts`. The aggregator requires
+  protocol, sampling, labeling, confidence, slice threshold, detector artifact,
+  policy, threshold, and decision-boundary compatibility; rejects duplicate
+  cohorts/receipts; optionally requires every source signature; pools counts;
+  and recomputes all metrics instead of averaging site percentages.
+- Added `container-eval`, a language-independent JSONL contract for private or
+  proprietary detectors. Only text, declared language/channel, task, and an
+  opaque sequential request ID enter a local OCI image; labels, corpus IDs,
+  provenance, typology, generator, and metadata are withheld. Reportable images
+  must be digest-pinned and execute with no pull, network, host mounts,
+  capabilities, privileges, or writable root, plus CPU/memory/PID/time limits.
+- Added a non-root reference detector image, real Docker CI contract test,
+  immutable image/dataset evaluation records, and strict response/report schemas.
+- Added `assemble-core-v2`, leakage-resistant release infrastructure that rejects
+  conflicting IDs and labels, clusters declared families and near duplicates,
+  deterministically stratifies whole clusters, commits source/split bytes, audits
+  every boundary, and writes a mode-0600 held-out evaluator shard outside the
+  public train/validation/test directory.
+- Added strict public schemas for LureEval receipts, aggregates and DSSE,
+  container reports, and core-v2 manifests, all included in the PyPI wheel; plus
+  protocol, container, and validity operator documentation.
 - Added a weekly, source-checkout-free installation and dependency-free scoring
   smoke test for the public PyPI wheel on Python 3.10, 3.12, and 3.13.
+
+### Security
+- LureEval validators use exact nested allowlists, recompute every derived value,
+  require canonical DSSE payload bytes, reject unauthenticated sources when
+  requested, and prevent duplicate cohort or receipt aggregation.
+- The container runtime never pulls implicitly and exposes no host path or
+  environment variable. Strict output framing, byte limits, per-record timeouts,
+  finite score bounds, image-ID recording, and abstention accounting fail closed.
+- Core-v2 separates held-out labels physically, creates the private file with
+  exclusive mode-0600 permissions, refuses placement under the public output,
+  detects contradictory normalized-identical text, and requires its own leakage
+  audit to pass before writing.
 
 ## 0.9.1 — 2026-08-12
 
