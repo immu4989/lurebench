@@ -3,6 +3,11 @@
 A LureBench detector is any object that scores a `Lure`. Contributing one is a
 subclass with a single method, plus one line in the registry.
 
+If the implementation is proprietary, non-Python, or should be measured behind
+a strict anti-label-leakage boundary, use the language-independent
+[`container-eval` protocol](CONTAINER_DETECTORS.md) instead. No registry change or
+source disclosure is required.
+
 ## The interface
 
 ```python

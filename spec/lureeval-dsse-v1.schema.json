@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureeval-dsse/v1",
+  "title": "LureEval DSSE envelope v1",
+  "type": "object",
+  "required": ["payloadType", "payload", "signatures"],
+  "properties": {
+    "payloadType": {"const": "application/vnd.in-toto+json"},
+    "payload": {"type": "string", "contentEncoding": "base64", "maxLength": 11184812},
+    "signatures": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "required": ["keyid", "sig"],
+        "properties": {
+          "keyid": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "sig": {"type": "string", "contentEncoding": "base64", "maxLength": 1024}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

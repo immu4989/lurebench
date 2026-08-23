@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureeval-aggregate/v1",
+  "title": "LureEval compatible multi-receipt aggregate v1",
+  "type": "object",
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 1000,
+      "items": {
+        "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/subject"
+      }
+    },
+    "predicateType": {
+      "const": "https://github.com/immu4989/lurebench/spec/lureeval-aggregate/v1"
+    },
+    "predicate": {
+      "type": "object",
+      "required": [
+        "spec", "spec_version", "aggregate_id", "generated_at", "producer",
+        "source_receipt_count", "authenticated_source_count",
+        "source_authentication_required", "protocol", "control", "pooled", "slices",
+        "suppressed_slice_count", "receipt_points", "limitations", "interpretation_boundary"
+      ],
+      "properties": {
+        "spec": {"const": "lureeval-aggregate"},
+        "spec_version": {"const": "1.0"},
+        "aggregate_id": {"type": "string", "format": "uuid"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "producer": {
+          "allOf": [
+            {
+              "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/producer"
+            },
+            {"properties": {"name": {"const": "lurebench"}}}
+          ]
+        },
+        "source_receipt_count": {"type": "integer", "minimum": 2, "maximum": 1000},
+        "authenticated_source_count": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "source_authentication_required": {"type": "boolean"},
+        "protocol": {
+          "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/protocol"
+        },
+        "control": {
+          "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/control"
+        },
+        "pooled": {
+          "type": "object",
+          "required": ["processed_count", "confusion", "metrics", "routing", "resilience"],
+          "properties": {
+            "processed_count": {"type": "integer", "minimum": 0},
+            "confusion": {
+              "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/confusion"
+            },
+            "metrics": {
+              "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/metrics"
+            },
+            "routing": {
+              "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/routing"
+            },
+            "resilience": {
+              "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/resilience"
+            }
+          },
+          "additionalProperties": false
+        },
+        "slices": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/slice"
+          }
+        },
+        "suppressed_slice_count": {"type": "integer", "minimum": 0},
+        "receipt_points": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": [
+              "receipt_sha256", "recall_estimate", "false_positive_rate_estimate"
+            ],
+            "properties": {
+              "receipt_sha256": {
+                "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/digest"
+              },
+              "recall_estimate": {
+                "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/nullableProbability"
+              },
+              "false_positive_rate_estimate": {
+                "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/nullableProbability"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "limitations": {
+          "$ref": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1#/$defs/limitations"
+        },
+        "interpretation_boundary": {"type": "string", "minLength": 20, "maxLength": 500}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

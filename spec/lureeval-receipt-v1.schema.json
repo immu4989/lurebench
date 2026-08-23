@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1",
+  "title": "LureEval privacy-minimized operational evaluation receipt v1",
+  "type": "object",
+  "required": ["_type", "subject", "predicateType", "predicate"],
+  "properties": {
+    "_type": {"const": "https://in-toto.io/Statement/v1"},
+    "subject": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/subject"}
+    },
+    "predicateType": {
+      "const": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1"
+    },
+    "predicate": {
+      "type": "object",
+      "required": [
+        "spec", "spec_version", "receipt_id", "generated_at", "producer", "privacy",
+        "protocol", "control", "cohort", "outcome", "slices", "limitations",
+        "interpretation_boundary"
+      ],
+      "properties": {
+        "spec": {"const": "lureeval"},
+        "spec_version": {"const": "1.0"},
+        "receipt_id": {"type": "string", "format": "uuid"},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "producer": {"$ref": "#/$defs/producer"},
+        "privacy": {
+          "type": "object",
+          "required": ["aggregate_only", "excluded_fields", "suppressed_slice_count"],
+          "properties": {
+            "aggregate_only": {"const": true},
+            "excluded_fields": {
+              "const": [
+                "source_paths", "subjects", "addresses", "message_ids", "case_ids",
+                "url_values", "attachment_names", "message_content", "raw_message_hashes",
+                "per_message_scores"
+              ]
+            },
+            "suppressed_slice_count": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        },
+        "protocol": {"$ref": "#/$defs/protocol"},
+        "control": {"$ref": "#/$defs/control"},
+        "cohort": {
+          "type": "object",
+          "required": [
+            "source_type", "run_generated_at", "processed_count", "failed_count",
+            "latest_label_count", "uncertain_label_count", "evaluated_count",
+            "manifest_sha256", "labels_sha256", "plan_id", "plan_sha256", "gate_sha256"
+          ],
+          "properties": {
+            "source_type": {"enum": ["shadow_inbox", "microsoft_defender_export"]},
+            "run_generated_at": {"type": "string", "format": "date-time"},
+            "processed_count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+            "failed_count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+            "latest_label_count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+            "uncertain_label_count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+            "evaluated_count": {"type": "integer", "minimum": 0, "maximum": 10000000},
+            "manifest_sha256": {"$ref": "#/$defs/digest"},
+            "labels_sha256": {"$ref": "#/$defs/digest"},
+            "plan_id": {"$ref": "#/$defs/identifier"},
+            "plan_sha256": {"$ref": "#/$defs/digest"},
+            "gate_sha256": {"$ref": "#/$defs/digest"}
+          },
+          "additionalProperties": false
+        },
+        "outcome": {"$ref": "#/$defs/outcome"},
+        "slices": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/slice"}
+        },
+        "limitations": {"$ref": "#/$defs/limitations"},
+        "interpretation_boundary": {"type": "string", "minLength": 20, "maxLength": 500}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+\\-]{0,199}$"
+    },
+    "nullableIdentifier": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/identifier"}]
+    },
+    "nullableDigest": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]
+    },
+    "probability": {"type": "number", "minimum": 0, "maximum": 1},
+    "nullableProbability": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/probability"}]
+    },
+    "subject": {
+      "type": "object",
+      "required": ["name", "digest"],
+      "properties": {
+        "name": {"$ref": "#/$defs/identifier"},
+        "digest": {
+          "type": "object",
+          "required": ["sha256"],
+          "properties": {"sha256": {"$ref": "#/$defs/digest"}},
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "producer": {
+      "type": "object",
+      "required": ["name", "version", "issuer"],
+      "properties": {
+        "name": {"$ref": "#/$defs/identifier"},
+        "version": {"$ref": "#/$defs/identifier"},
+        "issuer": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\\r\\n\\t]+$"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "protocol": {
+      "type": "object",
+      "required": [
+        "id", "version", "sampling", "labeling_protocol", "metrics_method",
+        "confidence", "confidence_scope", "minimum_slice_count"
+      ],
+      "properties": {
+        "id": {"const": "lureeval-private-operational-evaluation"},
+        "version": {"const": "1.0"},
+        "sampling": {
+          "enum": [
+            "complete_population", "consecutive_sample", "random_sample",
+            "operator_declared_other"
+          ]
+        },
+        "labeling_protocol": {"$ref": "#/$defs/identifier"},
+        "metrics_method": {"const": "exact_binomial_one_sided_v1"},
+        "confidence": {"type": "number", "minimum": 0.8, "maximum": 0.999},
+        "confidence_scope": {"const": "per_metric_one_sided_not_simultaneous"},
+        "minimum_slice_count": {"type": "integer", "minimum": 10, "maximum": 10000}
+      },
+      "additionalProperties": false
+    },
+    "control": {
+      "type": "object",
+      "required": [
+        "detector", "detector_artifact_sha256", "threshold", "policy_id", "policy_sha256"
+      ],
+      "properties": {
+        "detector": {"$ref": "#/$defs/identifier"},
+        "detector_artifact_sha256": {"$ref": "#/$defs/nullableDigest"},
+        "threshold": {"$ref": "#/$defs/probability"},
+        "policy_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "policy_sha256": {"$ref": "#/$defs/nullableDigest"}
+      },
+      "additionalProperties": false
+    },
+    "confusion": {
+      "type": "object",
+      "required": ["true_positive", "false_positive", "true_negative", "false_negative"],
+      "properties": {
+        "true_positive": {"type": "integer", "minimum": 0},
+        "false_positive": {"type": "integer", "minimum": 0},
+        "true_negative": {"type": "integer", "minimum": 0},
+        "false_negative": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "recall_estimate", "recall_lower_bound", "false_positive_rate_estimate",
+        "false_positive_rate_upper_bound", "precision_estimate"
+      ],
+      "properties": {
+        "recall_estimate": {"$ref": "#/$defs/nullableProbability"},
+        "recall_lower_bound": {"$ref": "#/$defs/nullableProbability"},
+        "false_positive_rate_estimate": {"$ref": "#/$defs/nullableProbability"},
+        "false_positive_rate_upper_bound": {"$ref": "#/$defs/nullableProbability"},
+        "precision_estimate": {"$ref": "#/$defs/nullableProbability"}
+      },
+      "additionalProperties": false
+    },
+    "routing": {
+      "type": "object",
+      "required": ["routed_count", "routed_rate"],
+      "properties": {
+        "routed_count": {"type": "integer", "minimum": 0},
+        "routed_rate": {"$ref": "#/$defs/nullableProbability"}
+      },
+      "additionalProperties": false
+    },
+    "resilience": {
+      "type": "object",
+      "required": [
+        "eligible_attack_count", "evasion_count", "defense_recovery_count",
+        "evasion_rate", "recovery_rate_among_evasions"
+      ],
+      "properties": {
+        "eligible_attack_count": {"type": "integer", "minimum": 0},
+        "evasion_count": {"type": "integer", "minimum": 0},
+        "defense_recovery_count": {"type": "integer", "minimum": 0},
+        "evasion_rate": {"$ref": "#/$defs/nullableProbability"},
+        "recovery_rate_among_evasions": {"$ref": "#/$defs/nullableProbability"}
+      },
+      "additionalProperties": false
+    },
+    "outcome": {
+      "type": "object",
+      "required": ["confusion", "metrics", "routing", "resilience", "pilot_gate"],
+      "properties": {
+        "confusion": {"$ref": "#/$defs/confusion"},
+        "metrics": {"$ref": "#/$defs/metrics"},
+        "routing": {"$ref": "#/$defs/routing"},
+        "resilience": {"$ref": "#/$defs/resilience"},
+        "pilot_gate": {
+          "type": "object",
+          "required": ["verdict", "failed_checks"],
+          "properties": {
+            "verdict": {"enum": ["pass", "fail", "insufficient_evidence"]},
+            "failed_checks": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/identifier"}
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "slice": {
+      "type": "object",
+      "required": ["dimension", "value", "count"],
+      "properties": {
+        "dimension": {"enum": ["source_type", "risk_tier", "evidence_code"]},
+        "value": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.:\\-]{0,99}$"},
+        "count": {"type": "integer", "minimum": 10}
+      },
+      "additionalProperties": false
+    },
+    "limitations": {
+      "const": [
+        "representative_iid_sample_required",
+        "label_quality_not_verified",
+        "labeling_protocol_not_verified",
+        "distribution_shift_not_covered",
+        "per_metric_confidence_not_simultaneous_confidence",
+        "cohort_overlap_not_detectable_across_distinct_commitments",
+        "aggregate_receipts_are_not_differential_privacy",
+        "signature_key_identity_requires_external_trust",
+        "receipt_is_not_certification_or_authorization"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

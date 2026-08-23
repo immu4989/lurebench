@@ -9,7 +9,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 [![CI](https://github.com/immu4989/lurebench/actions/workflows/ci.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/ci.yml)
 [![PyPI install](https://github.com/immu4989/lurebench/actions/workflows/pypi-smoke.yml/badge.svg)](https://github.com/immu4989/lurebench/actions/workflows/pypi-smoke.yml)
 [![PyPI](https://img.shields.io/pypi/v/lurebench?color=2a78d6)](https://pypi.org/project/lurebench/)
-![Version](https://img.shields.io/badge/version-0.9.1-57f2c1)
+![Version](https://img.shields.io/badge/version-0.10.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
@@ -38,6 +38,13 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > fewer than 299 benign validation examples even after zero false alarms. See
 > [risk-controlled deployment policies](docs/RISK_CONTROL.md).
 
+> **New — evaluate private detectors and private deployments.** The
+> [isolated container contract](docs/CONTAINER_DETECTORS.md) benchmarks any
+> language or proprietary detector without exposing labels or corpus metadata.
+> [LureEval receipts](docs/LUREEVAL.md) carry signed, privacy-minimized aggregate
+> operational evidence across organizations. Neither requires messages or
+> row-level scores to leave their owner.
+
 ### Who it's for
 
 | You are… | Use LureBench to… |
@@ -45,6 +52,7 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 | **A security engineer / vendor** | Benchmark your fraud detector on a common footing, then stress-test it against attacks a real fraudster would run (`robustness`) before you trust its clean-data score. |
 | **A researcher** | Reproduce the provenance confound and its removal, add a detector in ~30 lines ([docs/adding-a-detector.md](docs/adding-a-detector.md)), or extend the corpus with new generators and typologies. |
 | **A policy / threat-intel analyst** | Ground claims about "AI-generated fraud detection" in measured numbers — including where it works, and where it is close to a coin flip. |
+| **A procurement or assurance team** | Evaluate a proprietary image against a private held-out set, preserve an immutable report, and pool compatible signed field evidence without collecting messages. |
 
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 
@@ -175,6 +183,36 @@ lurebench stix -d data/full/core/test.jsonl -o lures.stix.json
 lurebench stix --taxonomy-only -o taxonomy.stix.json
 ```
 
+Benchmark a proprietary or non-Python detector through a hardened local OCI
+boundary. Only text, declared language/channel, task, and an opaque sequential
+request ID enter the container—never labels, source, typology, generator, corpus
+IDs, or metadata:
+
+```bash
+lurebench container-eval \
+  --dataset private-heldout.jsonl \
+  --image vendor-detector@sha256:<digest> \
+  --out immutable-evaluation.json
+```
+
+The image is never pulled implicitly and runs with no network, host mounts,
+capabilities, privileges, or writable root. See the
+[protocol, threat boundary, reference image, and non-guarantees](docs/CONTAINER_DETECTORS.md).
+
+Build a leakage-resistant v2 release candidate by clustering declared families
+and near duplicates *before* deterministic stratification. Held-out labels must
+be written separately from the public directory:
+
+```bash
+lurebench assemble-core-v2 \
+  -s approved-a.jsonl -s approved-b.jsonl \
+  -o release-candidate/public \
+  --heldout-out private-evaluator/core-v2-heldout.jsonl
+```
+
+This is release infrastructure, not a claim that a corrected v2 corpus has
+already been collected or published. See [benchmark validity](docs/VALIDITY.md).
+
 Measure the **cross-lingual gap** — how detectors hold up when the language shifts. Across eight languages the trained baseline posts a near-perfect ~1.00 recall, which looks like flawless multilingual detection; strip the defang placeholder and it splits along script lines — Latin-script survives, but every non-Latin script collapses (Chinese 1.00→0.09, Russian 0.94→0.06, Arabic 0.98→0.04), exposing the recall as a `<<link>>` artifact rather than detection (see [docs/multilingual.md](docs/multilingual.md)):
 
 ```bash
@@ -204,9 +242,10 @@ lurebench leaderboard -d data/full/core/test.jsonl \
   --cache-dir .cache/lb --workers 12
 ```
 
-Fourteen commands cover the pipeline, including `audit-splits` for cross-split
+The CLI covers the pipeline, including `audit-splits` for cross-split
 near-duplicate detection and `calibrate` for validation-only policy export.
-`assemble-core` produces frozen train/validation/test splits, and `eval
+`assemble-core-v2` produces clustered train/validation/test plus a separately
+held private split, and `eval
 --bootstrap 2000` adds uncertainty intervals. See [benchmark validity](docs/VALIDITY.md),
 the [finite-sample FPR control method](docs/RISK_CONTROL.md),
 the [changelog](CHANGELOG.md), the [taxonomy & STIX guide](docs/taxonomy.md), and

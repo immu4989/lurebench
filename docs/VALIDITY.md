@@ -53,6 +53,41 @@ not independent external validation. A future corpus major version should cluste
 near duplicates and assign whole clusters to one split. Published v1 test membership
 is intentionally not rewritten in a minor software release.
 
+## Core v2 build infrastructure
+
+`assemble-core-v2` implements that future release process without pretending a
+new dataset already exists. It:
+
+1. applies the existing human-review gate;
+2. rejects reused IDs and normalized-identical text with contradictory labels or
+   provenance;
+3. removes exact duplicates deterministically;
+4. forms transitive clusters from declared families and five-word-shingle near
+   duplicates;
+5. assigns whole clusters with deterministic stratification over record count,
+   label, source, typology, language, and channel;
+6. audits every boundary and fails closed if family or near-duplicate leakage
+   remains;
+7. writes train/validation/test publicly, but requires the held-out evaluator
+   shard to be a separate mode-0600 file outside the public directory; and
+8. emits a strict manifest with source-byte commitments, parameters, split-byte
+   commitments, profiles, clustering statistics, and the passing audit.
+
+```bash
+lurebench assemble-core-v2 \
+  --source approved-source-a.jsonl \
+  --source approved-source-b.jsonl \
+  --out release-candidate/public \
+  --heldout-out private-evaluator/core-v2-heldout.jsonl
+```
+
+The command creates infrastructure and a release candidate; it does **not** make
+the current v1 data valid by relabeling or reshuffling it, and the repository does
+not claim a v2 corpus until contemporary source collection, annotation QA,
+license review, held-out custody, and a versioned data release are complete.
+The manifest schema is
+[`spec/core-v2-build-v1.schema.json`](../spec/core-v2-build-v1.schema.json).
+
 For new shards, set `meta.family_id` (or `scenario_id`, `parent_id`, `seed_id`) on
 rewrites and variants. The core builder hashes this family key, keeping every
 variant in one partition, and the audit fails if an externally assembled shard
