@@ -68,8 +68,8 @@ new dataset already exists. It:
    label, source, typology, language, and channel;
 6. audits every boundary and fails closed if family or near-duplicate leakage
    remains;
-7. writes train/validation/test publicly, but requires the held-out evaluator
-   shard to be a separate mode-0600 file outside the public directory; and
+7. writes every local artifact mode 0600 and requires the held-out evaluator
+   shard to be physically separate from the public release directory; and
 8. emits a strict manifest with source-byte commitments, parameters, split-byte
    commitments, profiles, clustering statistics, and the passing audit.
 
