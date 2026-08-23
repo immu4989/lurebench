@@ -112,13 +112,9 @@ Install LureBench and run the reviewed semantic vectors without a network or API
 key:
 
 ```bash
-python -m pip install \
-  "lurebench @ git+https://github.com/immu4989/lurebench.git@main"
+python -m pip install "lurebench==0.11.0"
 lurebench conformance --out lureeval-conformance-report.json
 ```
-
-Use the GitHub-source install until the next tagged release includes this
-currently unreleased command on PyPI.
 
 The conformance result covers serialization, privacy boundaries, schema
 boundaries, and metric recomputation. See [CONFORMANCE.md](CONFORMANCE.md) for the

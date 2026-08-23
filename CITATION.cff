@@ -19,7 +19,9 @@ abstract: >-
   fraud task and a text-provenance task. Version 0.10 adds privacy-minimized
   operational evaluation receipts, isolated proprietary-detector containers, and
   leakage-clustered corpus-v2 release infrastructure with a private held-out split.
-version: 0.10.0
+  Version 0.11 adds a deterministic, language-neutral LureEval semantic
+  conformance kit and a preregistered adversarial-robustness measurement method.
+version: 0.11.0
 date-released: "2026-08-23"
 license: Apache-2.0
 keywords:

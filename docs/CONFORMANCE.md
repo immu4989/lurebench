@@ -12,14 +12,10 @@ secure implementation, establish compliance, or predict deployment performance.
 ## Run the reference implementation
 
 ```bash
-python -m pip install \
-  "lurebench @ git+https://github.com/immu4989/lurebench.git@main"
+python -m pip install "lurebench==0.11.0"
 lurebench conformance
 lurebench conformance --out lureeval-conformance-report.json --json
 ```
-
-The GitHub-source install is required until the next tagged release publishes
-this currently unreleased command to PyPI.
 
 Exit codes are `0` for a passing suite, `1` for a completed suite with mismatched
 verdicts, and `2` when the suite or report cannot be safely processed. Reports are
