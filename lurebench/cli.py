@@ -595,6 +595,28 @@ def _cmd_aggregate_receipts(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_conformance(args: argparse.Namespace) -> int:
+    from .conformance import dumps_report, run_conformance_suite, write_report
+
+    try:
+        report = run_conformance_suite(Path(args.suite) if args.suite else None)
+        if args.out:
+            write_report(Path(args.out), report)
+        if args.json:
+            print(dumps_report(report), end="")
+        else:
+            summary = report["summary"]
+            destination = f"; report={args.out}" if args.out else ""
+            print(
+                f"LUREEVAL CONFORMANCE: {summary['verdict'].upper()} — "
+                f"{summary['passed']}/{summary['total']} cases passed{destination}"
+            )
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
 def _sha256_regular_file(path: Path) -> str:
     if path.is_symlink():
         raise ValueError(f"refusing symbolic-link dataset: {path}")
@@ -850,6 +872,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--signing-key", help="optional ECDSA P-256 private PEM for the aggregate"
     )
     p_aggregate.set_defaults(func=_cmd_aggregate_receipts)
+
+    p_conformance = sub.add_parser(
+        "conformance",
+        help="run the deterministic LureEval v1 semantic conformance suite",
+    )
+    p_conformance.add_argument(
+        "--suite",
+        help="optional external suite directory; defaults to the packaged reviewed vectors",
+    )
+    p_conformance.add_argument("--out", "-o", help="new mode-0600 JSON report path")
+    p_conformance.add_argument("--json", action="store_true", help="also print JSON to stdout")
+    p_conformance.set_defaults(func=_cmd_conformance)
 
     p_container = sub.add_parser(
         "container-eval",

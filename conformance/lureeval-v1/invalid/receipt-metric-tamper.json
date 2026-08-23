@@ -1,0 +1,124 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "cohort": {
+      "evaluated_count": 40,
+      "failed_count": 0,
+      "gate_sha256": "16ce3546574c29aefd42e71edb9a6b76b03bd7529ab9ff430d7dab15ae7faaa1",
+      "labels_sha256": "d3654dd3ac4c4f0f47a72f9cbad2658f66897846f58bba910dc31d54acd1e854",
+      "latest_label_count": 40,
+      "manifest_sha256": "f77260bb33ba87d0d96d84951c32c85b578b216435bfe0d2b49d0960092184de",
+      "plan_id": "reference-plan-v1",
+      "plan_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "processed_count": 40,
+      "run_generated_at": "2026-08-20T10:00:00-05:00",
+      "source_type": "shadow_inbox",
+      "uncertain_label_count": 0
+    },
+    "control": {
+      "detector": "reference-detector",
+      "detector_artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "policy_id": "reference-policy-v1",
+      "policy_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "threshold": 0.5
+    },
+    "generated_at": "2026-08-20T12:00:00-05:00",
+    "interpretation_boundary": "This receipt reports aggregate measurements for one declared cohort. It is not certification, proof of safety, or authorization for enforcement.",
+    "limitations": [
+      "representative_iid_sample_required",
+      "label_quality_not_verified",
+      "labeling_protocol_not_verified",
+      "distribution_shift_not_covered",
+      "per_metric_confidence_not_simultaneous_confidence",
+      "cohort_overlap_not_detectable_across_distinct_commitments",
+      "aggregate_receipts_are_not_differential_privacy",
+      "signature_key_identity_requires_external_trust",
+      "receipt_is_not_certification_or_authorization"
+    ],
+    "outcome": {
+      "confusion": {
+        "false_negative": 2,
+        "false_positive": 2,
+        "true_negative": 18,
+        "true_positive": 18
+      },
+      "metrics": {
+        "false_positive_rate_estimate": 0.1,
+        "false_positive_rate_upper_bound": 0.28261852,
+        "precision_estimate": 0.9,
+        "recall_estimate": 1.0,
+        "recall_lower_bound": 0.71738148
+      },
+      "pilot_gate": {
+        "failed_checks": [],
+        "verdict": "pass"
+      },
+      "resilience": {
+        "defense_recovery_count": 6,
+        "eligible_attack_count": 80,
+        "evasion_count": 8,
+        "evasion_rate": 0.1,
+        "recovery_rate_among_evasions": 0.75
+      },
+      "routing": {
+        "routed_count": 20,
+        "routed_rate": 0.5
+      }
+    },
+    "privacy": {
+      "aggregate_only": true,
+      "excluded_fields": [
+        "source_paths",
+        "subjects",
+        "addresses",
+        "message_ids",
+        "case_ids",
+        "url_values",
+        "attachment_names",
+        "message_content",
+        "raw_message_hashes",
+        "per_message_scores"
+      ],
+      "suppressed_slice_count": 1
+    },
+    "producer": {
+      "issuer": "synthetic-conformance-fixture",
+      "name": "conformance-reference",
+      "version": "1.0.0"
+    },
+    "protocol": {
+      "confidence": 0.95,
+      "confidence_scope": "per_metric_one_sided_not_simultaneous",
+      "id": "lureeval-private-operational-evaluation",
+      "labeling_protocol": "full_blinded_review",
+      "metrics_method": "exact_binomial_one_sided_v1",
+      "minimum_slice_count": 20,
+      "sampling": "consecutive_sample",
+      "version": "1.0"
+    },
+    "receipt_id": "11111111-1111-4111-8111-111111111111",
+    "slices": [
+      {
+        "count": 20,
+        "dimension": "risk_tier",
+        "value": "high"
+      },
+      {
+        "count": 40,
+        "dimension": "source_type",
+        "value": "synthetic"
+      }
+    ],
+    "spec": "lureeval",
+    "spec_version": "1.0"
+  },
+  "predicateType": "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "4509825a5e1589610bd4b9299f9ecd77497994ec6f03f26b2685267d218a1e62"
+      },
+      "name": "private-evaluation-cohort"
+    }
+  ]
+}

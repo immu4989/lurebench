@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "name": "Operational Adversarial Robustness Evaluation for Text Fraud-Lure Detection Systems",
+  "applied_definition": "A model-agnostic measurement method for a frozen text fraud-detection system on a declared deployment-like cohort. It records TP, FP, TN, and FN; computes recall as TP/(TP+FN), false-positive rate as FP/(FP+TN), and precision as TP/(TP+FP); reports an exact one-sided Clopper-Pearson lower confidence bound for recall and upper bound for false-positive rate; and measures bounded attack evasion as successful evasions divided by eligible positive examples caught before attack. Defense recovery is recovered evasions divided by successful evasions. Zero denominators are reported as null. The detector artifact, threshold, policy, sampling and labeling protocols, confidence, attack budget, and slice-suppression minimum are fixed before test outcomes are examined. Results apply only to the declared cohort, attack set, and evaluation period.",
+  "submitter_organizations": [
+    "LureBench open-source project"
+  ],
+  "contact_email": "replace-before-submission@example.invalid",
+  "ai_rmf_characteristics": [
+    "Valid & Reliable",
+    "Secure & Resilient",
+    "Privacy-Enhanced",
+    "Accountable & Transparent"
+  ],
+  "primary_tevv_application": [
+    "Adversarial Robustness Evaluation",
+    "Privacy & Security Evaluation"
+  ],
+  "ai_lifecycle_stages": [
+    "Build",
+    "Deploy",
+    "Operate & Monitor"
+  ],
+  "object_of_measurement": [
+    "model",
+    "system"
+  ],
+  "model_specificity": "Model agnostic; the evaluated detector may be rules-based, statistical, neural, or an isolated proprietary service, provided its binary decision policy is frozen and its inputs and outcomes can be counted.",
+  "domain_specificity": "Domain specific: text phishing, business email compromise, and related fraud or social-engineering lure detection across declared message channels and languages.",
+  "usage_details": "Use during pre-deployment evaluation and recurring operational monitoring when stakeholders need comparable clean and adversarial performance evidence without publishing messages or row-level scores. The method is most useful with a representative held-out or consecutive operational cohort, independently adjudicated labels, a preregistered threshold, explicit attack eligibility and budget, and replication across time or sites. Privacy-minimized LureEval receipts permit strict arithmetic verification and pooling of compatible aggregate counts.",
+  "known_failure_modes": "The result can mislead when labels leak corpus or source artifacts; the cohort is synthetic, historical, selectively published, or unrepresentative; the threshold is tuned on the reporting cohort; uncertain or failed records are silently omitted; the fixed attack catalog understates an adaptive attacker; multiple subgroup intervals are interpreted as simultaneous confidence; correlated cohorts are treated as independent; or drift invalidates an older receipt. A passing schema or conformance test establishes structural and arithmetic consistency only. It does not verify sampling, labels, issuer truthfulness, security, compliance, or deployment effectiveness.",
+  "modality": [
+    "text"
+  ],
+  "references": [
+    "NIST AI Risk Management Framework 1.0: https://doi.org/10.6028/NIST.AI.100-1",
+    "NIST AI RMF Core, MEASURE function: https://airc.nist.gov/airmf-resources/airmf/5-sec-core/",
+    "Clopper, C. J. and Pearson, E. S. (1934), The Use of Confidence or Fiducial Limits Illustrated in the Case of the Binomial: https://doi.org/10.1093/biomet/26.4.404",
+    "NIST TEVV-Athlon Framework initial public draft: https://www.nist.gov/artificial-intelligence/ai-research/tevv-athlon-framework-evaluating-ai-systems"
+  ],
+  "implementation_resources": [
+    "Measurement method: https://github.com/immu4989/lurebench/blob/main/docs/MEASUREMENT_METHOD.md",
+    "LureEval protocol and conformance kit: https://github.com/immu4989/lurebench/blob/main/docs/CONFORMANCE.md",
+    "Reference evaluation implementation: https://github.com/immu4989/lurebench",
+    "Operational evidence producer: https://github.com/immu4989/lurescope"
+  ],
+  "common_variants": [
+    "Clean held-out evaluation without attacks",
+    "Fixed deterministic perturbation suite",
+    "Bounded multi-turn adaptive attack evaluation",
+    "Repeated monitoring cohorts with drift comparison"
+  ],
+  "related_metrics": [
+    "Coverage and processing-failure rate",
+    "Calibration error and decision-threshold stability",
+    "Latency and resource consumption",
+    "Per-language and per-channel recall with minimum cell suppression",
+    "Attack-query budget and time-to-evasion"
+  ],
+  "computational_requirements": "The receipt validator and conformance kit require Python 3.10 or later and no accelerator, model download, API key, or network connection. Detector and attack execution requirements depend on the evaluated implementation. Private detectors may be evaluated through an offline OCI container boundary.",
+  "usage_rights": "Apache License 2.0 for the LureBench and LureScope implementations and project-authored documentation. Users remain responsible for rights to evaluation data, detector artifacts, and third-party attack models."
+}
+

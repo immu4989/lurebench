@@ -1,0 +1,118 @@
+{
+  "cases": [
+    {
+      "artifact": "valid/receipt-site-a.json",
+      "case_id": "valid-receipt-site-a",
+      "category": "baseline",
+      "description": "Accept a valid privacy-minimized receipt.",
+      "expected": "accept",
+      "kind": "receipt",
+      "sha256": "fd4787a495fb6c66289ed26ea5412583ec0ff3943feda411898bf7fcfc932d68"
+    },
+    {
+      "artifact": "valid/receipt-site-b.json",
+      "case_id": "valid-receipt-site-b",
+      "category": "baseline",
+      "description": "Accept a second compatible private cohort.",
+      "expected": "accept",
+      "kind": "receipt",
+      "sha256": "d0262f2608b91e7b8d299203b458edf1cce3210611adc60e80a156b7aaed6bc1"
+    },
+    {
+      "artifact": "valid/aggregate.json",
+      "case_id": "valid-aggregate",
+      "category": "baseline",
+      "description": "Accept a valid aggregate over two distinct compatible cohorts.",
+      "expected": "accept",
+      "kind": "aggregate",
+      "sha256": "50591f69d3b0c6791a4295f4ceb5a2c4a778c2725922959074f4b2ea97528917"
+    },
+    {
+      "artifact": "invalid/receipt-metric-tamper.json",
+      "case_id": "reject-receipt-metric-tamper",
+      "category": "statistical-consistency",
+      "description": "Reject a recall estimate that does not match its confusion counts.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "7b3e0a0e9f0d3da33c287595399352efaaf5db118eeedb31dba1123733972ebe"
+    },
+    {
+      "artifact": "invalid/receipt-privacy-field.json",
+      "case_id": "reject-receipt-privacy-field",
+      "category": "privacy-boundary",
+      "description": "Reject a message identifier outside the aggregate-only cohort allowlist.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "1b17a91a2fd395cc4fd594de0649e0260fe73d456fa08d6dd7aaa6e0a83b96dc"
+    },
+    {
+      "artifact": "invalid/receipt-small-slice.json",
+      "case_id": "reject-receipt-small-slice",
+      "category": "privacy-boundary",
+      "description": "Reject a published slice below the declared minimum count.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "36ed95895656601c9c747c2f6acf1df5ca8a534edad729d5464c476962928508"
+    },
+    {
+      "artifact": "invalid/receipt-unknown-field.json",
+      "case_id": "reject-receipt-unknown-field",
+      "category": "schema-boundary",
+      "description": "Reject unregistered free text in the strict predicate.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "c97d09043f0256bb242c9bd9489eaf86e99e34efd0191075643c0ec924bcd663"
+    },
+    {
+      "artifact": "invalid/receipt-wrong-predicate.json",
+      "case_id": "reject-receipt-wrong-predicate",
+      "category": "schema-boundary",
+      "description": "Reject an artifact with an unsupported predicate type.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "2a293c5df9090ae5be056211e9d9c83f99753112807d128bc1645896f7ca19d1"
+    },
+    {
+      "artifact": "invalid/aggregate-metric-tamper.json",
+      "case_id": "reject-aggregate-metric-tamper",
+      "category": "statistical-consistency",
+      "description": "Reject pooled metrics inconsistent with pooled confusion counts.",
+      "expected": "reject",
+      "kind": "aggregate",
+      "sha256": "f1d89c8e7f771a7749f8df44b8bc2986e6455c33c9bb51338c1749db36029760"
+    },
+    {
+      "artifact": "invalid/aggregate-duplicate-point.json",
+      "case_id": "reject-aggregate-duplicate-point",
+      "category": "semantic-integrity",
+      "description": "Reject duplicate source receipt points in an aggregate.",
+      "expected": "reject",
+      "kind": "aggregate",
+      "sha256": "7a746775e26453a16424336b156d794d50ffb0ebc521f8143820644cfbf8d214"
+    },
+    {
+      "artifact": "invalid/receipt-duplicate-json-key.json",
+      "case_id": "reject-duplicate-json-key",
+      "category": "serialization",
+      "description": "Reject ambiguous JSON containing a duplicate object key.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "668f31fe080f731203d4e20ab6a0eb7603091be17bca1b448eeee2f667966180"
+    },
+    {
+      "artifact": "invalid/receipt-nonfinite-json.json",
+      "case_id": "reject-nonfinite-json",
+      "category": "serialization",
+      "description": "Reject the non-standard NaN JSON constant.",
+      "expected": "reject",
+      "kind": "receipt",
+      "sha256": "54f833e3abdbcbdc914ee9c504b4637a515bea2a62124b1ed772d6886e87c3f9"
+    }
+  ],
+  "description": "Language-neutral semantic vectors for accepting valid LureEval v1 receipts and aggregates while rejecting privacy, schema, serialization, and metric tampering.",
+  "protocol": "lureeval-v1",
+  "schema": "https://github.com/immu4989/lurebench/spec/lureeval-conformance-suite/v1",
+  "schema_version": 1,
+  "suite_id": "lureeval-v1-semantic",
+  "suite_version": "1.0.0"
+}

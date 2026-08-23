@@ -1,0 +1,113 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "aggregate_id": "33333333-3333-4333-8333-333333333333",
+    "authenticated_source_count": 0,
+    "control": {
+      "detector": "reference-detector",
+      "detector_artifact_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "policy_id": "reference-policy-v1",
+      "policy_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "threshold": 0.5
+    },
+    "generated_at": "2026-08-22T12:00:00-05:00",
+    "interpretation_boundary": "Pooled counts summarize compatible declared cohorts. They do not prove representativeness, independence, issuer identity, or future performance.",
+    "limitations": [
+      "representative_iid_sample_required",
+      "label_quality_not_verified",
+      "labeling_protocol_not_verified",
+      "distribution_shift_not_covered",
+      "per_metric_confidence_not_simultaneous_confidence",
+      "cohort_overlap_not_detectable_across_distinct_commitments",
+      "aggregate_receipts_are_not_differential_privacy",
+      "signature_key_identity_requires_external_trust",
+      "receipt_is_not_certification_or_authorization"
+    ],
+    "pooled": {
+      "confusion": {
+        "false_negative": 4,
+        "false_positive": 4,
+        "true_negative": 36,
+        "true_positive": 36
+      },
+      "metrics": {
+        "false_positive_rate_estimate": 0.0,
+        "false_positive_rate_upper_bound": 0.21439764,
+        "precision_estimate": 0.9,
+        "recall_estimate": 0.9,
+        "recall_lower_bound": 0.78560236
+      },
+      "processed_count": 80,
+      "resilience": {
+        "defense_recovery_count": 12,
+        "eligible_attack_count": 160,
+        "evasion_count": 16,
+        "evasion_rate": 0.1,
+        "recovery_rate_among_evasions": 0.75
+      },
+      "routing": {
+        "routed_count": 40,
+        "routed_rate": 0.5
+      }
+    },
+    "producer": {
+      "issuer": "synthetic-conformance-aggregator",
+      "name": "lurebench",
+      "version": "1.0.0"
+    },
+    "protocol": {
+      "confidence": 0.95,
+      "confidence_scope": "per_metric_one_sided_not_simultaneous",
+      "id": "lureeval-private-operational-evaluation",
+      "labeling_protocol": "full_blinded_review",
+      "metrics_method": "exact_binomial_one_sided_v1",
+      "minimum_slice_count": 20,
+      "sampling": "consecutive_sample",
+      "version": "1.0"
+    },
+    "receipt_points": [
+      {
+        "false_positive_rate_estimate": 0.1,
+        "recall_estimate": 0.9,
+        "receipt_sha256": "274b8775cdb885b3a9f75b0fecf055a380186d565b33f31f9f02b010f82bb3a2"
+      },
+      {
+        "false_positive_rate_estimate": 0.1,
+        "recall_estimate": 0.9,
+        "receipt_sha256": "5f04e05b092dfbc78e22a67482c8d0c696fc53fd6e57a64e13f516b869473712"
+      }
+    ],
+    "slices": [
+      {
+        "count": 40,
+        "dimension": "risk_tier",
+        "value": "high"
+      },
+      {
+        "count": 80,
+        "dimension": "source_type",
+        "value": "synthetic"
+      }
+    ],
+    "source_authentication_required": false,
+    "source_receipt_count": 2,
+    "spec": "lureeval-aggregate",
+    "spec_version": "1.0",
+    "suppressed_slice_count": 0
+  },
+  "predicateType": "https://github.com/immu4989/lurebench/spec/lureeval-aggregate/v1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "274b8775cdb885b3a9f75b0fecf055a380186d565b33f31f9f02b010f82bb3a2"
+      },
+      "name": "lureeval-receipt-1"
+    },
+    {
+      "digest": {
+        "sha256": "5f04e05b092dfbc78e22a67482c8d0c696fc53fd6e57a64e13f516b869473712"
+      },
+      "name": "lureeval-receipt-2"
+    }
+  ]
+}
