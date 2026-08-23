@@ -49,8 +49,9 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > **New — an executable interoperability contract.** The
 > [LureEval conformance kit](docs/CONFORMANCE.md) gives any language or vendor 12
 > digest-bound accept/reject vectors for strict JSON, privacy boundaries, schema
-> enforcement, and metric recomputation. Run `lurebench conformance` offline;
-> passing tests protocol behavior, not detector quality or compliance.
+> enforcement, and metric recomputation. It is available on `main` and will ship
+> in the next tagged release. Run `lurebench conformance` offline; passing tests
+> protocol behavior, not detector quality or compliance.
 
 ### Who it's for
 
@@ -136,7 +137,6 @@ Typologies: phishing, BEC, romance, pig-butchering. The AI lures are hard-mode: 
 ```bash
 python -m pip install lurebench
 lurebench --help
-lurebench conformance
 ```
 
 Clone the repository when you want the bundled sample data, research artifacts,
