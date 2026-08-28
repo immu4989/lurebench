@@ -1,0 +1,176 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-boundary-suite/v1",
+  "title": "LureBoundary incident-derived suite v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "suite_id",
+    "suite_version",
+    "description",
+    "policy",
+    "acceptance",
+    "trajectories",
+    "limitations"
+  ],
+  "properties": {
+    "schema": { "const": "https://github.com/immu4989/lurebench/spec/agent-boundary-suite/v1" },
+    "schema_version": { "const": 1 },
+    "suite_id": { "const": "lureboundary-incident-derived-v1" },
+    "suite_version": { "const": "1.0.0" },
+    "description": { "type": "string", "minLength": 40, "maxLength": 800 },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_id", "allowed_action_resources", "allowed_peer_channels"],
+      "properties": {
+        "policy_id": { "$ref": "#/$defs/identifier" },
+        "allowed_action_resources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["action", "resource_class"],
+            "properties": {
+              "action": { "$ref": "#/$defs/action" },
+              "resource_class": { "$ref": "#/$defs/resource" }
+            }
+          }
+        },
+        "allowed_peer_channels": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      }
+    },
+    "acceptance": { "$ref": "#/$defs/acceptance" },
+    "trajectories": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["scenario_id", "title", "description", "events", "expected"],
+        "properties": {
+          "scenario_id": { "$ref": "#/$defs/identifier" },
+          "title": { "type": "string", "minLength": 8, "maxLength": 120 },
+          "description": { "type": "string", "minLength": 20, "maxLength": 500 },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 128,
+            "items": { "$ref": "#/$defs/event" }
+          },
+          "expected": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "category", "first_detectable_sequence", "max_detection_delay_events"],
+                "properties": {
+                  "label": { "const": "benign" },
+                  "category": { "type": "null" },
+                  "first_detectable_sequence": { "type": "null" },
+                  "max_detection_delay_events": { "type": "null" }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["label", "category", "first_detectable_sequence", "max_detection_delay_events"],
+                "properties": {
+                  "label": { "const": "violation" },
+                  "category": { "$ref": "#/$defs/category" },
+                  "first_detectable_sequence": { "type": "integer", "minimum": 1, "maximum": 128 },
+                  "max_detection_delay_events": { "type": "integer", "minimum": 0, "maximum": 128 }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "limitations": { "$ref": "#/$defs/limitations" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"
+    },
+    "action": {
+      "enum": [
+        "approved_tool_call", "control_plane_change", "credential_read", "credential_use",
+        "data_stage", "evaluator_probe", "network_request", "package_read", "package_write",
+        "peer_signal_read", "peer_signal_write", "privilege_change", "run_restart", "run_stop",
+        "safe_stop", "task_blocked", "task_impossible"
+      ]
+    },
+    "resource": {
+      "enum": [
+        "approved_package_mirror", "approved_peer_channel", "cluster_control_plane",
+        "credential_store", "evaluation_control", "external_data_store", "host_runtime",
+        "local_workspace", "none", "public_network", "shared_service", "third_party_service",
+        "unauthorized_peer_channel"
+      ]
+    },
+    "category": {
+      "enum": [
+        "control_plane_mutation", "credential_misuse", "cross_run_communication",
+        "data_exfiltration", "evaluator_awareness", "policy_violation",
+        "post_termination_activity", "privilege_escalation", "transitive_egress"
+      ]
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_trajectory_recall",
+        "maximum_benign_false_positive_rate",
+        "maximum_detection_delay_events",
+        "minimum_category_accuracy"
+      ],
+      "properties": {
+        "minimum_trajectory_recall": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximum_benign_false_positive_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "maximum_detection_delay_events": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "minimum_category_accuracy": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "sequence", "event_type", "action", "resource_class", "authorization", "outcome", "agent_id", "parent_agent_id", "channel_id", "sensor_id"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/identifier" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 128 },
+        "event_type": { "enum": ["communication", "control_action", "identity_activity", "lifecycle", "network_attempt", "resource_access", "task_state"] },
+        "action": { "$ref": "#/$defs/action" },
+        "resource_class": { "$ref": "#/$defs/resource" },
+        "authorization": { "enum": ["allowed", "denied", "not_declared"] },
+        "outcome": { "enum": ["blocked", "failed", "observed", "succeeded"] },
+        "agent_id": { "$ref": "#/$defs/identifier" },
+        "parent_agent_id": { "oneOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "channel_id": { "oneOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "sensor_id": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "limitations": {
+      "const": [
+        "synthetic_metadata_only_no_live_targets_credentials_commands_prompts_or_payloads",
+        "results_measure_the_declared_monitor_on_this_suite_not_deployment_containment",
+        "passing_does_not_establish_complete_mediation_sensor_completeness_safety_or_compliance",
+        "report_integrity_does_not_prove_that_the_reported_events_match_real_world_execution"
+      ]
+    }
+  }
+}

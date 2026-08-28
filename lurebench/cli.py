@@ -617,6 +617,34 @@ def _cmd_conformance(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_boundary_eval(args: argparse.Namespace) -> int:
+    from .boundary import (
+        dumps_boundary_evaluation,
+        run_boundary_evaluation,
+        write_boundary_evaluation,
+    )
+
+    try:
+        report = run_boundary_evaluation(Path(args.suite) if args.suite else None)
+        if args.out:
+            write_boundary_evaluation(Path(args.out), report)
+        if args.json:
+            print(dumps_boundary_evaluation(report), end="")
+        else:
+            summary = report["summary"]
+            destination = f"; report={args.out}" if args.out else ""
+            print(
+                f"LUREBOUNDARY: {summary['verdict'].upper()} — "
+                f"recall={summary['trajectory_recall']:.3f} "
+                f"benign-FPR={summary['benign_false_positive_rate']:.3f} "
+                f"max-delay={summary['maximum_detection_delay_events']} event(s){destination}"
+            )
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
 def _sha256_regular_file(path: Path) -> str:
     if path.is_symlink():
         raise ValueError(f"refusing symbolic-link dataset: {path}")
@@ -884,6 +912,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_conformance.add_argument("--out", "-o", help="new mode-0600 JSON report path")
     p_conformance.add_argument("--json", action="store_true", help="also print JSON to stdout")
     p_conformance.set_defaults(func=_cmd_conformance)
+
+    p_boundary = sub.add_parser(
+        "boundary-eval",
+        help="evaluate an agent-boundary monitor on safe incident-derived trajectories",
+    )
+    p_boundary.add_argument(
+        "--suite",
+        help="optional suite JSON or directory; defaults to the packaged reviewed suite",
+    )
+    p_boundary.add_argument("--out", "-o", help="new mode-0600 evaluation JSON path")
+    p_boundary.add_argument("--json", action="store_true", help="also print JSON to stdout")
+    p_boundary.set_defaults(func=_cmd_boundary_eval)
 
     p_container = sub.add_parser(
         "container-eval",

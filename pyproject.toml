@@ -65,7 +65,11 @@ packages = ["lurebench"]
 "spec/core-v2-build-v1.schema.json" = "lurebench/spec/core-v2-build-v1.schema.json"
 "spec/lureeval-conformance-suite-v1.schema.json" = "lurebench/spec/lureeval-conformance-suite-v1.schema.json"
 "spec/lureeval-conformance-report-v1.schema.json" = "lurebench/spec/lureeval-conformance-report-v1.schema.json"
+"spec/agent-boundary-event-v1.schema.json" = "lurebench/spec/agent-boundary-event-v1.schema.json"
+"spec/agent-boundary-suite-v1.schema.json" = "lurebench/spec/agent-boundary-suite-v1.schema.json"
+"spec/agent-boundary-evaluation-v1.schema.json" = "lurebench/spec/agent-boundary-evaluation-v1.schema.json"
 "conformance/lureeval-v1" = "lurebench/conformance_data/lureeval-v1"
+"conformance/lureboundary-v1" = "lurebench/conformance_data/lureboundary-v1"
 
 [tool.ruff]
 line-length = 100

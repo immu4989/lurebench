@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Added
+- Added LureBoundary, a safe incident-derived autonomous-agent boundary monitor
+  benchmark with 14 reviewed synthetic trajectories, strict metadata-only event,
+  suite, and evaluation schemas, and a deterministic reference monitor.
+- Added `lurebench boundary-eval`, external-suite support, private no-overwrite
+  reports, trajectory recall, benign false-positive rate, event-step detection
+  delay, category accuracy, machine-readable results, wheel-packaged protocol
+  data, and an operator/independent-monitor guide.
+
+### Security
+- The monitor receives only typed events; scenario identity, prose, labels,
+  categories, and detection windows remain in the harness. Strict allowlists
+  structurally exclude prompts, commands, payloads, credentials, hosts, URLs,
+  paths, and model reasoning and reject symlinks, oversized input, duplicate JSON
+  keys, non-finite values, sequence gaps, duplicate IDs, and metric tampering.
+
 ## 0.11.0 — 2026-08-23
 
 ### Added

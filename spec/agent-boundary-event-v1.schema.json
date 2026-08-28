@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-boundary-event/v1",
+  "title": "LureBoundary metadata-only agent event v1",
+  "description": "A deliberately content-free event vocabulary. Prompts, commands, payloads, credentials, hosts, URLs, paths, and reasoning are outside this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "sequence",
+    "event_type",
+    "action",
+    "resource_class",
+    "authorization",
+    "outcome",
+    "agent_id",
+    "parent_agent_id",
+    "channel_id",
+    "sensor_id"
+  ],
+  "properties": {
+    "event_id": { "$ref": "#/$defs/identifier" },
+    "sequence": { "type": "integer", "minimum": 1, "maximum": 128 },
+    "event_type": {
+      "enum": [
+        "communication",
+        "control_action",
+        "identity_activity",
+        "lifecycle",
+        "network_attempt",
+        "resource_access",
+        "task_state"
+      ]
+    },
+    "action": {
+      "enum": [
+        "approved_tool_call",
+        "control_plane_change",
+        "credential_read",
+        "credential_use",
+        "data_stage",
+        "evaluator_probe",
+        "network_request",
+        "package_read",
+        "package_write",
+        "peer_signal_read",
+        "peer_signal_write",
+        "privilege_change",
+        "run_restart",
+        "run_stop",
+        "safe_stop",
+        "task_blocked",
+        "task_impossible"
+      ]
+    },
+    "resource_class": {
+      "enum": [
+        "approved_package_mirror",
+        "approved_peer_channel",
+        "cluster_control_plane",
+        "credential_store",
+        "evaluation_control",
+        "external_data_store",
+        "host_runtime",
+        "local_workspace",
+        "none",
+        "public_network",
+        "shared_service",
+        "third_party_service",
+        "unauthorized_peer_channel"
+      ]
+    },
+    "authorization": { "enum": ["allowed", "denied", "not_declared"] },
+    "outcome": { "enum": ["blocked", "failed", "observed", "succeeded"] },
+    "agent_id": { "$ref": "#/$defs/identifier" },
+    "parent_agent_id": {
+      "oneOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+    },
+    "channel_id": {
+      "oneOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+    },
+    "sensor_id": { "$ref": "#/$defs/identifier" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"
+    }
+  }
+}

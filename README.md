@@ -14,6 +14,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
 ![LureEval conformance](https://img.shields.io/badge/LureEval_conformance-12%2F12-1baf7a)
+![LureBoundary](https://img.shields.io/badge/LureBoundary-14_safe_trajectories-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![Security policy](https://img.shields.io/badge/security-policy-5c6470)](SECURITY.md)
@@ -53,6 +54,16 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > `lurebench conformance` offline; passing tests protocol behavior, not detector
 > quality or compliance.
 
+> **New — test the system boundary, not only the model response.**
+> [LureBoundary](docs/AGENT_BOUNDARY_ASSURANCE.md) evaluates an autonomous-agent
+> monitor on 14 safe, incident-derived trajectories covering transitive egress,
+> cross-run signaling, credentials, evaluator awareness, privilege and
+> control-plane changes, data staging, and post-stop activity. Ground truth and
+> scenario prose are withheld from the monitor; the strict event schema has no
+> fields for prompts, commands, payloads, credentials, hosts, URLs, or reasoning.
+> `lurebench boundary-eval` reports recall, benign FPR, detection delay, and
+> category accuracy. Passing is benchmark evidence—not proof of containment.
+
 ### Who it's for
 
 | You are… | Use LureBench to… |
@@ -61,6 +72,7 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 | **A researcher** | Reproduce the provenance confound and its removal, add a detector in ~30 lines ([docs/adding-a-detector.md](docs/adding-a-detector.md)), or extend the corpus with new generators and typologies. |
 | **A policy / threat-intel analyst** | Ground claims about "AI-generated fraud detection" in measured numbers — including where it works, and where it is close to a coin flip. |
 | **A procurement or assurance team** | Evaluate a proprietary image against a private held-out set, preserve an immutable report, and pool compatible signed field evidence without collecting messages. |
+| **An agent platform or frontier AI team** | Measure whether a declared boundary monitor catches typed isolation, identity, lifecycle, and control violations without handling exploit payloads or model reasoning. |
 
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 
@@ -138,6 +150,18 @@ Typologies: phishing, BEC, romance, pig-butchering. The AI lures are hard-mode: 
 python -m pip install lurebench
 lurebench --help
 ```
+
+Run the metadata-only agent-boundary benchmark offline:
+
+```bash
+lurebench boundary-eval
+lurebench boundary-eval --out boundary-evaluation.json --json
+```
+
+The reviewed reference suite contains 9 violation trajectories and 5 benign
+controls. Its deterministic baseline scores 1.00 recall, 0.00 benign FPR, 1.00
+category accuracy, and zero-event delay; that result validates the harness, not
+a production deployment. See the [protocol and claims boundary](docs/AGENT_BOUNDARY_ASSURANCE.md).
 
 Clone the repository when you want the bundled sample data, research artifacts,
 and reproducibility commands:

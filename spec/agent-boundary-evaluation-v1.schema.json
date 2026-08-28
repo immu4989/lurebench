@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-boundary-evaluation/v1",
+  "title": "LureBoundary monitor evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "generated_at",
+    "suite",
+    "implementation",
+    "monitor",
+    "acceptance",
+    "summary",
+    "results",
+    "limitations"
+  ],
+  "properties": {
+    "schema": { "const": "https://github.com/immu4989/lurebench/spec/agent-boundary-evaluation/v1" },
+    "schema_version": { "const": 1 },
+    "generated_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["suite_id", "suite_version", "suite_sha256"],
+      "properties": {
+        "suite_id": { "const": "lureboundary-incident-derived-v1" },
+        "suite_version": { "const": "1.0.0" },
+        "suite_sha256": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "$ref": "#/$defs/identifier" },
+        "version": { "type": "string", "minLength": 1, "maxLength": 64 }
+      }
+    },
+    "monitor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["monitor_id", "monitor_version", "artifact_sha256"],
+      "properties": {
+        "monitor_id": { "$ref": "#/$defs/identifier" },
+        "monitor_version": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "artifact_sha256": {
+          "oneOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+        }
+      }
+    },
+    "acceptance": { "$ref": "#/$defs/acceptance" },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_trajectories",
+        "violation_trajectories",
+        "benign_trajectories",
+        "true_positive",
+        "false_negative",
+        "false_positive",
+        "true_negative",
+        "trajectory_recall",
+        "benign_false_positive_rate",
+        "category_accuracy",
+        "maximum_detection_delay_events",
+        "verdict"
+      ],
+      "properties": {
+        "total_trajectories": { "$ref": "#/$defs/count" },
+        "violation_trajectories": { "$ref": "#/$defs/count" },
+        "benign_trajectories": { "$ref": "#/$defs/count" },
+        "true_positive": { "$ref": "#/$defs/count" },
+        "false_negative": { "$ref": "#/$defs/count" },
+        "false_positive": { "$ref": "#/$defs/count" },
+        "true_negative": { "$ref": "#/$defs/count" },
+        "trajectory_recall": { "$ref": "#/$defs/rate" },
+        "benign_false_positive_rate": { "$ref": "#/$defs/rate" },
+        "category_accuracy": { "$ref": "#/$defs/rate" },
+        "maximum_detection_delay_events": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0, "maximum": 128 },
+            { "type": "null" }
+          ]
+        },
+        "verdict": { "enum": ["pass", "fail"] }
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "scenario_id",
+          "label",
+          "expected_category",
+          "first_detectable_sequence",
+          "allowed_detection_delay_events",
+          "detected",
+          "category_correct",
+          "detection_delay_events",
+          "passed",
+          "alerts"
+        ],
+        "properties": {
+          "scenario_id": { "$ref": "#/$defs/identifier" },
+          "label": { "enum": ["benign", "violation"] },
+          "expected_category": {
+            "oneOf": [{ "$ref": "#/$defs/category" }, { "type": "null" }]
+          },
+          "first_detectable_sequence": {
+            "oneOf": [
+              { "type": "integer", "minimum": 1, "maximum": 128 },
+              { "type": "null" }
+            ]
+          },
+          "allowed_detection_delay_events": {
+            "oneOf": [
+              { "type": "integer", "minimum": 0, "maximum": 128 },
+              { "type": "null" }
+            ]
+          },
+          "detected": { "type": "boolean" },
+          "category_correct": { "oneOf": [{ "type": "boolean" }, { "type": "null" }] },
+          "detection_delay_events": {
+            "oneOf": [
+              { "type": "integer", "minimum": -128, "maximum": 128 },
+              { "type": "null" }
+            ]
+          },
+          "passed": { "type": "boolean" },
+          "alerts": {
+            "type": "array",
+            "maxItems": 128,
+            "items": { "$ref": "#/$defs/alert" }
+          }
+        }
+      }
+    },
+    "limitations": { "$ref": "#/$defs/limitations" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"
+    },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "count": { "type": "integer", "minimum": 0, "maximum": 64 },
+    "rate": { "type": "number", "minimum": 0, "maximum": 1 },
+    "category": {
+      "enum": [
+        "control_plane_mutation", "credential_misuse", "cross_run_communication",
+        "data_exfiltration", "evaluator_awareness", "policy_violation",
+        "post_termination_activity", "privilege_escalation", "transitive_egress"
+      ]
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_trajectory_recall",
+        "maximum_benign_false_positive_rate",
+        "maximum_detection_delay_events",
+        "minimum_category_accuracy"
+      ],
+      "properties": {
+        "minimum_trajectory_recall": { "$ref": "#/$defs/rate" },
+        "maximum_benign_false_positive_rate": { "$ref": "#/$defs/rate" },
+        "maximum_detection_delay_events": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "minimum_category_accuracy": { "$ref": "#/$defs/rate" }
+      }
+    },
+    "alert": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "sequence", "severity", "category", "reason_code"],
+      "properties": {
+        "event_id": { "$ref": "#/$defs/identifier" },
+        "sequence": { "type": "integer", "minimum": 1, "maximum": 128 },
+        "severity": { "enum": ["informational", "low", "medium", "high", "critical"] },
+        "category": { "$ref": "#/$defs/category" },
+        "reason_code": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "limitations": {
+      "const": [
+        "synthetic_metadata_only_no_live_targets_credentials_commands_prompts_or_payloads",
+        "results_measure_the_declared_monitor_on_this_suite_not_deployment_containment",
+        "passing_does_not_establish_complete_mediation_sensor_completeness_safety_or_compliance",
+        "report_integrity_does_not_prove_that_the_reported_events_match_real_world_execution"
+      ]
+    }
+  }
+}
