@@ -78,6 +78,9 @@ packages = ["lurebench"]
 "spec/lureir-tasks-v1.schema.json" = "lurebench/spec/lureir-tasks-v1.schema.json"
 "spec/lureir-responses-v1.schema.json" = "lurebench/spec/lureir-responses-v1.schema.json"
 "spec/lureir-evaluation-v1.schema.json" = "lurebench/spec/lureir-evaluation-v1.schema.json"
+"spec/agent-invariant-plan-v1.schema.json" = "lurebench/spec/agent-invariant-plan-v1.schema.json"
+"spec/agent-invariant-observations-v1.schema.json" = "lurebench/spec/agent-invariant-observations-v1.schema.json"
+"spec/agent-invariant-evaluation-v1.schema.json" = "lurebench/spec/agent-invariant-evaluation-v1.schema.json"
 "conformance/lureeval-v1" = "lurebench/conformance_data/lureeval-v1"
 "conformance/lureboundary-v1" = "lurebench/conformance_data/lureboundary-v1"
 

@@ -798,6 +798,31 @@ def _cmd_ir_eval(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_invariant_eval(args: argparse.Namespace) -> int:
+    try:
+        from .invariant import evaluate_invariants, write_invariant_artifact
+
+        report = evaluate_invariants(Path(args.plan), Path(args.observations))
+        if args.out:
+            write_invariant_artifact(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREINVARIANT: {summary['verdict'].upper()} — "
+                f"violated={summary['violated']} "
+                f"not-observed={summary['not_observed_within_declared_boundary']} "
+                f"insufficient={summary['insufficient_evidence']} "
+                f"source-coverage={summary['source_coverage']:.3f}{destination}"
+            )
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
 def _sha256_regular_file(path: Path) -> str:
     if path.is_symlink():
         raise ValueError(f"refusing symbolic-link dataset: {path}")
@@ -1138,6 +1163,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_ir_eval.add_argument("--responder-version", required=True)
     p_ir_eval.add_argument("--out", "-o", required=True)
     p_ir_eval.set_defaults(func=_cmd_ir_eval)
+
+    p_invariant = sub.add_parser(
+        "invariant-eval",
+        help="evaluate declared graph reachability and bounded response invariants",
+    )
+    p_invariant.add_argument("--plan", required=True)
+    p_invariant.add_argument("--observations", required=True)
+    p_invariant.add_argument("--out", "-o")
+    p_invariant.add_argument("--json", action="store_true")
+    p_invariant.set_defaults(func=_cmd_invariant_eval)
 
     p_container = sub.add_parser(
         "container-eval",

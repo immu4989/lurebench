@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-invariant-observations/v1",
+  "title": "LureInvariant evidence source and temporal observations v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "captured_at", "plan_sha256", "source_status", "events", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-invariant-observations/v1"},
+    "schema_version": {"const": 1},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "source_status": {
+      "type": "array", "minItems": 1, "maxItems": 128,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["source_id", "artifact_sha256", "complete"],
+        "properties": {"source_id": {"$ref": "#/$defs/id"}, "artifact_sha256": {"$ref": "#/$defs/digest"}, "complete": {"type": "boolean"}}
+      }
+    },
+    "events": {
+      "type": "array", "maxItems": 65536,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["event_id", "occurred_ms", "event_type", "run_id", "actor_node_id", "target_node_id", "outcome", "evidence_source_id"],
+        "properties": {
+          "event_id": {"$ref": "#/$defs/id"},
+          "occurred_ms": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+          "event_type": {"$ref": "#/$defs/event"},
+          "run_id": {"$ref": "#/$defs/id"},
+          "actor_node_id": {"$ref": "#/$defs/id"},
+          "target_node_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+          "outcome": {"enum": ["blocked", "failed", "observed", "succeeded"]},
+          "evidence_source_id": {"$ref": "#/$defs/id"}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "event_type": {
+                  "enum": ["credential_use_succeeded", "network_request_succeeded", "tool_call_succeeded"]
+                }
+              },
+              "required": ["event_type"]
+            },
+            "then": {"properties": {"outcome": {"const": "succeeded"}}}
+          }
+        ]
+      }
+    },
+    "limitations": {"const": ["observations_are_operator_supplied_typed_metadata", "no_live_actions_are_executed_by_lurebench", "event_completeness_depends_on_declared_sources_and_capture_process", "results_do_not_authenticate_source_organizations"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "event": {"enum": ["alert_raised", "all_children_stopped", "boundary_modified", "credential_revoked", "credential_use_succeeded", "network_request_succeeded", "run_restarted", "sensor_observed", "stop_requested", "task_activity", "tool_call_succeeded"]}
+  }
+}

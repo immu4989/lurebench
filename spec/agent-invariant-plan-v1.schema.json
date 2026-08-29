@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-invariant-plan/v1",
+  "title": "LureInvariant graph and temporal assurance plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "plan_id", "plan_version", "system_id", "created_at", "sources", "nodes", "edges", "invariants", "acceptance", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-invariant-plan/v1"},
+    "schema_version": {"const": 1},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "plan_version": {"$ref": "#/$defs/id"},
+    "system_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "sources": {
+      "type": "array", "minItems": 1, "maxItems": 128,
+      "contains": {"properties": {"required": {"const": true}}, "required": ["required"]},
+      "minContains": 1,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["source_id", "source_type", "artifact_sha256", "required"],
+        "properties": {
+          "source_id": {"$ref": "#/$defs/id"},
+          "source_type": {"enum": ["a2a_agent_card", "identity_policy", "kubernetes_manifest", "mcp_configuration", "network_policy", "operator_attestation", "runtime_telemetry", "synthetic_fixture", "terraform_plan"]},
+          "artifact_sha256": {"$ref": "#/$defs/digest"},
+          "required": {"type": "boolean"}
+        }
+      }
+    },
+    "nodes": {
+      "type": "array", "minItems": 2, "maxItems": 4096,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["node_id", "node_type", "trust_zone", "tenant_id", "sensitivity"],
+        "properties": {
+          "node_id": {"$ref": "#/$defs/id"},
+          "node_type": {"enum": ["agent", "control_plane", "data_store", "human", "identity_provider", "network_zone", "sensor", "service", "tool", "workload"]},
+          "trust_zone": {"$ref": "#/$defs/id"},
+          "tenant_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+          "sensitivity": {"enum": ["public", "internal", "confidential", "restricted", "control"]}
+        }
+      }
+    },
+    "edges": {
+      "type": "array", "minItems": 1, "maxItems": 16384,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["edge_id", "source_node_id", "target_node_id", "capability", "channel_type", "state", "evidence_source_id"],
+        "properties": {
+          "edge_id": {"$ref": "#/$defs/id"},
+          "source_node_id": {"$ref": "#/$defs/id"},
+          "target_node_id": {"$ref": "#/$defs/id"},
+          "capability": {"$ref": "#/$defs/capability"},
+          "channel_type": {"enum": ["control", "delegation", "identity", "network", "storage", "telemetry", "tool"]},
+          "state": {"enum": ["active", "inactive", "unknown"]},
+          "evidence_source_id": {"$ref": "#/$defs/id"}
+        }
+      }
+    },
+    "invariants": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["invariant_id", "invariant_type", "title", "severity", "subject_node_ids", "target_node_ids", "traversable_capabilities", "mediation_node_ids", "trigger_event_type", "response_event_type", "prohibited_event_types", "maximum_delay_ms"],
+        "properties": {
+          "invariant_id": {"$ref": "#/$defs/id"},
+          "invariant_type": {"enum": ["bounded_response", "forbidden_reachability", "no_post_trigger_activity", "required_mediation"]},
+          "title": {"type": "string", "minLength": 8, "maxLength": 160},
+          "severity": {"enum": ["high", "critical"]},
+          "subject_node_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+          "target_node_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+          "traversable_capabilities": {"type": "array", "maxItems": 13, "uniqueItems": true, "items": {"$ref": "#/$defs/capability"}},
+          "mediation_node_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+          "trigger_event_type": {"oneOf": [{"$ref": "#/$defs/event"}, {"type": "null"}]},
+          "response_event_type": {"oneOf": [{"$ref": "#/$defs/event"}, {"type": "null"}]},
+          "prohibited_event_types": {"type": "array", "maxItems": 11, "uniqueItems": true, "items": {"$ref": "#/$defs/event"}},
+          "maximum_delay_ms": {"type": ["integer", "null"], "minimum": 0, "maximum": 86400000}
+        },
+        "allOf": [
+          {
+            "if": {"properties": {"invariant_type": {"const": "forbidden_reachability"}}, "required": ["invariant_type"]},
+            "then": {
+              "properties": {
+                "subject_node_ids": {"minItems": 1},
+                "target_node_ids": {"minItems": 1},
+                "traversable_capabilities": {"minItems": 1},
+                "mediation_node_ids": {"maxItems": 0},
+                "trigger_event_type": {"type": "null"},
+                "response_event_type": {"type": "null"},
+                "prohibited_event_types": {"maxItems": 0},
+                "maximum_delay_ms": {"type": "null"}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"invariant_type": {"const": "required_mediation"}}, "required": ["invariant_type"]},
+            "then": {
+              "properties": {
+                "subject_node_ids": {"minItems": 1},
+                "target_node_ids": {"minItems": 1},
+                "traversable_capabilities": {"minItems": 1},
+                "mediation_node_ids": {"minItems": 1},
+                "trigger_event_type": {"type": "null"},
+                "response_event_type": {"type": "null"},
+                "prohibited_event_types": {"maxItems": 0},
+                "maximum_delay_ms": {"type": "null"}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"invariant_type": {"const": "bounded_response"}}, "required": ["invariant_type"]},
+            "then": {
+              "properties": {
+                "subject_node_ids": {"maxItems": 0},
+                "target_node_ids": {"maxItems": 0},
+                "traversable_capabilities": {"maxItems": 0},
+                "mediation_node_ids": {"maxItems": 0},
+                "trigger_event_type": {"$ref": "#/$defs/event"},
+                "response_event_type": {"$ref": "#/$defs/event"},
+                "prohibited_event_types": {"maxItems": 0},
+                "maximum_delay_ms": {"type": "integer", "minimum": 1}
+              }
+            }
+          },
+          {
+            "if": {"properties": {"invariant_type": {"const": "no_post_trigger_activity"}}, "required": ["invariant_type"]},
+            "then": {
+              "properties": {
+                "subject_node_ids": {"maxItems": 0},
+                "target_node_ids": {"maxItems": 0},
+                "traversable_capabilities": {"maxItems": 0},
+                "mediation_node_ids": {"maxItems": 0},
+                "trigger_event_type": {"$ref": "#/$defs/event"},
+                "response_event_type": {"type": "null"},
+                "prohibited_event_types": {"minItems": 1},
+                "maximum_delay_ms": {"type": "integer"}
+              }
+            }
+          }
+        ]
+      }
+    },
+    "acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["maximum_violations", "allow_insufficient_evidence"],
+      "properties": {
+        "maximum_violations": {"const": 0},
+        "allow_insufficient_evidence": {"const": false}
+      }
+    },
+    "limitations": {"$ref": "#/$defs/plan_limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "capability": {"enum": ["approve", "call", "cancel", "control", "delegate", "mint", "modify_boundary", "observe", "persist", "reach", "read", "revoke", "write"]},
+    "event": {"enum": ["alert_raised", "all_children_stopped", "boundary_modified", "credential_revoked", "credential_use_succeeded", "network_request_succeeded", "run_restarted", "sensor_observed", "stop_requested", "task_activity", "tool_call_succeeded"]},
+    "plan_limitations": {"const": ["declared_inventory_and_operator_observations_only", "graph_paths_are_bounded_to_declared_nodes_edges_capabilities_and_sources", "typed_metadata_only_no_targets_payloads_credentials_commands_prompts_or_reasoning", "not_observed_is_not_proof_of_universal_unreachability_or_security", "results_are_measurement_evidence_not_enforcement_compliance_certification_or_authorization"]}
+  }
+}

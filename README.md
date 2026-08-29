@@ -15,6 +15,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
 ![LureEval conformance](https://img.shields.io/badge/LureEval_conformance-12%2F12-1baf7a)
 ![LureBoundary](https://img.shields.io/badge/LureBoundary-14_safe_trajectories-7b61ff)
+![LureInvariant](https://img.shields.io/badge/LureInvariant-graph_·_temporal_·_tri--state-7b61ff)
 ![Agent assurance](https://img.shields.io/badge/agent_assurance-OCI_·_coverage_·_delegation_·_IR-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
@@ -26,6 +27,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 <p align="center">
   <a href="#the-finding"><strong>See the finding</strong></a> ·
   <a href="#quickstart"><strong>Run the benchmark</strong></a> ·
+  <a href="docs/LUREINVARIANT.md"><strong>Evaluate system invariants</strong></a> ·
   <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
 
@@ -34,6 +36,15 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 Fraud detectors that score well on classic spam corpora fall apart on lures written by modern language models. LureBench measures that gap on a common footing: one schema, one harness, one leaderboard, across fraud typologies and generator families. It runs out of the box with no model downloads or API keys, and it ships baseline detectors from a keyword heuristic up to a trained classifier.
 
 More than a corpus, it is a **method for building the corpus honestly**. Getting a credible answer to "can you detect AI-generated fraud?" turned out to require finding, and removing, a dataset confound that makes the problem look far easier than it is. That story is below.
+
+> **New — test invariants that cross the model, tools, network, identity, and
+> lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed
+> transitive reachability, required mediation, bounded shutdown, and prohibited
+> post-trigger activity from exact plan and observation bytes. Unknown edges and
+> incomplete sources fail to `insufficient_evidence`; they never become a quiet
+> pass. The before/after reference resolves four violations without weakening
+> the invariant contract. No discovery, probe, agent action, or enforcement is
+> executed.
 
 > **New — thresholds with evidence, not just point estimates.** LureBench can now
 > export a policy only when exact finite-sample tests support a requested
@@ -166,6 +177,25 @@ Run the metadata-only agent-boundary benchmark offline:
 lurebench boundary-eval
 lurebench boundary-eval --out boundary-evaluation.json --json
 ```
+
+Evaluate the reference cross-layer invariant remediation. The first command
+returns exit `1` because its valid report contains observed violations; the
+second returns `0`:
+
+```bash
+lurebench invariant-eval \
+  --plan examples/lureinvariant/before-plan.json \
+  --observations examples/lureinvariant/before-observations.json \
+  --out before-evaluation.json
+lurebench invariant-eval \
+  --plan examples/lureinvariant/after-plan.json \
+  --observations examples/lureinvariant/after-observations.json \
+  --out after-evaluation.json
+```
+
+See the [LureInvariant contract, semantics, and integration
+guide](docs/LUREINVARIANT.md). LureScope can independently recompute, sign, and
+strictly compare the resulting before/after evidence.
 
 The reviewed reference suite contains 9 violation trajectories and 5 benign
 controls. Its deterministic baseline scores 1.00 recall, 0.00 benign FPR, 1.00

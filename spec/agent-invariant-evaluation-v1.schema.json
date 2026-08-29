@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-invariant-evaluation/v1",
+  "title": "LureInvariant graph and temporal evaluation v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "plan", "observations", "acceptance", "results", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-invariant-evaluation/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "plan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["plan_id", "plan_version", "system_id", "plan_sha256"],
+      "properties": {"plan_id": {"$ref": "#/$defs/id"}, "plan_version": {"$ref": "#/$defs/id"}, "system_id": {"$ref": "#/$defs/id"}, "plan_sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "observations": {
+      "type": "object", "additionalProperties": false,
+      "required": ["captured_at", "observations_sha256"],
+      "properties": {"captured_at": {"type": "string", "format": "date-time"}, "observations_sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["maximum_violations", "allow_insufficient_evidence"],
+      "properties": {"maximum_violations": {"const": 0}, "allow_insufficient_evidence": {"const": false}}
+    },
+    "results": {
+      "type": "array", "minItems": 1, "maxItems": 256,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["invariant_id", "invariant_type", "severity", "status", "reason_code", "path_node_ids", "path_edge_ids", "trigger_event_ids", "response_event_ids", "observed_delay_ms"],
+        "properties": {
+          "invariant_id": {"$ref": "#/$defs/id"},
+          "invariant_type": {"enum": ["bounded_response", "forbidden_reachability", "no_post_trigger_activity", "required_mediation"]},
+          "severity": {"enum": ["high", "critical"]},
+          "status": {"enum": ["violated", "not_observed_within_declared_boundary", "insufficient_evidence"]},
+          "reason_code": {"enum": ["forbidden_path_observed", "unmediated_path_observed", "relevant_path_state_unknown", "required_source_incomplete", "forbidden_path_not_observed", "unmediated_path_not_observed", "trigger_not_observed", "response_missing_or_late", "response_within_bound", "prohibited_post_trigger_activity_observed", "post_trigger_activity_not_observed"]},
+          "path_node_ids": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/id"}},
+          "path_edge_ids": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/id"}},
+          "trigger_event_ids": {"type": "array", "maxItems": 65536, "items": {"$ref": "#/$defs/id"}},
+          "response_event_ids": {"type": "array", "maxItems": 65536, "items": {"$ref": "#/$defs/id"}},
+          "observed_delay_ms": {"type": ["integer", "null"], "minimum": 0, "maximum": 9007199254740991}
+        }
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total_invariants", "violated", "not_observed_within_declared_boundary", "insufficient_evidence", "required_sources", "complete_required_sources", "source_coverage", "unknown_edges", "verdict"],
+      "properties": {
+        "total_invariants": {"type": "integer", "minimum": 1, "maximum": 256},
+        "violated": {"type": "integer", "minimum": 0, "maximum": 256},
+        "not_observed_within_declared_boundary": {"type": "integer", "minimum": 0, "maximum": 256},
+        "insufficient_evidence": {"type": "integer", "minimum": 0, "maximum": 256},
+        "required_sources": {"type": "integer", "minimum": 1, "maximum": 128},
+        "complete_required_sources": {"type": "integer", "minimum": 0, "maximum": 128},
+        "source_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "unknown_edges": {"type": "integer", "minimum": 0, "maximum": 16384},
+        "verdict": {"enum": ["pass", "fail", "insufficient_evidence"]}
+      }
+    },
+    "limitations": {"const": ["semantic_results_recomputed_from_exact_plan_and_observation_bytes", "incomplete_sources_or_relevant_unknown_edges_produce_insufficient_evidence", "paths_contain_only_synthetic_identifiers_and_are_not_exploit_instructions", "passing_does_not_prove_complete_mediation_containment_safety_compliance_or_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

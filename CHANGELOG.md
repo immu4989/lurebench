@@ -3,6 +3,13 @@
 ## Unreleased
 
 ### Added
+- Added LureInvariant, a strict cross-layer graph and temporal evaluator for
+  transitive forbidden reachability, required mediation, bounded response, and
+  prohibited post-trigger activity. Results distinguish observed violation,
+  not observed within the declared boundary, and insufficient evidence.
+- Added `lurebench invariant-eval`, exact plan/observation byte bindings,
+  independently recomputable reports, before/after remediation fixtures, three
+  Draft 2020-12 public schemas, wheel-packaged formats, and operator guidance.
 - Added LureBoundary, a safe incident-derived autonomous-agent boundary monitor
   benchmark with 14 reviewed synthetic trajectories, strict metadata-only event,
   suite, and evaluation schemas, and a deterministic reference monitor.
@@ -35,6 +42,13 @@
   and adversarial tests for all new contracts.
 
 ### Security
+- LureInvariant fails closed on unknown fields, duplicate JSON keys, non-finite
+  values, undeclared graph references, duplicate typed edges, unknown relevant
+  edge state, incomplete required sources, source/digest substitution, symlinks,
+  oversized artifacts, unsafe output, metric rewriting, and verdict tampering.
+- Plans and observations contain typed metadata only. LureInvariant performs no
+  discovery, probes, tool calls, containment, remediation, or enforcement, and a
+  pass is explicitly bounded to complete declared evidence.
 - The monitor receives only typed events; scenario identity, prose, labels,
   categories, and detection windows remain in the harness. Strict allowlists
   structurally exclude prompts, commands, payloads, credentials, hosts, URLs,

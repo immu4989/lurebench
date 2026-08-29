@@ -13,6 +13,7 @@ from lurebench.incident_response import (
     export_ir_tasks,
     reference_ir_responses,
 )
+from lurebench.invariant import evaluate_invariants
 
 ROOT = Path(__file__).parents[1]
 MANIFEST = ROOT / "examples" / "lurecoverage" / "manifest.json"
@@ -82,3 +83,22 @@ def test_published_delegation_and_ir_schemas_validate_reference_artifacts(tmp_pa
 
 def test_container_conformance_schema_is_valid():
     _validator("agent-boundary-container-evaluation-v1.schema.json")
+
+
+def test_published_invariant_schemas_validate_reference_artifacts():
+    examples = ROOT / "examples" / "lureinvariant"
+    plan_path = examples / "after-plan.json"
+    observations_path = examples / "after-observations.json"
+    artifacts = (
+        ("agent-invariant-plan-v1.schema.json", json.loads(plan_path.read_text())),
+        (
+            "agent-invariant-observations-v1.schema.json",
+            json.loads(observations_path.read_text()),
+        ),
+        (
+            "agent-invariant-evaluation-v1.schema.json",
+            evaluate_invariants(plan_path, observations_path),
+        ),
+    )
+    for name, value in artifacts:
+        _validator(name).validate(value)
