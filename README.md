@@ -15,6 +15,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
 ![LureEval conformance](https://img.shields.io/badge/LureEval_conformance-12%2F12-1baf7a)
 ![LureBoundary](https://img.shields.io/badge/LureBoundary-14_safe_trajectories-7b61ff)
+![Agent assurance](https://img.shields.io/badge/agent_assurance-OCI_·_coverage_·_delegation_·_IR-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
 [![Security policy](https://img.shields.io/badge/security-policy-5c6470)](SECURITY.md)
@@ -63,6 +64,14 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > fields for prompts, commands, payloads, credentials, hosts, URLs, or reasoning.
 > `lurebench boundary-eval` reports recall, benign FPR, detection delay, and
 > category accuracy. Passing is benchmark evidence—not proof of containment.
+
+> **New — prove what the monitor could observe.** The
+> [agent-assurance interoperability suite](docs/AGENT_ASSURANCE_INTEROP.md) adds
+> a hardened, language-neutral OCI monitor protocol; LureCoverage canaries for
+> telemetry loss, duplication, ordering, latency, and lineage; a 15-scenario
+> identity/delegation graph benchmark; and LureIR's five defanged
+> incident-response cases. Every contract is strict, metadata-only, and
+> independently recomputable. None executes an agent action.
 
 ### Who it's for
 
@@ -162,6 +171,35 @@ The reviewed reference suite contains 9 violation trajectories and 5 benign
 controls. Its deterministic baseline scores 1.00 recall, 0.00 benign FPR, 1.00
 category accuracy, and zero-event delay; that result validates the harness, not
 a production deployment. See the [protocol and claims boundary](docs/AGENT_BOUNDARY_ASSURANCE.md).
+
+Evaluate a proprietary monitor image, then measure sensor coverage and the
+delegation/incident-response layers:
+
+```bash
+lurebench boundary-eval \
+  --image vendor-monitor@sha256:<digest> \
+  --out boundary-evaluation.json \
+  --container-report boundary-container-evidence.json
+
+lurebench coverage-canaries \
+  --manifest examples/lurecoverage/manifest.json \
+  --replicates 3 --out coverage-canaries.json
+lurebench coverage-eval \
+  --manifest examples/lurecoverage/manifest.json \
+  --canaries coverage-canaries.json \
+  --observations sensor-observations.json \
+  --out coverage-evaluation.json
+
+lurebench delegation-eval --out delegation-evaluation.json
+lurebench ir-tasks --out lureir-tasks.json
+lurebench ir-eval --responses responder-submission.json \
+  --responder-id local-team --responder-version 1.0.0 \
+  --out lureir-evaluation.json
+```
+
+The full protocol, response shapes, metrics, safety boundary, and reference OCI
+image are documented in
+[Agent assurance interoperability](docs/AGENT_ASSURANCE_INTEROP.md).
 
 Clone the repository when you want the bundled sample data, research artifacts,
 and reproducibility commands:

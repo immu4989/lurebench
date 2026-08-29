@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-delegation-evaluation/v1",
+  "title": "LureDelegation evaluation report v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "suite", "monitor", "acceptance", "summary", "results", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-delegation-evaluation/v1"}, "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "suite": {"type": "object", "additionalProperties": false, "required": ["suite_id", "suite_version", "suite_sha256"], "properties": {"suite_id": {"const": "luredelegation-v1"}, "suite_version": {"const": "1.0.0"}, "suite_sha256": {"$ref": "#/$defs/digest"}}},
+    "monitor": {"type": "object", "additionalProperties": false, "required": ["monitor_id", "monitor_version"], "properties": {"monitor_id": {"$ref": "#/$defs/id"}, "monitor_version": {"type": "string", "minLength": 1, "maxLength": 64}}},
+    "acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimum_recall", "maximum_benign_false_positive_rate", "minimum_category_accuracy", "maximum_detection_delay_events"],
+      "properties": {
+        "minimum_recall": {"$ref": "#/$defs/rate"},
+        "maximum_benign_false_positive_rate": {"$ref": "#/$defs/rate"},
+        "minimum_category_accuracy": {"$ref": "#/$defs/rate"},
+        "maximum_detection_delay_events": {"type": "integer", "minimum": 0, "maximum": 128}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total_scenarios", "violation_scenarios", "benign_scenarios", "true_positive", "false_negative", "false_positive", "true_negative", "recall", "benign_false_positive_rate", "category_accuracy", "maximum_detection_delay_events", "verdict"],
+      "properties": {
+        "total_scenarios": {"type": "integer", "minimum": 0, "maximum": 64}, "violation_scenarios": {"type": "integer", "minimum": 0, "maximum": 64}, "benign_scenarios": {"type": "integer", "minimum": 0, "maximum": 64},
+        "true_positive": {"type": "integer", "minimum": 0, "maximum": 64}, "false_negative": {"type": "integer", "minimum": 0, "maximum": 64}, "false_positive": {"type": "integer", "minimum": 0, "maximum": 64}, "true_negative": {"type": "integer", "minimum": 0, "maximum": 64},
+        "recall": {"$ref": "#/$defs/rate"}, "benign_false_positive_rate": {"$ref": "#/$defs/rate"}, "category_accuracy": {"$ref": "#/$defs/rate"}, "maximum_detection_delay_events": {"type": ["integer", "null"], "minimum": 0, "maximum": 128}, "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "results": {
+      "type": "array", "minItems": 4, "maxItems": 64,
+      "items": {"type": "object", "additionalProperties": false, "required": ["scenario_id", "label", "expected_category", "first_detectable_sequence", "detected", "category_correct", "detection_delay_events", "passed", "alerts"], "properties": {
+        "scenario_id": {"$ref": "#/$defs/id"}, "label": {"enum": ["benign", "violation"]}, "expected_category": {"oneOf": [{"$ref": "#/$defs/category"}, {"type": "null"}]}, "first_detectable_sequence": {"type": ["integer", "null"], "minimum": 1, "maximum": 128}, "detected": {"type": "boolean"}, "category_correct": {"type": ["boolean", "null"]}, "detection_delay_events": {"type": ["integer", "null"], "minimum": -127, "maximum": 127}, "passed": {"type": "boolean"},
+        "alerts": {"type": "array", "maxItems": 128, "items": {"type": "object", "additionalProperties": false, "required": ["event_id", "sequence", "severity", "category", "reason_code"], "properties": {"event_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 128}, "severity": {"enum": ["high", "critical"]}, "category": {"$ref": "#/$defs/category"}, "reason_code": {"$ref": "#/$defs/id"}}}}
+      }}
+    },
+    "limitations": {"const": ["synthetic_metadata_only_no_tokens_credentials_prompts_commands_or_payloads", "identities_and_capabilities_are_non_secret_synthetic_identifiers", "results_measure_declared_delegation_logic_not_identity_provider_security", "passing_does_not_prove_runtime_enforcement_complete_mediation_or_compliance"]}
+  },
+  "$defs": {"id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "rate": {"type": "number", "minimum": 0, "maximum": 1}, "category": {"enum": ["audience_confusion", "confused_deputy", "cross_tenant_confusion", "delegation_depth_exceeded", "expired_delegation", "replayed_delegation", "revoked_delegation", "scope_amplification", "unauthorized_issuer", "unauthorized_subagent", "untrusted_peer_instruction"]}}
+}

@@ -141,3 +141,8 @@ authorization. It says only that the declared monitor produced the measured
 results on the bound synthetic suite. A deployment assessment still needs
 independent architecture review, telemetry validation, adversarial testing,
 incident response, change control, and human authorization.
+
+The next interoperability layer measures some of those missing surfaces with a
+hardened OCI monitor contract, payload-free route canaries, identity/delegation
+scenarios, and defanged incident-response tasks. See
+[Agent assurance interoperability](AGENT_ASSURANCE_INTEROP.md).

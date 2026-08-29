@@ -10,6 +10,29 @@
   reports, trajectory recall, benign false-positive rate, event-step detection
   delay, category accuracy, machine-readable results, wheel-packaged protocol
   data, and an operator/independent-monitor guide.
+- Added `lureboundary-monitor-v1`, a strict JSONL OCI protocol for proprietary
+  or non-Python boundary monitors. Images are digest-pinned for reportable use,
+  never pulled implicitly, and run without network, mounts, capabilities,
+  privileges, or writable root, under a forced unprivileged UID/GID, with bounded
+  CPU, memory, PIDs, newline-delimited output, and response time. A separate report
+  binds the runtime image ID, isolation claims,
+  privacy boundary, and exact LureBoundary evaluation.
+- Added LureCoverage manifests, payload-free deterministic canary descriptors,
+  strict sensor acknowledgements, and independently recomputed route coverage,
+  delivery, duplication, ordering, lineage, and delay metrics. The reviewed
+  example covers egress, credential, control-plane, peer-channel, and lifecycle
+  routes without executing actions.
+- Added LureDelegation, a 15-scenario metadata-only identity and capability
+  benchmark covering issuer/audience trust, confused deputy, scope amplification,
+  delegation-depth overflow, expiry, replay, revocation, cross-tenant use, orphan
+  subagents, and untrusted peer instructions.
+- Added LureIR, five defanged incident-response readiness cases with a withheld
+  scoring key and structured scoring for facts, evidence support, timeline,
+  evidence requests, safe containment-action recall, unsafe containment choices,
+  and escalation. Evidence support requires every minimum evidence item.
+- Added ten Draft 2020-12 public schemas, a reference OCI monitor, CLI workflows,
+  strict semantic recomputation, private no-overwrite outputs, operator guidance,
+  and adversarial tests for all new contracts.
 
 ### Security
 - The monitor receives only typed events; scenario identity, prose, labels,
@@ -17,6 +40,9 @@
   structurally exclude prompts, commands, payloads, credentials, hosts, URLs,
   paths, and model reasoning and reject symlinks, oversized input, duplicate JSON
   keys, non-finite values, sequence gaps, duplicate IDs, and metric tampering.
+- OCI monitors never receive scenario identity, prose, labels, expected results,
+  detection windows, or acceptance thresholds. Coverage and LureIR canaries are
+  descriptors/codes only and never execute containment or agent actions.
 
 ## 0.11.0 — 2026-08-23
 

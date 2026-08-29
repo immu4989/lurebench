@@ -624,10 +624,63 @@ def _cmd_boundary_eval(args: argparse.Namespace) -> int:
         write_boundary_evaluation,
     )
 
+    monitor = None
     try:
-        report = run_boundary_evaluation(Path(args.suite) if args.suite else None)
+        if args.container_report and not args.image:
+            raise ValueError("--container-report requires --image")
+        kwargs = {}
+        if args.image:
+            from .boundary_container import PROTOCOL, BoundaryContainerMonitor
+
+            monitor = BoundaryContainerMonitor(
+                args.image,
+                runtime=args.runtime,
+                timeout_seconds=args.timeout,
+                memory=args.memory,
+                cpus=args.cpus,
+                allow_mutable_image=args.allow_mutable_image,
+            )
+            kwargs = {
+                "monitor": monitor,
+                "monitor_id": args.monitor_id,
+                "monitor_version": args.monitor_version,
+                "monitor_artifact_sha256": monitor.artifact_sha256,
+            }
+        report = run_boundary_evaluation(Path(args.suite) if args.suite else None, **kwargs)
         if args.out:
             write_boundary_evaluation(Path(args.out), report)
+        if args.container_report:
+            assert monitor is not None
+            wrapper = {
+                "schema": (
+                    "https://github.com/immu4989/lurebench/spec/"
+                    "agent-boundary-container-evaluation/v1"
+                ),
+                "schema_version": 1,
+                "generated_at": report["generated_at"],
+                "protocol": PROTOCOL,
+                "runtime": args.runtime,
+                "image_reference": args.image,
+                "image_id": monitor.image_id,
+                "mutable_reference_allowed": bool(args.allow_mutable_image),
+                "isolation": monitor.isolation_claims(),
+                "privacy": {
+                    "ground_truth_transmitted": False,
+                    "scenario_identifiers_transmitted": False,
+                    "scenario_prose_transmitted": False,
+                    "acceptance_thresholds_transmitted": False,
+                },
+                "evaluation": report,
+                "limitations": [
+                    "container_isolation_depends_on_the_local_runtime_and_kernel",
+                    "image_identity_does_not_authenticate_a_vendor_without_external_provenance",
+                    "protocol_conformance_does_not_establish_deployment_containment",
+                ],
+            }
+            _write_new_private(
+                args.container_report,
+                json.dumps(wrapper, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+            )
         if args.json:
             print(dumps_boundary_evaluation(report), end="")
         else:
@@ -640,6 +693,106 @@ def _cmd_boundary_eval(args: argparse.Namespace) -> int:
                 f"max-delay={summary['maximum_detection_delay_events']} event(s){destination}"
             )
         return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+    finally:
+        if monitor is not None:
+            monitor.close()
+
+
+def _cmd_coverage_canaries(args: argparse.Namespace) -> int:
+    try:
+        from .coverage import build_coverage_canaries, write_coverage_artifact
+
+        artifact = build_coverage_canaries(Path(args.manifest), replicates=args.replicates)
+        write_coverage_artifact(Path(args.out), artifact)
+        print(
+            f"LURECOVERAGE CANARIES: {len(artifact['probes'])} payload-free probes — "
+            f"{args.out}"
+        )
+        print("boundary: descriptors only; LureBench does not execute agent actions")
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_coverage_eval(args: argparse.Namespace) -> int:
+    try:
+        from .coverage import evaluate_coverage, write_coverage_artifact
+
+        report = evaluate_coverage(
+            Path(args.manifest), Path(args.canaries), Path(args.observations)
+        )
+        write_coverage_artifact(Path(args.out), report)
+        summary = report["summary"]
+        print(
+            f"LURECOVERAGE: {summary['verdict'].upper()} — "
+            f"routes={summary['covered_required_routes']}/{summary['required_routes']} "
+            f"delivery={summary['probe_delivery_rate']:.3f} "
+            f"lineage={summary['lineage_continuity']:.3f} — {args.out}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_delegation_eval(args: argparse.Namespace) -> int:
+    try:
+        from .delegation import run_delegation_evaluation, write_delegation_evaluation
+
+        report = run_delegation_evaluation()
+        if args.out:
+            write_delegation_evaluation(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            print(
+                f"LUREDELEGATION: {summary['verdict'].upper()} — "
+                f"recall={summary['recall']:.3f} "
+                f"benign-FPR={summary['benign_false_positive_rate']:.3f} "
+                f"category={summary['category_accuracy']:.3f}"
+            )
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_ir_tasks(args: argparse.Namespace) -> int:
+    try:
+        from .incident_response import export_ir_tasks, write_ir_artifact
+
+        tasks = export_ir_tasks()
+        write_ir_artifact(Path(args.out), tasks)
+        print(f"LUREIR TASKS: {len(tasks['cases'])} defanged cases — {args.out}")
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_ir_eval(args: argparse.Namespace) -> int:
+    try:
+        from .incident_response import evaluate_ir_responses, write_ir_artifact
+
+        report = evaluate_ir_responses(
+            Path(args.responses),
+            responder_id=args.responder_id,
+            responder_version=args.responder_version,
+        )
+        write_ir_artifact(Path(args.out), report)
+        summary = report["summary"]
+        print(
+            f"LUREIR: {summary['verdict'].upper()} — "
+            f"fact-recall={summary['fact_recall']:.3f} "
+            f"support={summary['evidence_support_rate']:.3f} "
+            f"unsafe-action-rate={summary['unsafe_action_rate']:.3f} — {args.out}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
     except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 2
@@ -921,9 +1074,70 @@ def build_parser() -> argparse.ArgumentParser:
         "--suite",
         help="optional suite JSON or directory; defaults to the packaged reviewed suite",
     )
+    p_boundary.add_argument(
+        "--image",
+        help="optional local OCI monitor image pinned as name@sha256:<digest>",
+    )
+    p_boundary.add_argument("--runtime", choices=["docker", "podman"], default="docker")
+    p_boundary.add_argument("--timeout", type=float, default=10.0)
+    p_boundary.add_argument("--memory", default="256m")
+    p_boundary.add_argument("--cpus", type=float, default=1.0)
+    p_boundary.add_argument("--monitor-id", default="oci-boundary-monitor")
+    p_boundary.add_argument("--monitor-version", default="1.0.0")
+    p_boundary.add_argument(
+        "--allow-mutable-image",
+        action="store_true",
+        help="development only; immutable runtime image id is still recorded",
+    )
+    p_boundary.add_argument(
+        "--container-report",
+        help="new mode-0600 OCI protocol/isolation report; requires --image",
+    )
     p_boundary.add_argument("--out", "-o", help="new mode-0600 evaluation JSON path")
     p_boundary.add_argument("--json", action="store_true", help="also print JSON to stdout")
     p_boundary.set_defaults(func=_cmd_boundary_eval)
+
+    p_coverage_canaries = sub.add_parser(
+        "coverage-canaries",
+        help="create payload-free canary descriptors from a coverage manifest",
+    )
+    p_coverage_canaries.add_argument("--manifest", required=True)
+    p_coverage_canaries.add_argument("--replicates", type=int, default=1)
+    p_coverage_canaries.add_argument("--out", "-o", required=True)
+    p_coverage_canaries.set_defaults(func=_cmd_coverage_canaries)
+
+    p_coverage_eval = sub.add_parser(
+        "coverage-eval",
+        help="measure telemetry delivery, duplication, ordering, latency, and lineage",
+    )
+    p_coverage_eval.add_argument("--manifest", required=True)
+    p_coverage_eval.add_argument("--canaries", required=True)
+    p_coverage_eval.add_argument("--observations", required=True)
+    p_coverage_eval.add_argument("--out", "-o", required=True)
+    p_coverage_eval.set_defaults(func=_cmd_coverage_eval)
+
+    p_delegation = sub.add_parser(
+        "delegation-eval",
+        help="evaluate identity, capability, and delegation-chain controls",
+    )
+    p_delegation.add_argument("--out", "-o")
+    p_delegation.add_argument("--json", action="store_true")
+    p_delegation.set_defaults(func=_cmd_delegation_eval)
+
+    p_ir_tasks = sub.add_parser(
+        "ir-tasks", help="export the responder-visible defanged LureIR task set"
+    )
+    p_ir_tasks.add_argument("--out", "-o", required=True)
+    p_ir_tasks.set_defaults(func=_cmd_ir_tasks)
+
+    p_ir_eval = sub.add_parser(
+        "ir-eval", help="score structured incident-response readiness submissions"
+    )
+    p_ir_eval.add_argument("--responses", required=True)
+    p_ir_eval.add_argument("--responder-id", required=True)
+    p_ir_eval.add_argument("--responder-version", required=True)
+    p_ir_eval.add_argument("--out", "-o", required=True)
+    p_ir_eval.set_defaults(func=_cmd_ir_eval)
 
     p_container = sub.add_parser(
         "container-eval",

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-boundary-container-evaluation/v1",
+  "title": "LureBoundary OCI monitor conformance evidence v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "protocol", "runtime", "image_reference", "image_id", "mutable_reference_allowed", "isolation", "privacy", "evaluation", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-boundary-container-evaluation/v1"}, "schema_version": {"const": 1}, "generated_at": {"type": "string", "format": "date-time"}, "protocol": {"const": "lureboundary-monitor-v1"}, "runtime": {"enum": ["docker", "podman"]}, "image_reference": {"type": "string", "minLength": 1, "maxLength": 500}, "image_id": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}, "mutable_reference_allowed": {"type": "boolean"},
+    "isolation": {"type": "object", "additionalProperties": false, "required": ["network", "read_only_root", "capabilities_dropped", "no_new_privileges", "user", "host_mounts", "pids_limit", "memory", "cpus", "implicit_pull"], "properties": {"network": {"const": "none"}, "read_only_root": {"const": true}, "capabilities_dropped": {"const": "ALL"}, "no_new_privileges": {"const": true}, "user": {"const": "65532:65532"}, "host_mounts": {"const": false}, "pids_limit": {"const": 64}, "memory": {"type": "string"}, "cpus": {"type": "number", "exclusiveMinimum": 0}, "implicit_pull": {"const": false}}},
+    "privacy": {"type": "object", "additionalProperties": false, "required": ["ground_truth_transmitted", "scenario_identifiers_transmitted", "scenario_prose_transmitted", "acceptance_thresholds_transmitted"], "properties": {"ground_truth_transmitted": {"const": false}, "scenario_identifiers_transmitted": {"const": false}, "scenario_prose_transmitted": {"const": false}, "acceptance_thresholds_transmitted": {"const": false}}},
+    "evaluation": {"type": "object"},
+    "limitations": {"const": ["container_isolation_depends_on_the_local_runtime_and_kernel", "image_identity_does_not_authenticate_a_vendor_without_external_provenance", "protocol_conformance_does_not_establish_deployment_containment"]}
+  }
+}

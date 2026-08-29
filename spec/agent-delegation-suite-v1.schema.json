@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/agent-delegation-suite/v1",
+  "title": "LureDelegation metadata-only suite v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "suite_id", "suite_version", "policy", "acceptance", "scenarios", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/agent-delegation-suite/v1"},
+    "schema_version": {"const": 1},
+    "suite_id": {"const": "luredelegation-v1"},
+    "suite_version": {"const": "1.0.0"},
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["trusted_issuers", "trusted_audiences", "maximum_delegation_depth", "maximum_scope_level"],
+      "properties": {
+        "trusted_issuers": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "trusted_audiences": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "maximum_delegation_depth": {"type": "integer", "minimum": 0, "maximum": 8},
+        "maximum_scope_level": {"type": "integer", "minimum": 0, "maximum": 16}
+      }
+    },
+    "acceptance": {"$ref": "#/$defs/acceptance"},
+    "scenarios": {
+      "type": "array", "minItems": 4, "maxItems": 64,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["scenario_id", "title", "events", "expected"],
+        "properties": {
+          "scenario_id": {"$ref": "#/$defs/id"},
+          "title": {"type": "string", "minLength": 8, "maxLength": 140},
+          "events": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/event"}},
+          "expected": {
+            "type": "object", "additionalProperties": false,
+            "required": ["label", "category", "first_detectable_sequence"],
+            "properties": {
+              "label": {"enum": ["benign", "violation"]},
+              "category": {"oneOf": [{"$ref": "#/$defs/category"}, {"type": "null"}]},
+              "first_detectable_sequence": {"type": ["integer", "null"], "minimum": 1, "maximum": 128}
+            }
+          }
+        }
+      }
+    },
+    "limitations": {"$ref": "#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "category": {"enum": ["audience_confusion", "confused_deputy", "cross_tenant_confusion", "delegation_depth_exceeded", "expired_delegation", "replayed_delegation", "revoked_delegation", "scope_amplification", "unauthorized_issuer", "unauthorized_subagent", "untrusted_peer_instruction"]},
+    "event": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_id", "sequence", "kind", "actor_id", "principal_id", "issuer_id", "audience_id", "tenant_id", "capability_id", "operation", "resource_class", "delegation_id", "parent_delegation_id", "scope_level", "expires_sequence", "max_uses", "trusted_peer", "outcome"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 128},
+        "kind": {"enum": ["grant", "instruction", "revoke", "spawn", "use"]},
+        "actor_id": {"$ref": "#/$defs/id"}, "principal_id": {"$ref": "#/$defs/id"}, "issuer_id": {"$ref": "#/$defs/id"}, "audience_id": {"$ref": "#/$defs/id"}, "tenant_id": {"$ref": "#/$defs/id"}, "capability_id": {"$ref": "#/$defs/id"},
+        "operation": {"enum": ["admin", "execute", "publish", "read", "signal", "spawn", "write"]},
+        "resource_class": {"enum": ["artifact_store", "cluster_control_plane", "code_repository", "evaluation_control", "local_workspace", "message_bus", "tenant_data"]},
+        "delegation_id": {"$ref": "#/$defs/id"}, "parent_delegation_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "scope_level": {"type": "integer", "minimum": 0, "maximum": 16}, "expires_sequence": {"type": "integer", "minimum": 1, "maximum": 128}, "max_uses": {"type": "integer", "minimum": 1, "maximum": 128},
+        "trusted_peer": {"type": "boolean"}, "outcome": {"enum": ["blocked", "failed", "observed", "succeeded"]}
+      }
+    },
+    "acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimum_recall", "maximum_benign_false_positive_rate", "minimum_category_accuracy", "maximum_detection_delay_events"],
+      "properties": {
+        "minimum_recall": {"type": "number", "minimum": 0, "maximum": 1},
+        "maximum_benign_false_positive_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "minimum_category_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "maximum_detection_delay_events": {"type": "integer", "minimum": 0, "maximum": 128}
+      }
+    },
+    "limitations": {"const": ["synthetic_metadata_only_no_tokens_credentials_prompts_commands_or_payloads", "identities_and_capabilities_are_non_secret_synthetic_identifiers", "results_measure_declared_delegation_logic_not_identity_provider_security", "passing_does_not_prove_runtime_enforcement_complete_mediation_or_compliance"]}
+  }
+}
