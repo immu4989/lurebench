@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-trace-v1",
+  "title": "LurePermit runtime receipt and sensor trace v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "trace_id", "generated_at", "profile", "profile_sha256", "requests", "receipts", "sensor_observations", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-trace-v1"},
+    "schema_version": {"const": 1}, "trace_id": {"$ref": "#/$defs/id"}, "generated_at": {"type": "string", "format": "date-time"},
+    "profile": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1"}, "profile_sha256": {"$ref": "#/$defs/digest"},
+    "requests": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-request-v1"}},
+    "receipts": {"type": "array", "maxItems": 512, "items": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-receipt-v1"}},
+    "sensor_observations": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/observation"}},
+    "limitations": {"const": ["receipts_record_declared_policy_decisions_not_proof_of_complete_runtime_mediation", "sensor_observations_require_external_trust_and_coverage_assessment", "hash_chaining_detects_rewriting_or_reordering_after_capture_not_source_fabrication", "trace_contains_typed_metadata_only_and_no_action_content_or_credential_values"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_id", "observed_at", "correlation_id", "mediation_point_id", "sensor_id", "effect_state", "effect_class", "receipt_sha256"],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/id"}, "observed_at": {"type": "string", "format": "date-time"}, "correlation_id": {"$ref": "#/$defs/id"}, "mediation_point_id": {"$ref": "#/$defs/id"}, "sensor_id": {"$ref": "#/$defs/id"},
+        "effect_state": {"enum": ["not_observed", "observed", "unknown"]},
+        "effect_class": {"enum": ["credential_access", "delegation", "evaluation_access", "incident_escalation", "network_egress", "policy_change", "process_execution", "shared_state", "storage_access", "tool_invocation"]},
+        "receipt_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+      }
+    }
+  }
+}

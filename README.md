@@ -16,6 +16,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![LureEval conformance](https://img.shields.io/badge/LureEval_conformance-12%2F12-1baf7a)
 ![LureBoundary](https://img.shields.io/badge/LureBoundary-14_safe_trajectories-7b61ff)
 ![LureInvariant](https://img.shields.io/badge/LureInvariant-graph_·_temporal_·_tri--state-7b61ff)
+![LurePermit](https://img.shields.io/badge/LurePermit-21_offline_·_15_stateful-7b61ff)
 ![Agent assurance](https://img.shields.io/badge/agent_assurance-OCI_·_coverage_·_delegation_·_IR-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
@@ -27,6 +28,9 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 <p align="center">
   <a href="#the-finding"><strong>See the finding</strong></a> ·
   <a href="#quickstart"><strong>Run the benchmark</strong></a> ·
+  <a href="docs/LUREPERMIT_LURERANGE.md"><strong>Test an agent permit</strong></a> ·
+  <a href="docs/RUNTIME_AGENT_AUTHORIZATION.md"><strong>Mediate agent actions</strong></a> ·
+  <a href="docs/LUREREVOKE.md"><strong>Measure revocation convergence</strong></a> ·
   <a href="docs/LUREINVARIANT.md"><strong>Evaluate system invariants</strong></a> ·
   <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
@@ -36,6 +40,44 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 Fraud detectors that score well on classic spam corpora fall apart on lures written by modern language models. LureBench measures that gap on a common footing: one schema, one harness, one leaderboard, across fraud typologies and generator families. It runs out of the box with no model downloads or API keys, and it ships baseline detectors from a keyword heuristic up to a trained classifier.
 
 More than a corpus, it is a **method for building the corpus honestly**. Getting a credible answer to "can you detect AI-generated fraud?" turned out to require finding, and removing, a dataset confound that makes the problem look far easier than it is. That story is below.
+
+> **New — test prevention and safe-stop, not only detection.**
+> [LurePermit and LureRange](docs/LUREPERMIT_LURERANGE.md) provide a strict
+> per-run authorization contract and 21 offline scenarios for direct/transitive
+> egress, persistent shared state, cross-run access, credential audience, bounded
+> delegation, approval gates, evaluator access, action/duration/failure budgets,
+> missing sensors, and post-stop activity. Expectations are withheld from the
+> policy engine. Requests are typed synthetic metadata and no action is executed.
+
+> **New — reconcile runtime decisions with observed effects.**
+> [LurePermit Runtime](docs/RUNTIME_AGENT_AUTHORIZATION.md) adds SPIFFE-bound
+> request metadata, MCP/OAuth audience checks, token-passthrough denial,
+> human-bound approvals, revocation and safe-stop, replay defense, hash-chained
+> receipts, nine mediation points, independent sensor reconciliation, and 15
+> stateful long-task/multi-agent trajectories. A local PDP and OPA, Cedar, Envoy,
+> and MCP adapters execute no action; signed LureScope evidence remains explicit
+> about sensor and enforcement limits.
+
+> **New — measure how fast revocation reaches every agent gateway.**
+> [LureRevoke](docs/LUREREVOKE.md) turns continuous-access attenuation into a
+> reproducible distributed-systems benchmark: four OpenID CAEP event classes,
+> four policy nodes, tampered and duplicate signal handling, pre-event and
+> post-deadline access probes, delivery coverage, p95/max convergence,
+> revocation bypass, and collateral denial. It uses relative timing and opaque
+> synthetic subjects only; it does not create SETs or contact an identity
+> provider, agent, policy engine, or network. A separate privacy adapter turns
+> externally verified CAEP claims into campaign-keyed opaque commitments without
+> placing raw subject or SET identifiers in benchmark artifacts.
+> A strict campaign composer expands those projected events across an operator's
+> declared policy-node topology, preregistered thresholds, and relative probe
+> schedule without hand-authored probe gaps or live actions.
+> A cross-control topology audit then fails closed when that plan omits any
+> LurePermit Runtime mediation point or names nodes outside the runtime surface,
+> preventing an incomplete node list from producing a misleading scope claim.
+> A [body-free OpenTelemetry bridge](docs/LUREREVOKE_OPENTELEMETRY.md) projects
+> two strict log event types into a source-bound run while rejecting log bodies,
+> arbitrary attributes, topology drift, reused trace context, and inconsistent
+> timing.
 
 > **New — test invariants that cross the model, tools, network, identity, and
 > lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed
@@ -92,7 +134,7 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 | **A researcher** | Reproduce the provenance confound and its removal, add a detector in ~30 lines ([docs/adding-a-detector.md](docs/adding-a-detector.md)), or extend the corpus with new generators and typologies. |
 | **A policy / threat-intel analyst** | Ground claims about "AI-generated fraud detection" in measured numbers — including where it works, and where it is close to a coin flip. |
 | **A procurement or assurance team** | Evaluate a proprietary image against a private held-out set, preserve an immutable report, and pool compatible signed field evidence without collecting messages. |
-| **An agent platform or frontier AI team** | Measure whether a declared boundary monitor catches typed isolation, identity, lifecycle, and control violations without handling exploit payloads or model reasoning. |
+| **An agent platform or frontier AI team** | Test whether a policy gateway prevents typed isolation, identity, lifecycle, and control violations with LurePermit, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
 
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 
@@ -177,6 +219,48 @@ Run the metadata-only agent-boundary benchmark offline:
 lurebench boundary-eval
 lurebench boundary-eval --out boundary-evaluation.json --json
 ```
+
+Test a deny-by-default agent permit and safe-stop policy offline:
+
+```bash
+lurebench permit-init --out permit.json
+lurebench range-export --out range-suite.json
+lurebench range-eval \
+  --permit permit.json --suite range-suite.json \
+  --out range-evaluation.json
+```
+
+The reference engine passes 21/21 scenarios without performing an action. Plug a
+private Python policy gateway into the callable API to measure its decisions;
+see the [contract, integration guide, and claims boundary](docs/LUREPERMIT_LURERANGE.md).
+
+Reconcile runtime receipts with independent sensor observations, then test
+stateful safe-stop and multi-agent behavior:
+
+```bash
+lurebench runtime-trace --out runtime-trace.json
+lurebench runtime-eval --trace runtime-trace.json --out runtime-evaluation.json
+lurebench stateful-range-eval --out stateful-evaluation.json
+```
+
+See the [runtime architecture, adapters, NIST concept-paper mapping, deployment
+patterns, and evidence boundary](docs/RUNTIME_AGENT_AUTHORIZATION.md).
+
+Measure whether session, credential, device-compliance, and risk signals reach
+every declared enforcement node before the access-attenuation deadline:
+
+```bash
+lurebench revocation-export --out revocation-plan.json
+lurebench revocation-run --plan revocation-plan.json --out revocation-run.json
+lurebench revocation-eval \
+  --plan revocation-plan.json --run revocation-run.json \
+  --out revocation-evaluation.json
+```
+
+The reference campaign covers 16 required event/node deliveries and 64 access
+probes. See the [LureRevoke threat model, integration contract, metrics, and
+claims boundary](docs/LUREREVOKE.md), or connect production-like telemetry with
+the [body-free OpenTelemetry workflow](docs/LUREREVOKE_OPENTELEMETRY.md).
 
 Evaluate the reference cross-layer invariant remediation. The first command
 returns exit `1` because its valid report contains observed violations; the

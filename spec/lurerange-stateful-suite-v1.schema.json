@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerange-stateful-suite-v1",
+  "title": "Stateful LureRange containment suite v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "suite_id", "suite_version", "description", "profile", "profile_sha256", "trajectories", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerange-stateful-suite-v1"}, "schema_version": {"const": 1}, "suite_id": {"$ref": "#/$defs/id"}, "suite_version": {"$ref": "#/$defs/id"}, "description": {"type": "string", "minLength": 40, "maxLength": 800},
+    "profile": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1"}, "profile_sha256": {"$ref": "#/$defs/digest"},
+    "trajectories": {"type": "array", "minItems": 10, "maxItems": 64, "items": {"$ref": "#/$defs/trajectory"}},
+    "limitations": {"const": ["offline_deterministic_metadata_only_trajectories_with_no_live_targets_or_exploits", "scenario_titles_labels_and_expectations_are_withheld_from_the_policy_engine", "finite_trajectory_coverage_is_not_proof_of_general_agent_alignment_or_containment", "passing_does_not_establish_that_a_deployment_uses_the_evaluated_policy_engine"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "expected": {"type": "object", "additionalProperties": false, "required": ["decision", "reason_code"], "properties": {"decision": {"enum": ["allow", "block", "stop"]}, "reason_code": {"type": "string", "minLength": 1, "maxLength": 96}}},
+    "step": {"type": "object", "additionalProperties": false, "required": ["step_id", "runtime_request", "expected"], "properties": {"step_id": {"$ref": "#/$defs/id"}, "runtime_request": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-request-v1"}, "expected": {"$ref": "#/$defs/expected"}}},
+    "trajectory": {"type": "object", "additionalProperties": false, "required": ["trajectory_id", "title", "steps"], "properties": {"trajectory_id": {"$ref": "#/$defs/id"}, "title": {"type": "string", "minLength": 12, "maxLength": 180}, "steps": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/step"}}}}
+  }
+}

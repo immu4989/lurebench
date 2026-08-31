@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerevoke-topology-audit/v1",
+  "title": "LureRevoke to LurePermit runtime topology audit v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "inputs", "results", "missing_mediation_point_ids", "unmapped_nodes", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerevoke-topology-audit/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
+    "inputs": {"type": "object", "additionalProperties": false, "required": ["revocation_plan", "revocation_plan_sha256", "runtime_profile", "runtime_profile_sha256"], "properties": {"revocation_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerevoke-plan-v1"}, "revocation_plan_sha256": {"$ref": "#/$defs/digest"}, "runtime_profile": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1"}, "runtime_profile_sha256": {"$ref": "#/$defs/digest"}}},
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mediation_point_id", "action_types", "required_sensor_ids", "node_ids", "replica_count", "covered"],
+        "properties": {
+          "mediation_point_id": {"$ref": "#/$defs/id"},
+          "action_types": {"$ref": "#/$defs/ids"},
+          "required_sensor_ids": {"$ref": "#/$defs/ids"},
+          "node_ids": {"$ref": "#/$defs/optional_ids"},
+          "replica_count": {"type": "integer", "minimum": 0, "maximum": 64},
+          "covered": {"type": "boolean"}
+        }
+      }
+    },
+    "missing_mediation_point_ids": {"$ref": "#/$defs/optional_ids"},
+    "unmapped_nodes": {"type": "array", "maxItems": 64, "items": {"type": "object", "additionalProperties": false, "required": ["node_id", "mediation_point_id"], "properties": {"node_id": {"$ref": "#/$defs/id"}, "mediation_point_id": {"$ref": "#/$defs/id"}}}},
+    "summary": {"type": "object", "additionalProperties": false, "required": ["required_mediation_point_count", "covered_mediation_point_count", "missing_mediation_point_count", "unmapped_node_count", "mediation_point_coverage_rate", "verdict"], "properties": {"required_mediation_point_count": {"type": "integer", "minimum": 1, "maximum": 32}, "covered_mediation_point_count": {"type": "integer", "minimum": 0, "maximum": 32}, "missing_mediation_point_count": {"type": "integer", "minimum": 0, "maximum": 32}, "unmapped_node_count": {"type": "integer", "minimum": 0, "maximum": 64}, "mediation_point_coverage_rate": {"type": "number", "minimum": 0, "maximum": 1}, "verdict": {"enum": ["pass", "fail"]}}},
+    "limitations": {"const": ["audit_compares_declared_plan_nodes_to_declared_runtime_mediation_points_only", "a_pass_does_not_prove_discovery_completeness_reachability_or_signal_delivery", "replica_count_is_reported_but_no_fault_domain_independence_is_inferred", "audit_executes_no_discovery_probe_signal_access_action_or_enforcement"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "ids": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "optional_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+  }
+}

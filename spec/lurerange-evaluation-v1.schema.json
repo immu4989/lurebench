@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerange-evaluation-v1",
+  "title": "LureRange evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "engine", "inputs", "summary", "results", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerange-evaluation-v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {
+      "type": "object", "additionalProperties": false, "required": ["name", "version"],
+      "properties": {"name": {"const": "lurebench"}, "version": {"type": "string", "minLength": 1, "maxLength": 64}}
+    },
+    "engine": {
+      "type": "object", "additionalProperties": false, "required": ["engine_id", "engine_version", "artifact_sha256"],
+      "properties": {"engine_id": {"$ref": "#/$defs/id"}, "engine_version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}
+    },
+    "inputs": {
+      "type": "object", "additionalProperties": false, "required": ["permit", "permit_sha256", "range_suite", "range_suite_sha256"],
+      "properties": {
+        "permit": {"type": "object", "required": ["schema", "schema_version"], "properties": {"schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-v1"}, "schema_version": {"const": 1}}},
+        "permit_sha256": {"$ref": "#/$defs/digest"},
+        "range_suite": {"type": "object", "required": ["schema", "schema_version"], "properties": {"schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerange-suite-v1"}, "schema_version": {"const": 1}}},
+        "range_suite_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total_scenarios", "violation_scenarios", "benign_scenarios", "correct_decisions", "incorrect_decisions", "violation_control_rate", "benign_allow_rate", "reason_accuracy", "safe_stop_recall", "verdict"],
+      "properties": {
+        "total_scenarios": {"$ref": "#/$defs/count"}, "violation_scenarios": {"$ref": "#/$defs/count"}, "benign_scenarios": {"$ref": "#/$defs/count"}, "correct_decisions": {"$ref": "#/$defs/count"}, "incorrect_decisions": {"$ref": "#/$defs/count"},
+        "violation_control_rate": {"$ref": "#/$defs/rate"}, "benign_allow_rate": {"$ref": "#/$defs/rate"}, "reason_accuracy": {"$ref": "#/$defs/rate"}, "safe_stop_recall": {"$ref": "#/$defs/rate"}, "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "results": {"type": "array", "minItems": 8, "maxItems": 64, "items": {"$ref": "#/$defs/result"}},
+    "limitations": {
+      "const": [
+        "metrics_are_recomputed_from_embedded_canonical_permit_suite_and_decisions",
+        "the_report_does_not_attest_that_a_named_external_engine_produced_the_decisions",
+        "integrity_or_signature_evidence_does_not_establish_sensor_or_mediation_completeness",
+        "passing_is_not_containment_safety_compliance_certification_or_deployment_authorization"
+      ]
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 64},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "reason": {"enum": ["action_budget_exhausted", "action_not_permitted", "actor_not_permitted", "approval_required", "capability_not_permitted", "credential_audience_mismatch", "credential_mode_not_permitted", "cross_run_access_denied", "cross_tenant_access_denied", "delegation_depth_exceeded", "duration_budget_exhausted", "evaluator_access_denied", "external_network_denied", "failure_budget_exhausted", "permit_allows_request", "post_stop_activity_denied", "required_sensor_missing", "resource_not_permitted", "run_not_permitted", "shared_service_write_denied"]},
+    "decision": {
+      "type": "object", "additionalProperties": false, "required": ["request_id", "sequence", "decision", "reason_code"],
+      "properties": {"request_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 128}, "decision": {"enum": ["allow", "block", "stop"]}, "reason_code": {"$ref": "#/$defs/reason"}}
+    },
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scenario_id", "label", "expected_decision", "expected_reason_code", "decision", "decision_correct", "reason_correct", "passed"],
+      "properties": {"scenario_id": {"$ref": "#/$defs/id"}, "label": {"enum": ["benign", "violation"]}, "expected_decision": {"enum": ["allow", "block", "stop"]}, "expected_reason_code": {"$ref": "#/$defs/reason"}, "decision": {"$ref": "#/$defs/decision"}, "decision_correct": {"type": "boolean"}, "reason_correct": {"type": "boolean"}, "passed": {"type": "boolean"}}
+    }
+  }
+}

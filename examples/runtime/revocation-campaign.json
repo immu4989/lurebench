@@ -1,0 +1,54 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lurerevoke-campaign/v1",
+  "schema_version": 1,
+  "campaign_id": "synthetic-caep-campaign",
+  "created_at": "2033-05-18T03:33:20Z",
+  "system_id": "synthetic-agent-platform",
+  "stream": {
+    "transmitter_id": "synthetic-identity-provider",
+    "receiver_audience_id": "synthetic-control-plane",
+    "stream_id": "continuous-access-events",
+    "profile": "openid-caep-1.0-final-metadata-projection",
+    "authentication_boundary": "externally_verified_set_metadata"
+  },
+  "nodes": [
+    {"node_id": "tool-policy", "mediation_point_id": "tool-gateway"},
+    {"node_id": "credential-policy", "mediation_point_id": "credential-broker"}
+  ],
+  "events": [
+    {
+      "attenuation_reason": "session_revoked",
+      "event_id": "event-c14c42e4b64889d1c5bc5876b1cd8d27ead585596c07bdbcb10d301875b9494f",
+      "event_type": "https://schemas.openid.net/secevent/caep/event-type/session-revoked",
+      "occurred_at_ms": 10000,
+      "sequence": 1,
+      "signal_sha256": "fe13e821ec37c55972f3fbbf85d2b2bd5ff92e410503d4fe548b1c6eb4760227",
+      "subject": {
+        "format": "opaque",
+        "id": "subject-2c2e6fd5743acaf66e7293b1a5171309b3480c28b567f6c7305648b9e80d56b4"
+      }
+    }
+  ],
+  "acceptance": {
+    "maximum_convergence_ms": 500,
+    "maximum_deadline_miss_count": 0,
+    "maximum_post_deadline_allow_count": 0,
+    "maximum_collateral_block_count": 0,
+    "minimum_delivery_coverage_rate": 1.0,
+    "minimum_revoked_block_recall": 1.0,
+    "minimum_pre_event_allow_rate": 1.0,
+    "minimum_signal_disposition_accuracy": 1.0
+  },
+  "probe_schedule": {
+    "pre_event_offset_ms": 50,
+    "propagation_probe_offset_ms": 100,
+    "post_deadline_offset_ms": 50,
+    "include_unrelated_subject": true
+  },
+  "limitations": [
+    "events_must_already_be_privacy_projected_and_digest_bound_no_sets_tokens_or_raw_subjects",
+    "campaign_composition_generates_probes_but_does_not_deliver_signals_or_execute_access",
+    "topology_and_acceptance_require_independent_review_before_collecting_observations",
+    "campaign_results_do_not_prove_complete_paths_authenticity_interoperability_or_compliance"
+  ]
+}

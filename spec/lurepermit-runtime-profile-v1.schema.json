@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1",
+  "title": "LurePermit runtime authorization profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "profile_id", "profile_version", "created_at", "permit", "permit_sha256", "identity", "protocols", "mediation_points", "receipt_policy", "acceptance", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1"},
+    "schema_version": {"const": 1},
+    "profile_id": {"$ref": "#/$defs/id"},
+    "profile_version": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "permit": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-v1"},
+    "permit_sha256": {"$ref": "#/$defs/digest"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowed_spiffe_trust_domains", "require_workload_identity", "human_authority_action_types", "minimum_policy_generation", "maximum_request_age_ms"],
+      "properties": {
+        "allowed_spiffe_trust_domains": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "maxLength": 253, "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$"}},
+        "require_workload_identity": {"const": true},
+        "human_authority_action_types": {"type": "array", "maxItems": 11, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
+        "minimum_policy_generation": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "maximum_request_age_ms": {"type": "integer", "minimum": 1, "maximum": 86400000}
+      }
+    },
+    "protocols": {
+      "type": "object", "additionalProperties": false,
+      "required": ["allowed", "mcp_allowed_server_ids", "mcp_allowed_methods", "oauth_resource_indicator_required", "token_passthrough_prohibited"],
+      "properties": {
+        "allowed": {"type": "array", "minItems": 1, "maxItems": 5, "uniqueItems": true, "items": {"enum": ["cedar", "direct", "envoy_ext_authz", "mcp", "opa"]}},
+        "mcp_allowed_server_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "mcp_allowed_methods": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["resources/read", "tools/call"]}},
+        "oauth_resource_indicator_required": {"const": true},
+        "token_passthrough_prohibited": {"const": true}
+      }
+    },
+    "mediation_points": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/point"}},
+    "receipt_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["chain_required", "replay_protection_required", "maximum_clock_skew_ms"],
+      "properties": {
+        "chain_required": {"const": true},
+        "replay_protection_required": {"const": true},
+        "maximum_clock_skew_ms": {"type": "integer", "minimum": 0, "maximum": 60000}
+      }
+    },
+    "acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimum_decision_accuracy", "minimum_reason_accuracy", "minimum_mediation_coverage_rate", "minimum_mediation_point_coverage_rate", "maximum_control_bypass_count", "maximum_unmediated_count", "maximum_unknown_rate"],
+      "properties": {
+        "minimum_decision_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "minimum_reason_accuracy": {"type": "number", "minimum": 0, "maximum": 1},
+        "minimum_mediation_coverage_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "minimum_mediation_point_coverage_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "maximum_control_bypass_count": {"type": "integer", "minimum": 0, "maximum": 512},
+        "maximum_unmediated_count": {"type": "integer", "minimum": 0, "maximum": 512},
+        "maximum_unknown_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "limitations": {"const": ["metadata_only_no_prompts_payloads_commands_targets_urls_tokens_secrets_or_reasoning", "policy_decision_service_does_not_execute_or_proxy_the_requested_operation", "declared_identity_metadata_requires_external_authentication_to_establish_identity", "profile_is_not_a_runtime_credential_compliance_finding_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "action": {"enum": ["credential_use", "delegate", "evaluator_access", "high_impact_change", "incident_escalation", "local_tool_call", "network_request", "process_activity", "registry_read", "shared_state_write", "storage_read"]},
+    "point": {
+      "type": "object", "additionalProperties": false,
+      "required": ["point_id", "action_types", "required_sensor_ids"],
+      "properties": {
+        "point_id": {"$ref": "#/$defs/id"},
+        "action_types": {"type": "array", "minItems": 1, "maxItems": 11, "uniqueItems": true, "items": {"$ref": "#/$defs/action"}},
+        "required_sensor_ids": {"type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+      }
+    }
+  }
+}

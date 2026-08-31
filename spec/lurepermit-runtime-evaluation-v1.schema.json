@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-evaluation-v1",
+  "title": "LurePermit runtime mediation evaluation v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "trace", "trace_sha256", "summary", "results", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-evaluation-v1"}, "schema_version": {"const": 1}, "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
+    "trace": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-trace-v1"}, "trace_sha256": {"$ref": "#/$defs/digest"},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["total_requests", "receipt_count", "effective_count", "control_bypass_count", "unmediated_count", "unknown_count", "incomplete_effect_count", "incorrect_decision_count", "incorrect_reason_count", "decision_accuracy", "reason_accuracy", "mediation_coverage_rate", "registered_mediation_points", "observed_mediation_points", "mediation_point_coverage_rate", "unknown_rate", "verdict"],
+      "properties": {
+        "total_requests": {"$ref": "#/$defs/count"}, "receipt_count": {"$ref": "#/$defs/count"}, "effective_count": {"$ref": "#/$defs/count"}, "control_bypass_count": {"$ref": "#/$defs/count"}, "unmediated_count": {"$ref": "#/$defs/count"}, "unknown_count": {"$ref": "#/$defs/count"}, "incomplete_effect_count": {"$ref": "#/$defs/count"},
+        "incorrect_decision_count": {"$ref": "#/$defs/count"}, "incorrect_reason_count": {"$ref": "#/$defs/count"}, "decision_accuracy": {"$ref": "#/$defs/rate"}, "reason_accuracy": {"$ref": "#/$defs/rate"},
+        "mediation_coverage_rate": {"$ref": "#/$defs/rate"}, "registered_mediation_points": {"$ref": "#/$defs/count"}, "observed_mediation_points": {"$ref": "#/$defs/count"}, "mediation_point_coverage_rate": {"$ref": "#/$defs/rate"}, "unknown_rate": {"$ref": "#/$defs/rate"}, "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "results": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"$ref": "#/$defs/result"}},
+    "limitations": {"const": ["policy_decision_and_reason_are_recomputed_from_the_embedded_profile_and_permit", "effective_means_submitted_receipt_and_sensor_metadata_reconcile_for_this_trace", "unknown_or_missing_sensor_evidence_never_counts_as_effective", "passing_does_not_prove_sensor_completeness_containment_compliance_or_authorization", "evaluation_does_not_execute_stop_proxy_network_tool_credential_or_remediation_actions"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "count": {"type": "integer", "minimum": 0, "maximum": 512}, "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "decision": {"type": "object", "additionalProperties": false, "required": ["request_id", "sequence", "decision", "reason_code"], "properties": {"request_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 128}, "decision": {"enum": ["allow", "block", "stop"]}, "reason_code": {"type": "string", "minLength": 1, "maxLength": 96}}},
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["correlation_id", "mediation_point_id", "runtime_request_sha256", "receipt_sha256", "decision", "expected_decision", "expected_reason_code", "decision_correct", "reason_correct", "effect_state", "submitted_sensor_ids", "missing_sensor_ids", "classification"],
+      "properties": {
+        "correlation_id": {"$ref": "#/$defs/id"}, "mediation_point_id": {"$ref": "#/$defs/id"}, "runtime_request_sha256": {"$ref": "#/$defs/digest"}, "receipt_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}, "decision": {"oneOf": [{"$ref": "#/$defs/decision"}, {"type": "null"}]}, "effect_state": {"enum": ["not_observed", "observed", "unknown"]}, "submitted_sensor_ids": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}, "missing_sensor_ids": {"type": "array", "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}, "classification": {"enum": ["control_bypass", "effective", "incomplete_effect", "unmediated", "unknown"]}
+        ,"expected_decision": {"oneOf": [{"enum": ["allow", "block", "stop"]}, {"type": "null"}]}, "expected_reason_code": {"oneOf": [{"type": "string", "minLength": 1, "maxLength": 96}, {"type": "null"}]}, "decision_correct": {"oneOf": [{"type": "boolean"}, {"type": "null"}]}, "reason_correct": {"oneOf": [{"type": "boolean"}, {"type": "null"}]}
+      }
+    }
+  }
+}

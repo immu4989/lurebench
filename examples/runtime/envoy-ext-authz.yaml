@@ -1,0 +1,52 @@
+# Bridge pattern only. Envoy MUST NOT point directly at permit-serve: Envoy's
+# ext_authz wire contract differs from LurePermit /v1/decide. Deploy a reviewed
+# local bridge that maps allowlisted metadata with runtime_adapters.py, validates
+# the returned request binding, and then calls the loopback decision service.
+static_resources:
+  listeners:
+    - name: agent_egress
+      address:
+        socket_address: {address: 127.0.0.1, port_value: 18080}
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: agent_egress
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: local_service
+                      domains: ["*"]
+                      routes:
+                        - match: {prefix: "/"}
+                          route: {cluster: mediated_destination}
+                http_filters:
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      grpc_service:
+                        envoy_grpc: {cluster_name: reviewed_lurepermit_bridge}
+                      failure_mode_allow: false
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+  clusters:
+    - name: reviewed_lurepermit_bridge
+      type: STATIC
+      connect_timeout: 0.25s
+      http2_protocol_options: {}
+      load_assignment:
+        cluster_name: reviewed_lurepermit_bridge
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: {address: 127.0.0.1, port_value: 9191}
+    - name: mediated_destination
+      type: STATIC
+      connect_timeout: 0.25s
+      load_assignment:
+        cluster_name: mediated_destination
+        endpoints: []

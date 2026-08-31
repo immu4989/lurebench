@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-receipt-v1",
+  "title": "LurePermit hash-chained runtime decision receipt v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "receipt_id", "issued_at", "correlation_id", "nonce", "runtime_request_sha256", "permit_sha256", "mediation_point_id", "policy", "decision", "chain"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-receipt-v1"},
+    "schema_version": {"const": 1},
+    "receipt_id": {"$ref": "#/$defs/id"}, "issued_at": {"type": "string", "format": "date-time"},
+    "correlation_id": {"$ref": "#/$defs/id"}, "nonce": {"$ref": "#/$defs/id"},
+    "runtime_request_sha256": {"$ref": "#/$defs/digest"}, "permit_sha256": {"$ref": "#/$defs/digest"},
+    "mediation_point_id": {"$ref": "#/$defs/id"},
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["engine_id", "engine_version", "engine_artifact_sha256"],
+      "properties": {"engine_id": {"$ref": "#/$defs/id"}, "engine_version": {"$ref": "#/$defs/id"}, "engine_artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}
+    },
+    "decision": {"$ref": "#/$defs/decision"},
+    "chain": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sequence", "previous_receipt_sha256"],
+      "properties": {"sequence": {"type": "integer", "minimum": 1, "maximum": 512}, "previous_receipt_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "decision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["request_id", "sequence", "decision", "reason_code"],
+      "properties": {
+        "request_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 128},
+        "decision": {"enum": ["allow", "block", "stop"]},
+        "reason_code": {"enum": ["action_budget_exhausted", "action_not_permitted", "actor_not_permitted", "approval_binding_mismatch", "approval_required", "capability_not_permitted", "credential_audience_mismatch", "credential_mode_not_permitted", "cross_run_access_denied", "cross_tenant_access_denied", "delegation_depth_exceeded", "duration_budget_exhausted", "evaluator_access_denied", "external_network_denied", "failure_budget_exhausted", "human_authority_required", "mcp_method_not_permitted", "oauth_actor_mismatch", "oauth_audience_mismatch", "oauth_resource_missing", "peer_authority_denied", "permit_allows_request", "permit_state_denied", "policy_generation_stale", "post_stop_activity_denied", "request_expired", "request_replay_denied", "required_sensor_missing", "resource_not_permitted", "run_not_permitted", "safe_stop_corrupted_task", "safe_stop_impossible_task", "shared_service_write_denied", "token_passthrough_denied", "workload_identity_denied"]}
+      }
+    }
+  }
+}

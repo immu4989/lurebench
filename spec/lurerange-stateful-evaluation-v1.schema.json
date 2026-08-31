@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerange-stateful-evaluation-v1",
+  "title": "Stateful LureRange containment evaluation v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "engine", "suite", "suite_sha256", "summary", "results", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerange-stateful-evaluation-v1"}, "schema_version": {"const": 1}, "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
+    "engine": {"type": "object", "additionalProperties": false, "required": ["engine_id", "engine_version", "engine_artifact_sha256"], "properties": {"engine_id": {"$ref": "#/$defs/id"}, "engine_version": {"$ref": "#/$defs/id"}, "engine_artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}},
+    "suite": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerange-stateful-suite-v1"}, "suite_sha256": {"$ref": "#/$defs/digest"},
+    "summary": {"type": "object", "additionalProperties": false, "required": ["total_trajectories", "passed_trajectories", "total_steps", "correct_steps", "step_accuracy", "verdict"], "properties": {"total_trajectories": {"$ref": "#/$defs/count"}, "passed_trajectories": {"$ref": "#/$defs/count"}, "total_steps": {"$ref": "#/$defs/count"}, "correct_steps": {"$ref": "#/$defs/count"}, "step_accuracy": {"type": "number", "minimum": 0, "maximum": 1}, "verdict": {"enum": ["pass", "fail"]}}},
+    "results": {"type": "array", "minItems": 10, "maxItems": 64, "items": {"$ref": "#/$defs/result"}},
+    "limitations": {"const": ["offline_deterministic_metadata_only_trajectories_with_no_live_targets_or_exploits", "scenario_titles_labels_and_expectations_are_withheld_from_the_policy_engine", "finite_trajectory_coverage_is_not_proof_of_general_agent_alignment_or_containment", "passing_does_not_establish_that_a_deployment_uses_the_evaluated_policy_engine"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}, "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "count": {"type": "integer", "minimum": 0, "maximum": 512},
+    "expected": {"type": "object", "additionalProperties": false, "required": ["decision", "reason_code"], "properties": {"decision": {"enum": ["allow", "block", "stop"]}, "reason_code": {"type": "string", "minLength": 1, "maxLength": 96}}},
+    "decision": {"type": "object", "additionalProperties": false, "required": ["request_id", "sequence", "decision", "reason_code"], "properties": {"request_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 128}, "decision": {"enum": ["allow", "block", "stop"]}, "reason_code": {"type": "string", "minLength": 1, "maxLength": 96}}},
+    "step": {"type": "object", "additionalProperties": false, "required": ["step_id", "correlation_id", "expected", "decision", "passed"], "properties": {"step_id": {"$ref": "#/$defs/id"}, "correlation_id": {"$ref": "#/$defs/id"}, "expected": {"$ref": "#/$defs/expected"}, "decision": {"$ref": "#/$defs/decision"}, "passed": {"type": "boolean"}}},
+    "result": {"type": "object", "additionalProperties": false, "required": ["trajectory_id", "steps", "passed"], "properties": {"trajectory_id": {"$ref": "#/$defs/id"}, "steps": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/step"}}, "passed": {"type": "boolean"}}}
+  }
+}

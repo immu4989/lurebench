@@ -1,0 +1,49 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LurePermit Runtime Decision API",
+    "version": "1.0.0",
+    "description": "Typed metadata-only policy decisions; this service executes no action."
+  },
+  "servers": [{"url": "http://127.0.0.1:8765"}],
+  "paths": {
+    "/health": {"get": {"responses": {"200": {"description": "Ready"}}}},
+    "/openapi.json": {"get": {"responses": {"200": {"description": "OpenAPI document"}}}},
+    "/v1/decide": {
+      "post": {
+        "description": "Evaluate one LurePermit runtime request without executing it.",
+        "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-request-v1"}}}},
+        "responses": {
+          "200": {"description": "Bound decision and hash-chained receipt", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DecisionResponse"}}}},
+          "400": {"description": "Malformed or unsupported request"},
+          "413": {"description": "Request exceeds 64 KiB"}
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Decision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["request_id", "sequence", "decision", "reason_code"],
+        "properties": {
+          "request_id": {"type": "string"},
+          "sequence": {"type": "integer", "minimum": 1},
+          "decision": {"enum": ["allow", "block", "stop"]},
+          "reason_code": {"type": "string"}
+        }
+      },
+      "DecisionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["decision", "receipt", "interpretation_boundary"],
+        "properties": {
+          "decision": {"$ref": "#/components/schemas/Decision"},
+          "receipt": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-receipt-v1"},
+          "interpretation_boundary": {"type": "string"}
+        }
+      }
+    }
+  }
+}

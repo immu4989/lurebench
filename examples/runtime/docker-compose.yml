@@ -1,0 +1,25 @@
+services:
+  lurepermit-runtime:
+    build:
+      context: ../..
+      dockerfile: examples/runtime/Dockerfile
+    command:
+      - --unix-socket
+      - /run/lurepermit/decision.sock
+      - --receipt-log
+      - /evidence/receipts.jsonl
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    user: "65532:65532"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m,uid=65532,gid=65532,mode=0700
+    volumes:
+      - runtime-evidence:/evidence
+      - runtime-socket:/run/lurepermit
+    restart: unless-stopped
+
+volumes:
+  runtime-evidence: {}
+  runtime-socket: {}

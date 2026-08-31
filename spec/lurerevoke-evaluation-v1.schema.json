@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerevoke-evaluation-v1",
+  "title": "LureRevoke convergence evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "plan", "plan_sha256", "run", "run_sha256", "summary", "delivery_results", "probe_results", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerevoke-evaluation-v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
+    "plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerevoke-plan-v1"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "run": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerevoke-run-v1"},
+    "run_sha256": {"$ref": "#/$defs/digest"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "delivery_results": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/delivery"}},
+    "probe_results": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/probe_result"}},
+    "limitations": {"const": ["metrics_are_recomputed_from_embedded_plan_and_run_metadata", "deadline_success_depends_on_external_clock_quality_and_observation_completeness", "a_pass_does_not_prove_every_access_path_received_or_enforced_a_revocation", "evaluation_is_not_certification_authorization_or_a_claim_of_caep_interoperability"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 100000},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "nullable_ms": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 86400000}, {"type": "null"}]},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_count", "node_count", "required_delivery_count", "applied_delivery_count", "delivery_coverage_rate", "maximum_convergence_ms", "p95_convergence_ms", "deadline_miss_count", "post_deadline_allow_count", "collateral_block_count", "revoked_block_recall", "pre_event_allow_rate", "signal_disposition_accuracy", "incorrect_decision_count", "incorrect_reason_count", "verdict"],
+      "properties": {"event_count": {"$ref": "#/$defs/count"}, "node_count": {"$ref": "#/$defs/count"}, "required_delivery_count": {"$ref": "#/$defs/count"}, "applied_delivery_count": {"$ref": "#/$defs/count"}, "delivery_coverage_rate": {"$ref": "#/$defs/rate"}, "maximum_convergence_ms": {"$ref": "#/$defs/nullable_ms"}, "p95_convergence_ms": {"$ref": "#/$defs/nullable_ms"}, "deadline_miss_count": {"$ref": "#/$defs/count"}, "post_deadline_allow_count": {"$ref": "#/$defs/count"}, "collateral_block_count": {"$ref": "#/$defs/count"}, "revoked_block_recall": {"$ref": "#/$defs/rate"}, "pre_event_allow_rate": {"$ref": "#/$defs/rate"}, "signal_disposition_accuracy": {"$ref": "#/$defs/rate"}, "incorrect_decision_count": {"$ref": "#/$defs/count"}, "incorrect_reason_count": {"$ref": "#/$defs/count"}, "verdict": {"enum": ["pass", "fail"]}}
+    },
+    "delivery": {"type": "object", "additionalProperties": false, "required": ["event_id", "node_id", "applied_at_ms", "convergence_ms", "deadline_met"], "properties": {"event_id": {"$ref": "#/$defs/id"}, "node_id": {"$ref": "#/$defs/id"}, "applied_at_ms": {"$ref": "#/$defs/nullable_ms"}, "convergence_ms": {"$ref": "#/$defs/nullable_ms"}, "deadline_met": {"type": "boolean"}}},
+    "probe_result": {"type": "object", "additionalProperties": false, "required": ["probe_id", "event_id", "node_id", "phase", "expected_decision", "submitted_decision", "expected_reason_code", "submitted_reason_code", "classification"], "properties": {"probe_id": {"$ref": "#/$defs/id"}, "event_id": {"$ref": "#/$defs/id"}, "node_id": {"$ref": "#/$defs/id"}, "phase": {"enum": ["pre_event", "propagation_window", "post_deadline", "revoked", "unrelated_subject"]}, "expected_decision": {"enum": ["allow", "block"]}, "submitted_decision": {"enum": ["allow", "block"]}, "expected_reason_code": {"enum": ["propagation_window", "revocation_not_effective", "subject_not_revoked", "subject_revoked"]}, "submitted_reason_code": {"enum": ["propagation_window", "revocation_not_effective", "subject_not_revoked", "subject_revoked"]}, "classification": {"enum": ["correct", "revocation_bypass", "collateral_denial", "wrong_reason"]}}}
+  }
+}

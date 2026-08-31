@@ -1,0 +1,67 @@
+schema: https://github.com/immu4989/lurebench/docs/nist/agent-identity-demonstration/v1
+document_status: implementation_mapping_not_compliance
+updated: 2026-08-30
+reference:
+  title: Accelerating the Adoption of Software and AI Agent Identity and Authorization
+  publisher: NIST NCCoE
+  status: concept_paper_not_final_standard
+  url: https://www.nccoe.nist.gov/publications/other/accelerating-adoption-software-and-ai-agent-identity-and-authorization-concept
+claims_boundary:
+  - no_nist_endorsement_or_conformance_claim
+  - metadata_contracts_do_not_authenticate_declared_identities
+  - decisions_do_not_execute_or_prove_enforcement
+  - finite_synthetic_tests_do_not_prove_containment_or_compliance
+use_cases:
+  workforce_assistant:
+    example: examples/runtime/run_use_cases.py --use-case workforce
+    controls:
+      - workload_identity_binding
+      - tenant_and_run_authority
+      - cross_tenant_denial
+  security_operations_agent:
+    example: examples/runtime/run_use_cases.py --use-case security
+    controls:
+      - incident_escalation
+      - mcp_resource_and_audience_binding
+      - oauth_token_passthrough_denial
+  software_deployment_agent:
+    example: examples/runtime/run_use_cases.py --use-case deployment
+    controls:
+      - human_subject_binding
+      - approval_request_digest
+      - approval_rebinding_denial
+capabilities:
+  unique_workload_identity:
+    implementation: canonical_spiffe_id_and_trust_domain_allowlist
+    status: implemented_metadata_contract
+    external_responsibility: authenticate_svid_and_workload_api
+  agent_human_binding:
+    implementation: human_subject_id_plus_exact_approval_request_sha256
+    status: implemented
+  delegation:
+    implementation: delegation_id_peer_state_and_maximum_depth
+    status: implemented_and_statefully_evaluated
+  oauth_oidc:
+    implementation: issuer_subject_actor_resource_audience_and_token_mode_metadata
+    status: implemented_metadata_contract
+    external_responsibility: validate_signature_issuer_expiry_and_exchange_token
+  mcp:
+    implementation: server_and_method_allowlists_resource_indicators_no_passthrough
+    status: implemented_adapter
+  policy_engines:
+    opa: offline_request_response_adapter
+    cedar: offline_request_response_adapter
+    envoy_ext_authz: offline_attribute_adapter_requires_reviewed_bridge
+  lifecycle:
+    implementation: permit_revocation_policy_generation_safe_stop_and_sticky_stop
+    status: implemented_and_statefully_evaluated
+  audit:
+    implementation: exact_request_digest_nonce_sequence_and_sha256_receipt_chain
+    status: implemented
+  non_repudiation:
+    implementation: optional_lurescope_ecdsa_p256_dsse_checkpoint
+    status: implemented_with_external_key_governance
+  scim:
+    status: not_implemented
+  ngac:
+    status: not_implemented

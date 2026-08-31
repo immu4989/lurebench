@@ -74,8 +74,10 @@ def _cmd_train(args: argparse.Namespace) -> int:
         return 1
     detector.save(args.out)
     n_pos = sum(1 for r in records if (r.label if args.task == "fraud" else (r.source == "ai")))
-    print(f"trained {detector.name} (task={args.task}) on {len(records)} records "
-          f"({n_pos} positive) -> {args.out}")
+    print(
+        f"trained {detector.name} (task={args.task}) on {len(records)} records "
+        f"({n_pos} positive) -> {args.out}"
+    )
     return 0
 
 
@@ -103,8 +105,12 @@ def _cmd_leaderboard(args: argparse.Namespace) -> int:
     dataset = load_jsonl(args.dataset)
     names = args.detector or available()
     results = evaluate_detectors(
-        dataset, names, threshold=args.threshold, task=args.task,
-        cache_dir=args.cache_dir, workers=args.workers,
+        dataset,
+        names,
+        threshold=args.threshold,
+        task=args.task,
+        cache_dir=args.cache_dir,
+        workers=args.workers,
     )
     markdown = render_markdown(results, dataset_label=args.dataset, n_records=len(dataset))
 
@@ -183,10 +189,7 @@ def _cmd_calibrate(args: argparse.Namespace) -> int:
         f"  threshold={policy.threshold:.6g} validation_MCC={metrics.mcc:.3f} "
         f"TPR={metrics.recall:.3f} FPR={metrics.fpr:.3f}"
     )
-    print(
-        f"  Brier={diagnostics.brier:.4f} "
-        f"ECE={diagnostics.expected_calibration_error:.4f}"
-    )
+    print(f"  Brier={diagnostics.brier:.4f} ECE={diagnostics.expected_calibration_error:.4f}")
     if policy.risk_control is not None:
         control = policy.risk_control
         print(
@@ -242,9 +245,11 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     save_jsonl(clean + flagged, args.out)
     stats = getattr(generator, "stats", None)
     if stats:
-        print(f"  calls: {stats['attempted']} attempted, {stats['ok']} ok, "
-              f"{stats['rate_limited']} rate-limited, {stats['content_filter']} filtered, "
-              f"{stats['empty']} empty, {stats['http_error']} errored")
+        print(
+            f"  calls: {stats['attempted']} attempted, {stats['ok']} ok, "
+            f"{stats['rate_limited']} rate-limited, {stats['content_filter']} filtered, "
+            f"{stats['empty']} empty, {stats['http_error']} errored"
+        )
     print(f"generated {len(records)} records → {args.out}")
     print(f"  {len(clean)} pending human review, {len(flagged)} auto-flagged for attention")
     print("  NOTE: all records are review-pending. Approve them (set meta.review='approved')")
@@ -261,13 +266,17 @@ def _cmd_assemble_core(args: argparse.Namespace) -> int:
     paths = write_core(build, args.out)
     manifest = build_manifest(build.train + build.test)
 
-    print(f"assembled lurebench-core: {build.n} records "
-          f"({len(build.train)} train / {len(build.validation)} validation / "
-          f"{len(build.test)} test)")
+    print(
+        f"assembled lurebench-core: {build.n} records "
+        f"({len(build.train)} train / {len(build.validation)} validation / "
+        f"{len(build.test)} test)"
+    )
     print(f"  deduped {build.n_before_dedup} -> {build.n_after_dedup}")
     if build.dropped_pending or build.dropped_flagged:
-        print(f"  dropped {build.dropped_pending} pending + {build.dropped_flagged} "
-              f"flagged generated records (not approved)")
+        print(
+            f"  dropped {build.dropped_pending} pending + {build.dropped_flagged} "
+            f"flagged generated records (not approved)"
+        )
     print(f"  by source: {build.per_source}")
     print(f"  fraud_ratio={manifest['fraud_ratio']} ai_ratio={manifest['ai_ratio']}")
     for warning in check_balance(manifest):
@@ -275,9 +284,11 @@ def _cmd_assemble_core(args: argparse.Namespace) -> int:
 
     print(f"\nwrote {paths['train']}, {paths['validation']} and {paths['test']}")
     print("Next — assemble the Hub dir and (optionally) push:")
-    print(f"  lurebench publish -s train={paths['train']} "
-          f"-s validation={paths['validation']} -s test={paths['test']} "
-          f"-r lurebench/core -o {args.out}/hub --push")
+    print(
+        f"  lurebench publish -s train={paths['train']} "
+        f"-s validation={paths['validation']} -s test={paths['test']} "
+        f"-r lurebench/core -o {args.out}/hub --push"
+    )
     return 0
 
 
@@ -334,8 +345,10 @@ def _cmd_eval(args: argparse.Namespace) -> int:
             }
             if args.bootstrap:
                 item["confidence_intervals"] = {
-                    name: interval.__dict__ for name, interval in
-                    r.confidence_intervals(args.bootstrap, args.confidence).items()
+                    name: interval.__dict__
+                    for name, interval in r.confidence_intervals(
+                        args.bootstrap, args.confidence
+                    ).items()
                 }
             payload.append(item)
         print(json.dumps(payload, indent=2))
@@ -436,10 +449,15 @@ def _cmd_multilingual(args: argparse.Namespace) -> int:
             continue
         if cross_lingual_detection(detector, dataset, threshold=args.threshold):
             if args.raw:
-                sections.append(render_ml(
-                    cross_lingual_detection(detector, dataset, threshold=args.threshold), name))
+                sections.append(
+                    render_ml(
+                        cross_lingual_detection(detector, dataset, threshold=args.threshold), name
+                    )
+                )
             else:
-                sections.append(render_comparison(detector, dataset, name, threshold=args.threshold))
+                sections.append(
+                    render_comparison(detector, dataset, name, threshold=args.threshold)
+                )
         else:
             print(f"! {name}: no fraud lures with a language tag found", file=sys.stderr)
             continue
@@ -707,10 +725,7 @@ def _cmd_coverage_canaries(args: argparse.Namespace) -> int:
 
         artifact = build_coverage_canaries(Path(args.manifest), replicates=args.replicates)
         write_coverage_artifact(Path(args.out), artifact)
-        print(
-            f"LURECOVERAGE CANARIES: {len(artifact['probes'])} payload-free probes — "
-            f"{args.out}"
-        )
+        print(f"LURECOVERAGE CANARIES: {len(artifact['probes'])} payload-free probes — {args.out}")
         print("boundary: descriptors only; LureBench does not execute agent actions")
         return 0
     except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
@@ -823,6 +838,388 @@ def _cmd_invariant_eval(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_permit_init(args: argparse.Namespace) -> int:
+    try:
+        from .permit import default_permit, write_permit
+
+        permit = default_permit()
+        write_permit(Path(args.out), permit)
+        print(
+            f"LUREPERMIT CREATED: {permit['permit_id']} — {args.out}\n"
+            "boundary: synthetic conformance contract only; not a runtime credential or authorization"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_range_export(args: argparse.Namespace) -> int:
+    try:
+        from .permit import default_range_suite, write_range_suite
+
+        suite = default_range_suite()
+        write_range_suite(Path(args.out), suite)
+        print(
+            f"LURERANGE EXPORTED: {len(suite['scenarios'])} offline scenarios — {args.out}\n"
+            "boundary: typed synthetic metadata only; no live actions or network access"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_range_eval(args: argparse.Namespace) -> int:
+    try:
+        from .permit import run_range_evaluation, write_range_evaluation
+
+        report = run_range_evaluation(
+            Path(args.permit) if args.permit else None,
+            Path(args.suite) if args.suite else None,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        if args.out:
+            write_range_evaluation(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LURERANGE: {summary['verdict'].upper()} — "
+                f"controlled={summary['violation_control_rate']:.3f} "
+                f"benign-allow={summary['benign_allow_rate']:.3f} "
+                f"safe-stop={summary['safe_stop_recall']:.3f}{destination}"
+            )
+            print("boundary: conformance evidence only; no agent action was executed")
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_runtime_init(args: argparse.Namespace) -> int:
+    try:
+        from .runtime import default_runtime_profile, write_runtime_profile
+
+        profile = default_runtime_profile()
+        write_runtime_profile(Path(args.out), profile)
+        print(
+            f"LUREPERMIT RUNTIME PROFILE CREATED: {profile['profile_id']} — {args.out}\n"
+            "boundary: typed authorization metadata only; not a credential or deployment approval"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_runtime_trace(args: argparse.Namespace) -> int:
+    try:
+        from .runtime import default_runtime_trace, write_runtime_trace
+
+        trace = default_runtime_trace()
+        write_runtime_trace(Path(args.out), trace)
+        print(
+            f"LUREPERMIT RUNTIME TRACE CREATED: {len(trace['requests'])} requests — {args.out}\n"
+            "boundary: synthetic decisions and sensor metadata; no action was executed"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_runtime_eval(args: argparse.Namespace) -> int:
+    try:
+        from .runtime import (
+            evaluate_runtime_trace,
+            load_runtime_trace,
+            write_runtime_evaluation,
+        )
+
+        trace = load_runtime_trace(Path(args.trace) if args.trace else None)
+        report = evaluate_runtime_trace(trace)
+        if args.out:
+            write_runtime_evaluation(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREPERMIT RUNTIME: {summary['verdict'].upper()} — "
+                f"request-coverage={summary['mediation_coverage_rate']:.3f} "
+                f"point-coverage={summary['mediation_point_coverage_rate']:.3f} "
+                f"bypasses={summary['control_bypass_count']} "
+                f"unmediated={summary['unmediated_count']} "
+                f"unknown={summary['unknown_count']}{destination}"
+            )
+            print("boundary: receipt/sensor reconciliation only; no runtime action was executed")
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_export(args: argparse.Namespace) -> int:
+    try:
+        from .revocation import default_revocation_plan, write_revocation_plan
+
+        plan = default_revocation_plan()
+        write_revocation_plan(Path(args.out), plan)
+        print(
+            f"LUREREVOKE PLAN EXPORTED: {len(plan['events'])} events across "
+            f"{len(plan['nodes'])} nodes — {args.out}\n"
+            "boundary: CAEP-shaped synthetic metadata only; no SET or network traffic"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_compose(args: argparse.Namespace) -> int:
+    try:
+        from .revocation import write_revocation_plan
+        from .revocation_campaign import compose_revocation_plan, load_revocation_campaign
+
+        campaign = load_revocation_campaign(Path(args.campaign))
+        plan = compose_revocation_plan(campaign)
+        write_revocation_plan(Path(args.out), plan)
+        print(
+            f"LUREREVOKE PLAN COMPOSED: {len(plan['events'])} projected events, "
+            f"{len(plan['nodes'])} nodes, {len(plan['probes'])} probes — {args.out}\n"
+            "boundary: composition only; no SET verification, signal delivery, or access action"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_run(args: argparse.Namespace) -> int:
+    try:
+        from .revocation import (
+            load_revocation_plan,
+            reference_revocation_run,
+            write_revocation_run,
+        )
+
+        plan = load_revocation_plan(Path(args.plan) if args.plan else None)
+        run = reference_revocation_run(
+            plan,
+            run_id=args.run_id,
+            implementation_name=args.engine_id,
+            implementation_version=args.engine_version,
+            implementation_artifact_sha256=args.engine_artifact_sha256,
+        )
+        write_revocation_run(Path(args.out), run, plan)
+        print(
+            f"LUREREVOKE RUN CREATED: {len(run['signal_observations'])} signal and "
+            f"{len(run['access_observations'])} access observations — {args.out}\n"
+            "boundary: offline reference receiver only; no identity provider or agent contacted"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_otel_project(args: argparse.Namespace) -> int:
+    try:
+        from .revocation import load_revocation_plan
+        from .revocation_otel import (
+            load_otel_log_export,
+            project_otel_revocation_run,
+            write_otel_projection_and_run,
+        )
+
+        plan = load_revocation_plan(Path(args.plan))
+        export = load_otel_log_export(Path(args.logs), plan)
+        projection = project_otel_revocation_run(plan, export, run_id=args.run_id)
+        write_otel_projection_and_run(Path(args.out), Path(args.run_out), projection)
+        print(
+            f"LUREREVOKE OTEL PROJECTED: {len(export['records'])} body-free records — "
+            f"projection={args.out}; run={args.run_out}\n"
+            "boundary: strict Logs Data Model projection only; not raw OTLP or telemetry proof"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_otel_verify(args: argparse.Namespace) -> int:
+    try:
+        from .revocation_otel import load_otel_revocation_projection
+
+        projection = load_otel_revocation_projection(Path(args.projection))
+        print(
+            f"LUREREVOKE OTEL VERIFIED: {len(projection['inputs']['otel_log_export']['records'])} "
+            f"records; run-sha256={projection['run_sha256']} — {args.projection}\n"
+            "boundary: deterministic projection only; no clock, completeness, or causality proof"
+        )
+        return 0
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_eval(args: argparse.Namespace) -> int:
+    try:
+        from .revocation import (
+            evaluate_revocation_run,
+            load_revocation_plan,
+            load_revocation_run,
+            reference_revocation_run,
+            write_revocation_evaluation,
+        )
+
+        plan = load_revocation_plan(Path(args.plan) if args.plan else None)
+        run = (
+            load_revocation_run(Path(args.run), plan)
+            if args.run
+            else reference_revocation_run(plan)
+        )
+        report = evaluate_revocation_run(plan, run)
+        if args.out:
+            write_revocation_evaluation(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREREVOKE: {summary['verdict'].upper()} — "
+                f"coverage={summary['delivery_coverage_rate']:.3f} "
+                f"p95={summary['p95_convergence_ms']}ms "
+                f"deadline-misses={summary['deadline_miss_count']} "
+                f"post-deadline-allows={summary['post_deadline_allow_count']}"
+                f"{destination}"
+            )
+            print("boundary: convergence evidence only; no complete-mediation or compliance claim")
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_revocation_topology_audit(args: argparse.Namespace) -> int:
+    try:
+        from .revocation import load_revocation_plan
+        from .revocation_topology import (
+            audit_revocation_topology,
+            write_revocation_topology_audit,
+        )
+        from .runtime import load_runtime_profile
+
+        plan = load_revocation_plan(Path(args.plan) if args.plan else None)
+        profile = load_runtime_profile(Path(args.profile) if args.profile else None)
+        report = audit_revocation_topology(plan, profile)
+        if args.out:
+            write_revocation_topology_audit(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREREVOKE TOPOLOGY: {summary['verdict'].upper()} — "
+                f"coverage={summary['covered_mediation_point_count']}/"
+                f"{summary['required_mediation_point_count']} "
+                f"missing={summary['missing_mediation_point_count']} "
+                f"unmapped={summary['unmapped_node_count']}{destination}"
+            )
+            print("boundary: declared topology comparison only; no discovery or delivery claim")
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_stateful_range_export(args: argparse.Namespace) -> int:
+    try:
+        from .runtime import default_stateful_range_suite, write_stateful_range_suite
+
+        suite = default_stateful_range_suite()
+        write_stateful_range_suite(Path(args.out), suite)
+        steps = sum(len(item["steps"]) for item in suite["trajectories"])
+        print(
+            f"STATEFUL LURERANGE EXPORTED: {len(suite['trajectories'])} trajectories, "
+            f"{steps} steps — {args.out}\n"
+            "boundary: deterministic synthetic metadata only; no live target or exploit"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_stateful_range_eval(args: argparse.Namespace) -> int:
+    try:
+        from .runtime import (
+            load_stateful_range_suite,
+            run_stateful_range_evaluation,
+            write_stateful_range_evaluation,
+        )
+
+        suite = load_stateful_range_suite(Path(args.suite) if args.suite else None)
+        report = run_stateful_range_evaluation(
+            suite,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        if args.out:
+            write_stateful_range_evaluation(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"STATEFUL LURERANGE: {summary['verdict'].upper()} — "
+                f"trajectories={summary['passed_trajectories']}/"
+                f"{summary['total_trajectories']} steps={summary['correct_steps']}/"
+                f"{summary['total_steps']}{destination}"
+            )
+            print("boundary: offline conformance only; no agent action was executed")
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_permit_serve(args: argparse.Namespace) -> int:
+    try:
+        from .runtime_service import serve_runtime
+
+        if args.unix_socket and (args.host != "127.0.0.1" or args.port != 8765):
+            raise ValueError("--unix-socket cannot be combined with --host or --port")
+        endpoint = (
+            f"unix:{args.unix_socket}" if args.unix_socket else f"http://{args.host}:{args.port}"
+        )
+        print(f"LUREPERMIT RUNTIME READY: {endpoint}")
+        print("boundary: decision service only; it never executes or proxies an action")
+        serve_runtime(
+            profile_path=Path(args.profile) if args.profile else None,
+            host=args.host,
+            port=args.port,
+            unix_socket=Path(args.unix_socket) if args.unix_socket else None,
+            receipt_log=Path(args.receipt_log) if args.receipt_log else None,
+        )
+        return 0
+    except KeyboardInterrupt:
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
 def _sha256_regular_file(path: Path) -> str:
     if path.is_symlink():
         raise ValueError(f"refusing symbolic-link dataset: {path}")
@@ -858,9 +1255,7 @@ def _cmd_container_eval(args: argparse.Namespace) -> int:
         )
         report = run(detector, dataset, threshold=args.threshold, task=args.task)
         payload = {
-            "schema": (
-                "https://github.com/immu4989/lurebench/spec/container-evaluation/v1"
-            ),
+            "schema": ("https://github.com/immu4989/lurebench/spec/container-evaluation/v1"),
             "schema_version": 1,
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "protocol": PROTOCOL,
@@ -954,10 +1349,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument("--task", "-t", choices=["fraud", "provenance"], default=None)
     p_eval.add_argument("--threshold", type=float, default=0.5)
     p_eval.add_argument("--json", action="store_true", help="emit JSON instead of a table")
-    p_eval.add_argument("--bootstrap", type=int, default=0,
-                        help="paired bootstrap replicates for MCC/TPR/FPR/AUC intervals")
-    p_eval.add_argument("--confidence", type=float, default=0.95,
-                        help="confidence level used with --bootstrap")
+    p_eval.add_argument(
+        "--bootstrap",
+        type=int,
+        default=0,
+        help="paired bootstrap replicates for MCC/TPR/FPR/AUC intervals",
+    )
+    p_eval.add_argument(
+        "--confidence", type=float, default=0.95, help="confidence level used with --bootstrap"
+    )
     p_eval.set_defaults(func=_cmd_eval)
 
     p_det = sub.add_parser("detectors", help="list registered detectors")
@@ -973,27 +1373,49 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_lb = sub.add_parser("leaderboard", help="run detectors and render a leaderboard")
     p_lb.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
-    p_lb.add_argument("--detector", "-m", action="append",
-                      help="detector spec (repeatable); default: all. Accepts a plain "
-                           "name or name@engine/model, e.g. "
-                           "'llm-judge@openrouter/openai/gpt-5-nano', so one run can "
-                           "score several models")
-    p_lb.add_argument("--cache-dir", default=None,
-                      help="cache detector scores here and pre-warm them concurrently; "
-                           "makes API-backed detectors practical and reruns free")
-    p_lb.add_argument("--workers", type=int, default=8,
-                      help="concurrent requests when pre-warming (with --cache-dir)")
+    p_lb.add_argument(
+        "--detector",
+        "-m",
+        action="append",
+        help="detector spec (repeatable); default: all. Accepts a plain "
+        "name or name@engine/model, e.g. "
+        "'llm-judge@openrouter/openai/gpt-5-nano', so one run can "
+        "score several models",
+    )
+    p_lb.add_argument(
+        "--cache-dir",
+        default=None,
+        help="cache detector scores here and pre-warm them concurrently; "
+        "makes API-backed detectors practical and reruns free",
+    )
+    p_lb.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="concurrent requests when pre-warming (with --cache-dir)",
+    )
     p_lb.add_argument("--threshold", type=float, default=0.5)
-    p_lb.add_argument("--task", "-t", choices=["fraud", "provenance"], default=None,
-                      help="override each detector's task (score any dataset on either question)")
+    p_lb.add_argument(
+        "--task",
+        "-t",
+        choices=["fraud", "provenance"],
+        default=None,
+        help="override each detector's task (score any dataset on either question)",
+    )
     p_lb.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_lb.add_argument("--json", default=None, help="also write results JSON here")
     p_lb.set_defaults(func=_cmd_leaderboard)
 
-    p_cg = sub.add_parser("cross-generator",
-                          help="leave-one-generator-out provenance (the headline finding)")
-    p_cg.add_argument("--dataset", "-d", action="append", required=True,
-                      help="JSONL with human + multi-generator AI records (repeatable)")
+    p_cg = sub.add_parser(
+        "cross-generator", help="leave-one-generator-out provenance (the headline finding)"
+    )
+    p_cg.add_argument(
+        "--dataset",
+        "-d",
+        action="append",
+        required=True,
+        help="JSONL with human + multi-generator AI records (repeatable)",
+    )
     p_cg.add_argument("--threshold", type=float, default=0.5)
     p_cg.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_cg.set_defaults(func=_cmd_cross_generator)
@@ -1005,13 +1427,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_rob.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
     p_rob.add_argument("--detector", "-m", required=True, help="detector to stress-test")
     p_rob.add_argument(
-        "--attack", "-a", action="append", required=True,
+        "--attack",
+        "-a",
+        action="append",
+        required=True,
         help=f"attack to apply (repeatable). available: {', '.join(attacks_available())}",
     )
     p_rob.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
     p_rob.add_argument("--threshold", type=float, default=0.5)
-    p_rob.add_argument("--engine", default=None,
-                       help="provider engine for llm-* attacks (e.g. deepseek, mistral)")
+    p_rob.add_argument(
+        "--engine", default=None, help="provider engine for llm-* attacks (e.g. deepseek, mistral)"
+    )
     p_rob.add_argument("--model", default=None, help="provider model id for llm-* attacks")
     p_rob.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_rob.add_argument("--json", action="store_true", help="emit JSON instead of Markdown")
@@ -1022,11 +1448,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="per-language detection recall (the cross-lingual deployment gap)",
     )
     p_ml.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")
-    p_ml.add_argument("--detector", "-m", action="append",
-                      help="detector to evaluate (repeatable; default tfidf-logreg)")
+    p_ml.add_argument(
+        "--detector",
+        "-m",
+        action="append",
+        help="detector to evaluate (repeatable; default tfidf-logreg)",
+    )
     p_ml.add_argument("--threshold", type=float, default=0.5)
-    p_ml.add_argument("--raw", action="store_true",
-                      help="show raw recall only (default shows raw vs artifact-controlled)")
+    p_ml.add_argument(
+        "--raw",
+        action="store_true",
+        help="show raw recall only (default shows raw vs artifact-controlled)",
+    )
     p_ml.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_ml.set_defaults(func=_cmd_multilingual)
 
@@ -1035,10 +1468,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="export the taxonomy and/or a dataset as a STIX 2.1 bundle (threat-intel interop)",
     )
     p_stix.add_argument("--dataset", "-d", default=None, help="path to a JSONL dataset")
-    p_stix.add_argument("--taxonomy-only", action="store_true",
-                        help="export just the taxonomy (attack-patterns + crosswalks)")
-    p_stix.add_argument("--include-benign", action="store_true",
-                        help="also emit indicators for benign records")
+    p_stix.add_argument(
+        "--taxonomy-only",
+        action="store_true",
+        help="export just the taxonomy (attack-patterns + crosswalks)",
+    )
+    p_stix.add_argument(
+        "--include-benign", action="store_true", help="also emit indicators for benign records"
+    )
     p_stix.add_argument("--out", "-o", default=None, help="write the bundle here (else stdout)")
     p_stix.set_defaults(func=_cmd_stix)
 
@@ -1174,6 +1611,163 @@ def build_parser() -> argparse.ArgumentParser:
     p_invariant.add_argument("--json", action="store_true")
     p_invariant.set_defaults(func=_cmd_invariant_eval)
 
+    p_permit = sub.add_parser(
+        "permit-init",
+        help="write the reviewed deny-by-default LurePermit v1 contract",
+    )
+    p_permit.add_argument("--out", "-o", required=True, help="new mode-0600 permit JSON path")
+    p_permit.set_defaults(func=_cmd_permit_init)
+
+    p_range_export = sub.add_parser(
+        "range-export",
+        help="write the reviewed offline LureRange v1 scenario suite",
+    )
+    p_range_export.add_argument("--out", "-o", required=True, help="new mode-0600 suite JSON path")
+    p_range_export.set_defaults(func=_cmd_range_export)
+
+    p_range = sub.add_parser(
+        "range-eval",
+        help="evaluate an agent permit engine on safe offline control scenarios",
+    )
+    p_range.add_argument("--permit", help="LurePermit JSON; defaults to the reviewed reference")
+    p_range.add_argument("--suite", help="LureRange JSON; defaults to the reviewed reference")
+    p_range.add_argument("--engine-id", default="lurepermit-reference")
+    p_range.add_argument("--engine-version", default="1.0.0")
+    p_range.add_argument("--engine-artifact-sha256")
+    p_range.add_argument("--out", "-o", help="new mode-0600 evaluation JSON path")
+    p_range.add_argument("--json", action="store_true", help="also print JSON to stdout")
+    p_range.set_defaults(func=_cmd_range_eval)
+
+    p_runtime_init = sub.add_parser(
+        "runtime-init",
+        help="write the reviewed LurePermit runtime authorization profile",
+    )
+    p_runtime_init.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 runtime profile JSON"
+    )
+    p_runtime_init.set_defaults(func=_cmd_runtime_init)
+
+    p_runtime_trace = sub.add_parser(
+        "runtime-trace",
+        help="write a healthy synthetic receipt and sensor trace",
+    )
+    p_runtime_trace.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 runtime trace JSON"
+    )
+    p_runtime_trace.set_defaults(func=_cmd_runtime_trace)
+
+    p_runtime_eval = sub.add_parser(
+        "runtime-eval",
+        help="reconcile runtime decisions against independently registered sensors",
+    )
+    p_runtime_eval.add_argument("--trace", help="runtime trace; defaults to the healthy reference")
+    p_runtime_eval.add_argument("--out", "-o", help="new mode-0600 runtime evaluation JSON")
+    p_runtime_eval.add_argument("--json", action="store_true", help="also print JSON to stdout")
+    p_runtime_eval.set_defaults(func=_cmd_runtime_eval)
+
+    p_revocation_export = sub.add_parser(
+        "revocation-export",
+        help="write a CAEP-shaped distributed revocation convergence plan",
+    )
+    p_revocation_export.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureRevoke plan JSON"
+    )
+    p_revocation_export.set_defaults(func=_cmd_revocation_export)
+
+    p_revocation_compose = sub.add_parser(
+        "revocation-compose",
+        help="compose a strict plan from projected CAEP events and a declared topology",
+    )
+    p_revocation_compose.add_argument("--campaign", required=True)
+    p_revocation_compose.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureRevoke plan JSON"
+    )
+    p_revocation_compose.set_defaults(func=_cmd_revocation_compose)
+
+    p_revocation_run = sub.add_parser(
+        "revocation-run",
+        help="create deterministic receiver observations for a revocation plan",
+    )
+    p_revocation_run.add_argument("--plan", help="LureRevoke plan; defaults to the reference")
+    p_revocation_run.add_argument("--run-id", default="lurerevoke-reference-run")
+    p_revocation_run.add_argument("--engine-id", default="lurerevoke-reference")
+    p_revocation_run.add_argument("--engine-version", default="1.0.0")
+    p_revocation_run.add_argument("--engine-artifact-sha256")
+    p_revocation_run.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 receiver observation JSON"
+    )
+    p_revocation_run.set_defaults(func=_cmd_revocation_run)
+
+    p_revocation_otel = sub.add_parser(
+        "revocation-otel-project",
+        help="project strict body-free OpenTelemetry log records into a bound revocation run",
+    )
+    p_revocation_otel.add_argument("--plan", required=True)
+    p_revocation_otel.add_argument("--logs", required=True)
+    p_revocation_otel.add_argument("--run-id", required=True)
+    p_revocation_otel.add_argument("--out", "-o", required=True, help="new projection JSON")
+    p_revocation_otel.add_argument("--run-out", required=True, help="new LureRevoke run JSON")
+    p_revocation_otel.set_defaults(func=_cmd_revocation_otel_project)
+
+    p_revocation_otel_verify = sub.add_parser(
+        "revocation-otel-verify",
+        help="independently recompute a saved OpenTelemetry revocation projection",
+    )
+    p_revocation_otel_verify.add_argument("projection")
+    p_revocation_otel_verify.set_defaults(func=_cmd_revocation_otel_verify)
+
+    p_revocation_eval = sub.add_parser(
+        "revocation-eval",
+        help="measure revocation delivery coverage, convergence, bypass, and collateral denial",
+    )
+    p_revocation_eval.add_argument("--plan", help="LureRevoke plan; defaults to the reference")
+    p_revocation_eval.add_argument("--run", help="receiver observations; defaults to reference")
+    p_revocation_eval.add_argument("--out", "-o", help="new mode-0600 evaluation JSON")
+    p_revocation_eval.add_argument("--json", action="store_true")
+    p_revocation_eval.set_defaults(func=_cmd_revocation_eval)
+
+    p_revocation_topology = sub.add_parser(
+        "revocation-topology-audit",
+        help="cross-check revocation nodes against every runtime mediation point",
+    )
+    p_revocation_topology.add_argument("--plan", help="defaults to the reference plan")
+    p_revocation_topology.add_argument("--profile", help="defaults to the runtime reference")
+    p_revocation_topology.add_argument("--out", "-o", help="new mode-0600 audit JSON")
+    p_revocation_topology.add_argument("--json", action="store_true")
+    p_revocation_topology.set_defaults(func=_cmd_revocation_topology_audit)
+
+    p_stateful_export = sub.add_parser(
+        "stateful-range-export",
+        help="write long-task and multi-agent containment trajectories",
+    )
+    p_stateful_export.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 stateful suite JSON"
+    )
+    p_stateful_export.set_defaults(func=_cmd_stateful_range_export)
+
+    p_stateful_eval = sub.add_parser(
+        "stateful-range-eval",
+        help="evaluate a runtime policy engine over stateful containment trajectories",
+    )
+    p_stateful_eval.add_argument("--suite", help="stateful suite; defaults to the reference")
+    p_stateful_eval.add_argument("--engine-id", default="lurepermit-runtime-reference")
+    p_stateful_eval.add_argument("--engine-version", default="1.0.0")
+    p_stateful_eval.add_argument("--engine-artifact-sha256")
+    p_stateful_eval.add_argument("--out", "-o", help="new mode-0600 stateful evaluation JSON")
+    p_stateful_eval.add_argument("--json", action="store_true", help="also print JSON to stdout")
+    p_stateful_eval.set_defaults(func=_cmd_stateful_range_eval)
+
+    p_permit_serve = sub.add_parser(
+        "permit-serve",
+        help="serve the metadata-only policy decision API on loopback or a Unix socket",
+    )
+    p_permit_serve.add_argument("--profile", help="runtime profile; defaults to the reference")
+    p_permit_serve.add_argument("--host", default="127.0.0.1", help="explicit loopback IP")
+    p_permit_serve.add_argument("--port", type=int, default=8765)
+    p_permit_serve.add_argument("--unix-socket", help="new private Unix socket path")
+    p_permit_serve.add_argument("--receipt-log", help="new append-only mode-0600 receipt JSONL")
+    p_permit_serve.set_defaults(func=_cmd_permit_serve)
+
     p_container = sub.add_parser(
         "container-eval",
         help="evaluate an isolated language-independent detector container",
@@ -1203,14 +1797,19 @@ def build_parser() -> argparse.ArgumentParser:
     p_audit = sub.add_parser(
         "audit-splits", help="detect family overlap and near-duplicate text across splits"
     )
-    p_audit.add_argument("--split", "-s", action="append", required=True,
-                         help="name=path (repeatable)")
-    p_audit.add_argument("--threshold", type=float, default=0.8,
-                         help="word-shingle Jaccard threshold (default: 0.8)")
+    p_audit.add_argument(
+        "--split", "-s", action="append", required=True, help="name=path (repeatable)"
+    )
+    p_audit.add_argument(
+        "--threshold", type=float, default=0.8, help="word-shingle Jaccard threshold (default: 0.8)"
+    )
     p_audit.add_argument("--shingle-size", type=int, default=5)
     p_audit.add_argument("--out", "-o", default=None, help="write JSON report here")
-    p_audit.add_argument("--fail-on-leakage", action="store_true",
-                         help="exit non-zero when any cross-split leakage is found")
+    p_audit.add_argument(
+        "--fail-on-leakage",
+        action="store_true",
+        help="exit non-zero when any cross-split leakage is found",
+    )
     p_audit.set_defaults(func=_cmd_audit_splits)
 
     p_cal = sub.add_parser(
@@ -1218,8 +1817,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cal.add_argument("--validation", "-d", required=True, help="validation JSONL")
     p_cal.add_argument("--detector", "-m", required=True)
-    p_cal.add_argument("--model-path", default=None,
-                       help="serialized model path for detectors such as tfidf-logreg")
+    p_cal.add_argument(
+        "--model-path",
+        default=None,
+        help="serialized model path for detectors such as tfidf-logreg",
+    )
     p_cal.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
     p_cal.add_argument(
         "--objective",
@@ -1228,11 +1830,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_cal.add_argument("--target-fpr", type=float, default=None)
     p_cal.add_argument(
-        "--confidence", type=float, default=0.95,
+        "--confidence",
+        type=float,
+        default=0.95,
         help="confidence for risk_controlled_fpr (default: 0.95)",
     )
     p_cal.add_argument(
-        "--threshold-grid-size", type=int, default=1001,
+        "--threshold-grid-size",
+        type=int,
+        default=1001,
         help="predeclared [0,1] threshold grid for risk control (default: 1001)",
     )
     p_cal.add_argument("--bins", type=int, default=10)
@@ -1240,55 +1846,97 @@ def build_parser() -> argparse.ArgumentParser:
     p_cal.set_defaults(func=_cmd_calibrate)
 
     p_train = sub.add_parser("train", help="train the tfidf-logreg baseline detector")
-    p_train.add_argument("--dataset", "-d", required=True, help="training JSONL (use the train split)")
-    p_train.add_argument("--out", "-o", default="models/tfidf-logreg-fraud.joblib", help="model output path")
+    p_train.add_argument(
+        "--dataset", "-d", required=True, help="training JSONL (use the train split)"
+    )
+    p_train.add_argument(
+        "--out", "-o", default="models/tfidf-logreg-fraud.joblib", help="model output path"
+    )
     p_train.add_argument("--task", "-t", choices=["fraud", "provenance"], default="fraud")
     p_train.set_defaults(func=_cmd_train)
 
     p_pub = sub.add_parser("publish", help="assemble a Hub-ready dataset dir (and optionally push)")
-    p_pub.add_argument("--split", "-s", action="append", required=True, help="name=path (repeatable)")
-    p_pub.add_argument("--repo", "-r", required=True, help="Hub dataset repo id, e.g. lurebench/core")
+    p_pub.add_argument(
+        "--split", "-s", action="append", required=True, help="name=path (repeatable)"
+    )
+    p_pub.add_argument(
+        "--repo", "-r", required=True, help="Hub dataset repo id, e.g. lurebench/core"
+    )
     p_pub.add_argument("--out", "-o", required=True, help="local output directory to assemble into")
     p_pub.add_argument("--version", default="v1")
-    p_pub.add_argument("--push", action="store_true", help="upload to the Hub (needs 'hub' extra + auth)")
-    p_pub.add_argument("--public", action="store_true", help="create a public repo (default: private)")
+    p_pub.add_argument(
+        "--push", action="store_true", help="upload to the Hub (needs 'hub' extra + auth)"
+    )
+    p_pub.add_argument(
+        "--public", action="store_true", help="create a public repo (default: private)"
+    )
     p_pub.set_defaults(func=_cmd_publish)
 
-    p_gen = sub.add_parser("generate", help="controlled generation of synthetic AI lures (review-pending)")
-    p_gen.add_argument("--typology", "-t", required=True, choices=["phishing", "bec", "romance", "pig_butchering"])
+    p_gen = sub.add_parser(
+        "generate", help="controlled generation of synthetic AI lures (review-pending)"
+    )
+    p_gen.add_argument(
+        "--typology", "-t", required=True, choices=["phishing", "bec", "romance", "pig_butchering"]
+    )
     p_gen.add_argument("--n", type=int, default=10, help="number of records to generate")
     p_gen.add_argument("--engine", "-e", default="template", help=f"one of {gen_available()}")
-    p_gen.add_argument("--model", default=None, help="model id (defaults per engine/provider preset)")
-    p_gen.add_argument("--max-tokens", type=int, default=None, help="output token budget (raise for reasoning models, e.g. kimi)")
+    p_gen.add_argument(
+        "--model", default=None, help="model id (defaults per engine/provider preset)"
+    )
+    p_gen.add_argument(
+        "--max-tokens",
+        type=int,
+        default=None,
+        help="output token budget (raise for reasoning models, e.g. kimi)",
+    )
     p_gen.add_argument("--base-url", default=None, help="required for engine 'openai-compat'")
-    p_gen.add_argument("--api-key-env", default=None, help="env var holding the provider key (openai-compat)")
+    p_gen.add_argument(
+        "--api-key-env", default=None, help="env var holding the provider key (openai-compat)"
+    )
     p_gen.add_argument("--generator-id", default=None, help="provenance label stamped on records")
     p_gen.add_argument("--channel", default="email")
     p_gen.add_argument("--language", default="en")
     p_gen.add_argument("--persona", default=None, help="non-identifying scenario seed")
     p_gen.add_argument("--persuasion", action="append", help="persuasion tag (repeatable)")
-    p_gen.add_argument("--hard", action="store_true", help="subtler, more varied lures (no stock spam markers)")
+    p_gen.add_argument(
+        "--hard", action="store_true", help="subtler, more varied lures (no stock spam markers)"
+    )
     p_gen.add_argument("--out", "-o", required=True, help="staging JSONL path (review-pending)")
     p_gen.set_defaults(func=_cmd_generate)
 
-    p_core = sub.add_parser("assemble-core", help="merge sourced + approved-generated shards into lurebench-core")
-    p_core.add_argument("--source", "-s", action="append", required=True, help="input JSONL (repeatable)")
-    p_core.add_argument("--out", "-o", required=True, help="output dir for train.jsonl / test.jsonl")
-    p_core.add_argument("--test-modulus", type=int, default=10, help="1/N held out as the frozen test split")
-    p_core.add_argument("--validation-modulus", type=int, default=10,
-                        help="1/N of the non-test pool held out for validation")
+    p_core = sub.add_parser(
+        "assemble-core", help="merge sourced + approved-generated shards into lurebench-core"
+    )
+    p_core.add_argument(
+        "--source", "-s", action="append", required=True, help="input JSONL (repeatable)"
+    )
+    p_core.add_argument(
+        "--out", "-o", required=True, help="output dir for train.jsonl / test.jsonl"
+    )
+    p_core.add_argument(
+        "--test-modulus", type=int, default=10, help="1/N held out as the frozen test split"
+    )
+    p_core.add_argument(
+        "--validation-modulus",
+        type=int,
+        default=10,
+        help="1/N of the non-test pool held out for validation",
+    )
     p_core.set_defaults(func=_cmd_assemble_core)
 
     p_core_v2 = sub.add_parser(
         "assemble-core-v2",
         help="build leakage-clustered public splits plus a separate private held-out split",
     )
-    p_core_v2.add_argument("--source", "-s", action="append", required=True,
-                           help="input JSONL (repeatable)")
-    p_core_v2.add_argument("--out", "-o", required=True,
-                           help="new/empty public output directory")
-    p_core_v2.add_argument("--heldout-out", required=True,
-                           help="private held-out JSONL outside --out; created mode 0600")
+    p_core_v2.add_argument(
+        "--source", "-s", action="append", required=True, help="input JSONL (repeatable)"
+    )
+    p_core_v2.add_argument("--out", "-o", required=True, help="new/empty public output directory")
+    p_core_v2.add_argument(
+        "--heldout-out",
+        required=True,
+        help="private held-out JSONL outside --out; created mode 0600",
+    )
     p_core_v2.add_argument("--near-duplicate-threshold", type=float, default=0.8)
     p_core_v2.add_argument("--shingle-size", type=int, default=5)
     p_core_v2.add_argument("--train-weight", type=float, default=0.7)

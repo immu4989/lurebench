@@ -17,4 +17,6 @@
 - [ ] `ruff check` passes
 - [ ] New behaviour has a test
 - [ ] Docs updated if behaviour or results changed
+- [ ] Benchmark or schema changes state validity, privacy, and interpretation boundaries
+- [ ] Workflow changes retain immutable action pins, least privilege, and bounded timeouts
 - [ ] Any fraud samples are defanged (no real URLs, contacts, payment rails, or PII)

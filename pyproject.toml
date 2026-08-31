@@ -18,6 +18,8 @@ keywords = [
     "ai-security",
     "machine-generated-text",
     "social-engineering",
+    "agent-security",
+    "policy-conformance",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -81,6 +83,24 @@ packages = ["lurebench"]
 "spec/agent-invariant-plan-v1.schema.json" = "lurebench/spec/agent-invariant-plan-v1.schema.json"
 "spec/agent-invariant-observations-v1.schema.json" = "lurebench/spec/agent-invariant-observations-v1.schema.json"
 "spec/agent-invariant-evaluation-v1.schema.json" = "lurebench/spec/agent-invariant-evaluation-v1.schema.json"
+"spec/lurepermit-v1.schema.json" = "lurebench/spec/lurepermit-v1.schema.json"
+"spec/lurerange-suite-v1.schema.json" = "lurebench/spec/lurerange-suite-v1.schema.json"
+"spec/lurerange-evaluation-v1.schema.json" = "lurebench/spec/lurerange-evaluation-v1.schema.json"
+"spec/lurepermit-runtime-profile-v1.schema.json" = "lurebench/spec/lurepermit-runtime-profile-v1.schema.json"
+"spec/lurepermit-runtime-request-v1.schema.json" = "lurebench/spec/lurepermit-runtime-request-v1.schema.json"
+"spec/lurepermit-runtime-receipt-v1.schema.json" = "lurebench/spec/lurepermit-runtime-receipt-v1.schema.json"
+"spec/lurepermit-runtime-trace-v1.schema.json" = "lurebench/spec/lurepermit-runtime-trace-v1.schema.json"
+"spec/lurepermit-runtime-evaluation-v1.schema.json" = "lurebench/spec/lurepermit-runtime-evaluation-v1.schema.json"
+"spec/lurepermit-runtime-openapi-v1.json" = "lurebench/spec/lurepermit-runtime-openapi-v1.json"
+"spec/lurerange-stateful-suite-v1.schema.json" = "lurebench/spec/lurerange-stateful-suite-v1.schema.json"
+"spec/lurerange-stateful-evaluation-v1.schema.json" = "lurebench/spec/lurerange-stateful-evaluation-v1.schema.json"
+"spec/lurerevoke-plan-v1.schema.json" = "lurebench/spec/lurerevoke-plan-v1.schema.json"
+"spec/lurerevoke-run-v1.schema.json" = "lurebench/spec/lurerevoke-run-v1.schema.json"
+"spec/lurerevoke-evaluation-v1.schema.json" = "lurebench/spec/lurerevoke-evaluation-v1.schema.json"
+"spec/lurerevoke-campaign-v1.schema.json" = "lurebench/spec/lurerevoke-campaign-v1.schema.json"
+"spec/lurerevoke-topology-audit-v1.schema.json" = "lurebench/spec/lurerevoke-topology-audit-v1.schema.json"
+"spec/lurerevoke-otel-log-export-v1.schema.json" = "lurebench/spec/lurerevoke-otel-log-export-v1.schema.json"
+"spec/lurerevoke-otel-projection-v1.schema.json" = "lurebench/spec/lurerevoke-otel-projection-v1.schema.json"
 "conformance/lureeval-v1" = "lurebench/conformance_data/lureeval-v1"
 "conformance/lureboundary-v1" = "lurebench/conformance_data/lureboundary-v1"
 

@@ -37,6 +37,10 @@ otherwise.
 - Undefanged content in a shipped data shard: a real working URL, real contact
   details, real payment rails, or real personal data. See [DATA.md](DATA.md).
 - Dependency vulnerabilities that are actually reachable from this code.
+- LurePermit, LureRange, LureInvariant, runtime, topology, telemetry, or
+  LureRevoke evaluators producing a passing result from contradictory inputs,
+  incomplete required observations, altered bindings, contaminated controls, or
+  incorrectly recomputed metrics.
 
 ## What is not a vulnerability
 
@@ -62,6 +66,17 @@ Known past examples, both corrected in the changelog: metrics computed only over
 the records a detector chose to answer, so a model that declined half the corpus
 scored a perfect 1.000; and single-run attack results reported as precise point
 estimates when re-running moved them by up to 17 points.
+
+## Repository supply-chain controls
+
+Repository-wide CODEOWNERS coverage is included, but it has no enforcement
+effect by itself. Enable branch or ruleset protection that requires code-owner
+review, and protect workflow, benchmark-schema, and release-policy changes from
+unilateral modification. Pin external GitHub Actions to reviewed full commit
+SHAs.
+Release builds are deliberately separated from the job that receives OIDC
+attestation and GitHub Release write authority, reducing the privilege available
+to package build backends.
 
 ## Acceptable use
 

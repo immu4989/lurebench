@@ -3,6 +3,85 @@
 ## Unreleased
 
 ### Added
+- Added repository-wide CODEOWNERS coverage so protected branches can require
+  maintainer review for benchmark code, schemas, workflows, and release policy.
+  Executable workflow-security tests reject mutable action references, absent
+  top-level permission boundaries, and `pull_request_target` triggers. Release
+  uploads now fail on existing assets instead of silently replacing files under
+  a tag, same-tag release runs are serialized, every checkout disables persisted
+  Git credentials, and every job has a
+  regression-enforced execution timeout. Python build backends now run in an
+  unprivileged job; a separate job downloads the immutable artifact before
+  receiving OIDC attestation and release-write authority.
+- Added a repository-wide Markdown link regression so expanding benchmark and
+  operator guides cannot silently ship broken local navigation.
+- Added a strict body-free OpenTelemetry Logs Data Model bridge for LureRevoke.
+  Two custom event types map receiver signals and access decisions into an
+  evaluable run while exact-object validation rejects bodies, arbitrary
+  attributes, topology drift, malformed/reused trace context, and inconsistent
+  timing. The independently recomputable projection binds plan, source export,
+  and run bytes; two public schemas, private no-overwrite outputs, CLI
+  project/verify commands, an operator guide, and adversarial tests are included.
+- Added LureRevoke, a deterministic continuous-access revocation convergence
+  benchmark across four CAEP event classes and four policy nodes. It measures
+  required delivery coverage, p95/maximum convergence, deadline misses,
+  post-deadline access leakage, revoked-subject block recall, pre-event allows,
+  collateral denial, and independently derived invalid/duplicate dispositions.
+- Added 64 synthetic access probes—one pre-event, propagation-window,
+  post-deadline, and unrelated-subject control for every event/node pair—plus tampered-signal and duplicate-delivery
+  cases, three strict public schemas, private no-overwrite CLI artifacts, wheel
+  packaging, and an operator guide grounded in OpenID CAEP/SSF and NIST zero
+  trust guidance without claiming SET interoperability or compliance.
+- Added a production-boundary CAEP projection adapter that accepts only decoded,
+  externally verified claims; rechecks issuer/audience and attenuating semantics;
+  bounds structured subjects and relative time; and emits campaign-keyed,
+  domain-separated commitments instead of raw subject, issuer, audience, or SET
+  identifiers. Adversarial tests cover trust assertions, privacy, ambiguity,
+  key separation, all four event classes, and digest reconciliation.
+- Added `lurebench revocation-compose` and a public preregistration schema for
+  expanding privacy-projected events over a declared real-world policy-node
+  topology. It deterministically generates pre-event, within-window,
+  post-deadline, and unrelated-subject probes; rejects duplicate subjects,
+  non-monotonic event time, digest/type mismatches, probe-window overflow, and
+  missing availability controls; and writes a private no-overwrite plan. A
+  complete offline example connects verified-claim projection to composition.
+- Expanded every composed campaign phase—pre-event, propagation-window,
+  post-deadline, and unrelated-subject availability—to every declared node.
+  Campaigns now detect node-local premature attenuation and collateral denial,
+  reserve collision-free control subjects, and fail early when the full
+  `events × 4 × nodes` design exceeds the bounded probe budget.
+- Hardened the core plan validator against cross-event negative-control
+  contamination: a subject revoked by any campaign event cannot be presented as
+  an unrelated availability subject for another event.
+- Added `lurebench revocation-topology-audit` and an independently recomputable
+  public report that cross-checks exact LureRevoke plans against exact
+  LurePermit Runtime profiles. It requires the same system identity, reports
+  every point's action/sensor contract and replica nodes, and fails on missing
+  runtime mediation points or unmapped revocation nodes. The claims boundary is
+  explicit that declared-config coverage is not service discovery, reachability,
+  fault-domain independence, delivery, or enforcement proof.
+- Added LurePermit Runtime: a side-effect-free, stateful PDP with SPIFFE trust
+  domains, human/approval binding, MCP resource and audience checks, OAuth actor
+  binding, token-passthrough denial, permit revocation, policy-generation
+  freshness, sticky safe-stop, replay defense, and SHA-256-chained receipts.
+- Added decision-versus-effect reconciliation across nine mediation points and
+  required sensor sets. Reports independently classify effective controls,
+  control bypass, unmediated effects, unknown evidence, and incomplete allowed
+  effects, and separately measure request and mediation-point coverage.
+- Added 15 stateful LureRange trajectories (22 steps), a loopback/Unix-socket
+  decision API and OpenAPI contract, MCP/SPIFFE/OPA/Cedar/Envoy adapters, hardened
+  container and Kubernetes patterns, three executable public-interest use cases,
+  seven runtime/stateful schemas, and a NIST concept-paper implementation map.
+- Added LurePermit v1, a strict deny-by-default per-run authorization contract,
+  and LureRange, a deterministic 21-scenario offline policy-gateway benchmark
+  covering network and run isolation, shared state, synthetic credential
+  audience, delegation, approval, evaluator access, persistence budgets,
+  required monitoring, safe-stop, and post-stop activity.
+- Added `permit-init`, `range-export`, and `range-eval`; a Python gateway
+  callable contract that withholds scenario prose and expectations; canonical
+  embedded permit/suite bindings; independently recomputed per-scenario and
+  aggregate results; three public Draft 2020-12 schemas; wheel packaging; and
+  operator guidance.
 - Added LureInvariant, a strict cross-layer graph and temporal evaluator for
   transitive forbidden reachability, required mediation, bounded response, and
   prohibited post-trigger activity. Results distinguish observed violation,
@@ -42,6 +121,19 @@
   and adversarial tests for all new contracts.
 
 ### Security
+- LureRevoke's CAEP adapter rejects token strings, weak campaign keys,
+  unauthenticated trust-boundary assertions, multiple events, future event time,
+  non-attenuating state changes, and oversized/deep structured subjects. It is
+  explicitly not a JWT/SET verifier or SSF transport implementation.
+- Runtime adapters and the PDP accept typed metadata only and never accept or
+  log token values, prompts, arguments, payloads, commands, targets, URLs,
+  secrets, or reasoning. The service refuses non-loopback IPs, caps strict JSON
+  requests at 64 KiB, and writes no-overwrite mode-0600 fsynced receipts.
+- LurePermit and LureRange accept typed synthetic metadata only and execute no
+  tools, processes, network requests, credentials, stop, or response actions.
+  Strict allowlists reject content, target, URL, secret, command, payload, and
+  reasoning fields plus duplicate keys, symlinks, oversized artifacts, decision
+  substitution, digest rewriting, metric tampering, and unsafe overwrite.
 - LureInvariant fails closed on unknown fields, duplicate JSON keys, non-finite
   values, undeclared graph references, duplicate typed edges, unknown relevant
   edge state, incomplete required sources, source/digest substitution, symlinks,

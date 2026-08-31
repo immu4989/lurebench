@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-request-v1",
+  "title": "LurePermit runtime authorization request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "correlation_id", "nonce", "requested_at", "permit_sha256", "mediation_point_id", "identity", "authority", "protocol", "state", "request"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-request-v1"},
+    "schema_version": {"const": 1},
+    "correlation_id": {"$ref": "#/$defs/id"},
+    "nonce": {"$ref": "#/$defs/id"},
+    "requested_at": {"type": "string", "format": "date-time"},
+    "permit_sha256": {"$ref": "#/$defs/digest"},
+    "mediation_point_id": {"$ref": "#/$defs/id"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["workload_spiffe_id", "agent_id", "tenant_id", "run_id", "human_subject_id"],
+      "properties": {
+        "workload_spiffe_id": {"type": "string", "minLength": 12, "maxLength": 780, "pattern": "^spiffe://"},
+        "agent_id": {"$ref": "#/$defs/id"}, "tenant_id": {"$ref": "#/$defs/id"}, "run_id": {"$ref": "#/$defs/id"},
+        "human_subject_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}
+      }
+    },
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["delegation_id", "approval_id", "approval_request_sha256"],
+      "properties": {
+        "delegation_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "approval_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "approval_request_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+      }
+    },
+    "protocol": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "server_id", "method", "oauth_resource", "oauth_audience", "oauth_issuer_id", "oauth_subject_id", "oauth_actor_id", "token_mode", "token_passthrough"],
+      "properties": {
+        "kind": {"enum": ["cedar", "direct", "envoy_ext_authz", "mcp", "opa"]},
+        "server_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "method": {"oneOf": [{"enum": ["resources/read", "tools/call"]}, {"type": "null"}]},
+        "oauth_resource": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "oauth_audience": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "oauth_issuer_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "oauth_subject_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "oauth_actor_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+        "token_mode": {"enum": ["exchanged", "none", "synthetic_brokered"]},
+        "token_passthrough": {"type": "boolean"}
+      }
+    },
+    "state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["task_state", "permit_state", "peer_state", "policy_generation"],
+      "properties": {
+        "task_state": {"enum": ["corrupted", "healthy", "impossible"]},
+        "permit_state": {"enum": ["active", "expired", "revoked"]},
+        "peer_state": {"enum": ["authorized", "not_applicable", "revoked", "unauthorized"]},
+        "policy_generation": {"type": "integer", "minimum": 1, "maximum": 1000000}
+      }
+    },
+    "request": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerange-suite-v1#/$defs/request"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

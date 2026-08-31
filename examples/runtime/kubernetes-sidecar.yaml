@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: agent-with-lurepermit
+  labels:
+    app.kubernetes.io/name: agent-with-lurepermit
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: agent
+      # Replace with an organization-built, signed, digest-pinned image.
+      image: YOUR_REGISTRY/agent@sha256:REPLACE_WITH_VERIFIED_DIGEST
+      env:
+        - name: LUREPERMIT_URL
+          value: http://127.0.0.1:8765/v1/decide
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}
+        readOnlyRootFilesystem: true
+    - name: lurepermit-runtime
+      # Build examples/runtime/Dockerfile, sign it, and pin the verified digest.
+      image: YOUR_REGISTRY/lurepermit-runtime@sha256:REPLACE_WITH_VERIFIED_DIGEST
+      args:
+        - --host
+        - 127.0.0.1
+        - --port
+        - "8765"
+        - --receipt-log
+        - /evidence/receipts.jsonl
+      ports:
+        - name: decision
+          containerPort: 8765
+      readinessProbe:
+        httpGet: {path: /health, port: decision, scheme: HTTP}
+        initialDelaySeconds: 2
+        periodSeconds: 5
+      resources:
+        requests: {cpu: 25m, memory: 32Mi}
+        limits: {cpu: 250m, memory: 128Mi}
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: {drop: [ALL]}
+        readOnlyRootFilesystem: true
+      volumeMounts:
+        - {name: runtime-evidence, mountPath: /evidence}
+  volumes:
+    - name: runtime-evidence
+      emptyDir: {sizeLimit: 64Mi}
