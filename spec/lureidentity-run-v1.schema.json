@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureidentity-run-v1",
+  "title": "LureIdentity lifecycle-closure run v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "generated_at", "implementation", "plan_sha256", "event_observations", "access_observations", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureidentity-run-v1"},
+    "schema_version": {"const": 1},
+    "run_id": {"$ref": "#/$defs/id"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"$ref": "#/$defs/implementation"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "event_observations": {"type": "array", "maxItems": 16384, "items": {"$ref": "#/$defs/event_observation"}},
+    "access_observations": {"type": "array", "minItems": 1, "maxItems": 8192, "items": {"$ref": "#/$defs/access_observation"}},
+    "limitations": {"const": ["observations_are_claimed_receiver_metadata_not_proof_of_event_or_enforcement_authenticity", "reference_run_is_offline_and_contacts_no_directory_agent_workload_or_policy_engine", "invalid_and_duplicate_events_are_synthetic_and_contain_no_reusable_security_material"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullable_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "artifact_sha256"],
+      "properties": {"name": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"$ref": "#/$defs/nullable_digest"}}
+    },
+    "event_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_id", "event_id", "node_id", "received_at_ms", "event_sha256", "disposition"],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/id"},
+        "event_id": {"$ref": "#/$defs/id"},
+        "node_id": {"$ref": "#/$defs/id"},
+        "received_at_ms": {"type": "integer", "minimum": 0, "maximum": 86400000},
+        "event_sha256": {"$ref": "#/$defs/digest"},
+        "disposition": {"enum": ["applied", "duplicate", "invalid"]}
+      }
+    },
+    "access_observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe_id", "decision", "reason_code"],
+      "properties": {
+        "probe_id": {"$ref": "#/$defs/id"},
+        "decision": {"enum": ["allow", "block"]},
+        "reason_code": {"enum": ["authority_active", "authority_path_cut", "authority_preserved", "lifecycle_event_pending"]}
+      }
+    }
+  }
+}

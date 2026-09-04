@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerecall-evaluation-v1",
+  "title": "LureRecall transitive artifact response evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "plan", "plan_sha256", "run", "run_sha256", "summary", "checks", "findings", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerecall-evaluation-v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurebench"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerecall-plan-v1"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "run": {"$ref": "https://github.com/immu4989/lurebench/spec/lurerecall-run-v1"},
+    "run_sha256": {"$ref": "#/$defs/digest"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "checks": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/check"}
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "limitations": {"const": [
+      "metrics_are_recomputed_from_embedded_plan_and_run_metadata",
+      "deadlines_depend_on_external_clock_quality_and_complete_observation_instrumentation",
+      "a_pass_does_not_authenticate_the_advisory_lineage_builder_receiver_or_replacement",
+      "evaluation_is_not_incident_containment_recovery_authorization_certification_or_compliance"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 65536},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "nullableRate": {"oneOf": [{"$ref": "#/$defs/rate"}, {"type": "null"}]},
+    "nullableTime": {"type": ["integer", "null"], "minimum": 0, "maximum": 259200000},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actionable_component_count", "affected_component_count", "affected_root_artifact_count", "affected_workload_count", "affected_deployment_count", "affected_node_count", "required_delivery_count", "on_time_delivery_count", "delivery_coverage_rate", "on_time_delivery_rate", "p95_delivery_ms", "maximum_delivery_ms", "expected_probe_count", "observed_probe_count", "quarantine_recall", "recovery_recall", "unaffected_preservation_rate", "post_deadline_compromised_allow_count", "wrong_replacement_count", "collateral_block_count", "finding_count", "verdict"],
+      "properties": {
+        "actionable_component_count": {"$ref": "#/$defs/count"},
+        "affected_component_count": {"$ref": "#/$defs/count"},
+        "affected_root_artifact_count": {"$ref": "#/$defs/count"},
+        "affected_workload_count": {"$ref": "#/$defs/count"},
+        "affected_deployment_count": {"$ref": "#/$defs/count"},
+        "affected_node_count": {"$ref": "#/$defs/count"},
+        "required_delivery_count": {"$ref": "#/$defs/count"},
+        "on_time_delivery_count": {"$ref": "#/$defs/count"},
+        "delivery_coverage_rate": {"$ref": "#/$defs/rate"},
+        "on_time_delivery_rate": {"$ref": "#/$defs/rate"},
+        "p95_delivery_ms": {"$ref": "#/$defs/nullableTime"},
+        "maximum_delivery_ms": {"$ref": "#/$defs/nullableTime"},
+        "expected_probe_count": {"$ref": "#/$defs/count"},
+        "observed_probe_count": {"$ref": "#/$defs/count"},
+        "quarantine_recall": {"$ref": "#/$defs/rate"},
+        "recovery_recall": {"$ref": "#/$defs/rate"},
+        "unaffected_preservation_rate": {"$ref": "#/$defs/nullableRate"},
+        "post_deadline_compromised_allow_count": {"$ref": "#/$defs/count"},
+        "wrong_replacement_count": {"$ref": "#/$defs/count"},
+        "collateral_block_count": {"$ref": "#/$defs/count"},
+        "finding_count": {"$ref": "#/$defs/count"},
+        "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "status"],
+      "properties": {
+        "check_id": {"enum": ["plan_run_contract_bound", "advisory_delivery_complete", "advisory_delivery_within_deadline", "pre_advisory_baseline_preserved", "affected_artifacts_quarantined", "exact_replacements_recovered", "unaffected_deployments_preserved", "response_observation_matrix_complete"]},
+        "status": {"enum": ["pass", "fail"]}
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding_id", "reason", "subject_type", "subject_id", "phase"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/id"},
+        "reason": {"enum": ["advisory_delivery_duplicate", "advisory_delivery_invalid", "advisory_delivery_late", "advisory_delivery_missing", "advisory_delivery_unexpected", "advisory_received_before_issue", "baseline_artifact_denied", "baseline_artifact_set_mismatch", "collateral_block", "compromised_artifact_allowed_post_deadline", "evaluation_predates_run", "plan_digest_mismatch", "replacement_artifact_set_mismatch", "replacement_unavailable", "response_probe_duplicate", "response_probe_missing", "response_probe_unexpected", "response_reason_mismatch", "run_predates_plan", "unaffected_artifact_set_mismatch"]},
+        "subject_type": {"enum": ["node", "probe", "run"]},
+        "subject_id": {"$ref": "#/$defs/id"},
+        "phase": {"type": ["string", "null"], "enum": ["post_quarantine_deadline", "post_recovery_deadline", "pre_advisory", null]}
+      }
+    }
+  }
+}

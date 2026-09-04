@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureidentity-scim-change-v1",
+  "title": "Externally verified SCIM lifecycle change metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "profile", "issuer_id", "tenant_id", "verification", "source_event_sha256", "change"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureidentity-scim-change-v1"},
+    "schema_version": {"const": 1},
+    "profile": {"const": "ietf-scim-rfc7643-verified-lifecycle-change-v1"},
+    "issuer_id": {"$ref": "#/$defs/id"},
+    "tenant_id": {"$ref": "#/$defs/id"},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transport_authenticated", "issuer_authorized", "operation_authorized", "schema_validated"],
+      "properties": {
+        "transport_authenticated": {"const": true},
+        "issuer_authorized": {"const": true},
+        "operation_authorized": {"const": true},
+        "schema_validated": {"const": true}
+      }
+    },
+    "source_event_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "change": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource_type", "resource_id", "attribute", "operation", "value"],
+          "properties": {
+            "resource_type": {"const": "User"},
+            "resource_id": {"$ref": "#/$defs/id"},
+            "attribute": {"const": "active"},
+            "operation": {"const": "replace"},
+            "value": {"const": false}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["resource_type", "resource_id", "attribute", "operation", "value"],
+          "properties": {
+            "resource_type": {"const": "Group"},
+            "resource_id": {"$ref": "#/$defs/id"},
+            "attribute": {"const": "members"},
+            "operation": {"const": "remove"},
+            "value": {"$ref": "#/$defs/id"}
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"}
+  }
+}

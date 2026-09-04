@@ -1108,6 +1108,459 @@ def _cmd_revocation_eval(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_identity_export(args: argparse.Namespace) -> int:
+    try:
+        from .identity import default_identity_plan, write_identity_plan
+
+        plan = default_identity_plan()
+        write_identity_plan(Path(args.out), plan)
+        print(
+            f"LUREIDENTITY PLAN EXPORTED: {len(plan['events'])} lifecycle events, "
+            f"{len(plan['principals'])} principals, {len(plan['nodes'])} nodes — {args.out}\n"
+            "boundary: synthetic SCIM-shaped lifecycle metadata; no directory or target contacted"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_artifact_compose(args: argparse.Namespace) -> int:
+    try:
+        from .artifact import (
+            compose_artifact_plan,
+            load_artifact_campaign,
+            write_artifact_plan,
+        )
+        from .identity import load_identity_plan
+
+        identity_plan = load_identity_plan(Path(args.identity_plan))
+        campaign = load_artifact_campaign(Path(args.campaign), identity_plan)
+        plan = compose_artifact_plan(identity_plan, campaign)
+        write_artifact_plan(Path(args.out), plan)
+        deployment_count = sum(len(item["node_ids"]) for item in plan["workloads"])
+        print(
+            f"LUREARTIFACT PLAN COMPOSED: {len(plan['workloads'])} active workloads, "
+            f"{deployment_count} deployments, 4 required artifacts and 3 provenance "
+            f"statements per deployment — {args.out}\n"
+            "boundary: declared digest metadata only; no artifact fetched, loaded, "
+            "imported, executed, or deserialized"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_artifact_observe(args: argparse.Namespace) -> int:
+    try:
+        from .artifact import (
+            load_artifact_plan,
+            reference_artifact_observation,
+            write_artifact_observation,
+        )
+
+        plan = load_artifact_plan(Path(args.plan))
+        observation = reference_artifact_observation(
+            plan,
+            observation_id=args.observation_id,
+            captured_at=args.captured_at,
+        )
+        write_artifact_observation(Path(args.out), observation)
+        print(
+            f"LUREARTIFACT REFERENCE OBSERVATION: "
+            f"{len(observation['deployments'])} claimed deployments — {args.out}\n"
+            "boundary: deterministic metadata fixture only; not trusted runtime measurement"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_artifact_eval(args: argparse.Namespace) -> int:
+    try:
+        from .artifact import (
+            evaluate_artifact_observation,
+            load_artifact_observation,
+            load_artifact_plan,
+            write_artifact_evaluation,
+        )
+
+        plan = load_artifact_plan(Path(args.plan))
+        observation = load_artifact_observation(Path(args.observation))
+        evaluation = evaluate_artifact_observation(
+            plan, observation, generated_at=args.generated_at
+        )
+        if args.out:
+            write_artifact_evaluation(Path(args.out), evaluation)
+        if args.json:
+            print(json.dumps(evaluation, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = evaluation["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREARTIFACT: {summary['verdict'].upper()} — "
+                f"deployments={summary['compliant_deployment_count']}/"
+                f"{summary['expected_deployment_count']} findings={summary['finding_count']}"
+                f"{destination}"
+            )
+            print(
+                "boundary: declared metadata equality only; no artifact safety, provenance "
+                "authenticity, or deployment authorization claim"
+            )
+        return 0 if evaluation["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_artifact_verify(args: argparse.Namespace) -> int:
+    try:
+        from .artifact import load_artifact_evaluation
+
+        evaluation = load_artifact_evaluation(Path(args.evaluation))
+        summary = evaluation["summary"]
+        print(
+            f"LUREARTIFACT VERIFIED: {summary['verdict'].upper()} — "
+            f"deployments={summary['compliant_deployment_count']}/"
+            f"{summary['expected_deployment_count']} findings={summary['finding_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_recall_compose(args: argparse.Namespace) -> int:
+    try:
+        from .artifact import load_artifact_plan
+        from .recall import (
+            compose_recall_plan,
+            load_artifact_advisory,
+            load_artifact_lineage,
+            write_recall_plan,
+        )
+
+        artifact_plan = load_artifact_plan(Path(args.artifact_plan))
+        lineage = load_artifact_lineage(Path(args.lineage), artifact_plan)
+        advisory = load_artifact_advisory(Path(args.advisory), artifact_plan, lineage)
+        plan = compose_recall_plan(artifact_plan, lineage, advisory)
+        write_recall_plan(Path(args.out), plan)
+        impact = plan["impact"]
+        affected = sum(item["affected"] for item in plan["deployments"])
+        print(
+            f"LURERECALL PLAN COMPOSED: {len(impact['actionable_component_ids'])} actionable "
+            f"component(s), {impact['affected_root_artifact_count']} affected root(s), "
+            f"{affected}/{len(plan['deployments'])} affected deployments, "
+            f"{len(plan['probes'])} probes — {args.out}\n"
+            "boundary: caller-supplied lineage and VEX-like metadata only; no artifact, "
+            "advisory, workload, or network accessed"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_recall_run(args: argparse.Namespace) -> int:
+    try:
+        from .recall import load_recall_plan, reference_recall_run, write_recall_run
+
+        plan = load_recall_plan(Path(args.plan))
+        run = reference_recall_run(
+            plan,
+            run_id=args.run_id,
+            generated_at=args.generated_at,
+            implementation_name=args.engine_id,
+            implementation_version=args.engine_version,
+            implementation_artifact_sha256=args.engine_artifact_sha256,
+        )
+        write_recall_run(Path(args.out), run)
+        print(
+            f"LURERECALL REFERENCE RUN: {len(run['advisory_observations'])} delivery and "
+            f"{len(run['response_observations'])} response observations — {args.out}\n"
+            "boundary: deterministic metadata fixture only; no quarantine, replacement, "
+            "deployment, or artifact access occurred"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_recall_eval(args: argparse.Namespace) -> int:
+    try:
+        from .recall import (
+            evaluate_recall_run,
+            load_recall_plan,
+            load_recall_run,
+            write_recall_evaluation,
+        )
+
+        plan = load_recall_plan(Path(args.plan))
+        run = load_recall_run(Path(args.run))
+        evaluation = evaluate_recall_run(plan, run, generated_at=args.generated_at)
+        if args.out:
+            write_recall_evaluation(Path(args.out), evaluation)
+        if args.json:
+            print(json.dumps(evaluation, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = evaluation["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LURERECALL: {summary['verdict'].upper()} — "
+                f"affected-deployments={summary['affected_deployment_count']} "
+                f"quarantine-recall={summary['quarantine_recall']:.3f} "
+                f"recovery-recall={summary['recovery_recall']:.3f} "
+                f"findings={summary['finding_count']}{destination}"
+            )
+            print(
+                "boundary: declared lineage, advisory, and response metadata only; no proof "
+                "of containment, replacement safety, recovery, or authorization"
+            )
+        return 0 if evaluation["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_recall_verify(args: argparse.Namespace) -> int:
+    try:
+        from .recall import load_recall_evaluation
+
+        evaluation = load_recall_evaluation(Path(args.evaluation))
+        summary = evaluation["summary"]
+        print(
+            f"LURERECALL VERIFIED: {summary['verdict'].upper()} — "
+            f"affected-deployments={summary['affected_deployment_count']} "
+            f"quarantine-recall={summary['quarantine_recall']:.3f} "
+            f"recovery-recall={summary['recovery_recall']:.3f} "
+            f"findings={summary['finding_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_attest_compose(args: argparse.Namespace) -> int:
+    try:
+        from .artifact import load_artifact_plan
+        from .attest import (
+            compose_attest_plan,
+            load_trust_policy,
+            write_attest_plan,
+        )
+
+        artifact_plan = load_artifact_plan(Path(args.artifact_plan))
+        policy = load_trust_policy(Path(args.policy), artifact_plan)
+        plan = compose_attest_plan(artifact_plan, policy)
+        write_attest_plan(Path(args.out), plan)
+        attestation_count = sum(len(item["attestations"]) for item in plan["workloads"])
+        print(
+            f"LUREATTEST PLAN COMPOSED: {len(plan['workloads'])} workload(s), "
+            f"{attestation_count} authenticated provenance expectation(s), "
+            f"{len(plan['trusted_builders'])} pinned builder(s) — {args.out}\n"
+            "boundary: trust-policy compilation only; no envelope, public key, source, "
+            "build, or artifact bytes opened"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_attest_verify(args: argparse.Namespace) -> int:
+    try:
+        from .attest import load_attest_plan
+
+        plan = load_attest_plan(Path(args.plan))
+        count = sum(len(item["attestations"]) for item in plan["workloads"])
+        print(
+            f"LUREATTEST PLAN VERIFIED: {count} provenance expectation(s), "
+            f"{len(plan['trusted_builders'])} pinned builder(s)\n"
+            "boundary: structural plan recomputation only; use LureScope for DSSE and "
+            "SLSA semantic verification"
+        )
+        return 0
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_identity_compose(args: argparse.Namespace) -> int:
+    try:
+        from .identity import write_identity_plan
+        from .identity_campaign import compose_identity_plan, load_identity_campaign
+
+        campaign = load_identity_campaign(Path(args.campaign))
+        plan = compose_identity_plan(campaign)
+        write_identity_plan(Path(args.out), plan)
+        cut_count = sum(
+            len(event["required_cut_actor_ids"]) for event in plan["events"]
+        )
+        preserve_count = sum(
+            len(event["required_preserve_actor_ids"]) for event in plan["events"]
+        )
+        print(
+            f"LUREIDENTITY PLAN COMPOSED: {len(plan['events'])} events, "
+            f"{cut_count} cut actors, {preserve_count} preserved controls, "
+            f"{len(plan['probes'])} probes — {args.out}\n"
+            "boundary: compiled declared graph metadata only; no discovery, delivery, "
+            "identity authentication, or access execution"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_identity_run(args: argparse.Namespace) -> int:
+    try:
+        from .identity import load_identity_plan, reference_identity_run, write_identity_run
+
+        plan = load_identity_plan(Path(args.plan) if args.plan else None)
+        run = reference_identity_run(
+            plan,
+            run_id=args.run_id,
+            implementation_name=args.engine_id,
+            implementation_version=args.engine_version,
+            implementation_artifact_sha256=args.engine_artifact_sha256,
+        )
+        write_identity_run(Path(args.out), run, plan)
+        print(
+            f"LUREIDENTITY RUN CREATED: {len(run['event_observations'])} event and "
+            f"{len(run['access_observations'])} access observations — {args.out}\n"
+            "boundary: offline reference decisions only; no identity or authorization action"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_identity_otel_project(args: argparse.Namespace) -> int:
+    try:
+        from .identity import load_identity_plan
+        from .identity_otel import (
+            load_identity_otel_log_export,
+            project_identity_otel_run,
+            write_identity_otel_projection_and_run,
+        )
+
+        plan = load_identity_plan(Path(args.plan))
+        export = load_identity_otel_log_export(Path(args.logs), plan)
+        projection = project_identity_otel_run(plan, export, run_id=args.run_id)
+        write_identity_otel_projection_and_run(
+            Path(args.out), Path(args.run_out), projection
+        )
+        print(
+            f"LUREIDENTITY OTEL PROJECTED: {len(export['records'])} records, "
+            f"{len(projection['run']['event_observations'])} lifecycle observations, "
+            f"{len(projection['run']['access_observations'])} access observations — "
+            f"{args.out}\n"
+            "boundary: strict body-free log-model projection; not raw OTLP, authenticity, "
+            "completeness, or enforcement proof"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_identity_otel_verify(args: argparse.Namespace) -> int:
+    try:
+        from .identity_otel import load_identity_otel_projection
+
+        projection = load_identity_otel_projection(Path(args.projection))
+        print(
+            f"LUREIDENTITY OTEL VERIFIED: {len(projection['inputs']['otel_log_export']['records'])} "
+            f"records — {args.projection}\n"
+            "boundary: projection semantics and exact bytes only; no telemetry completeness, "
+            "clock, causality, or enforcement claim"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_identity_eval(args: argparse.Namespace) -> int:
+    try:
+        from .identity import (
+            evaluate_identity_run,
+            load_identity_plan,
+            load_identity_run,
+            reference_identity_run,
+            write_identity_evaluation,
+        )
+
+        plan = load_identity_plan(Path(args.plan) if args.plan else None)
+        run = load_identity_run(Path(args.run), plan) if args.run else reference_identity_run(plan)
+        report = evaluate_identity_run(plan, run)
+        if args.out:
+            write_identity_evaluation(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREIDENTITY: {summary['verdict'].upper()} — "
+                f"cut={summary['affected_authorization_count']} "
+                f"recall={summary['cut_recall']:.3f} "
+                f"preserved={summary['preserved_allow_rate']:.3f} "
+                f"coverage={summary['delivery_coverage_rate']:.3f} "
+                f"p95={summary['p95_convergence_ms']}ms{destination}"
+            )
+            print(
+                "boundary: graph-closure evidence only; no identity authenticity, mediation, "
+                "or compliance claim"
+            )
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_identity_topology_audit(args: argparse.Namespace) -> int:
+    try:
+        from .identity import load_identity_plan
+        from .identity_topology import (
+            audit_identity_topology,
+            write_identity_topology_audit,
+        )
+        from .runtime import load_runtime_profile
+
+        plan = load_identity_plan(Path(args.plan) if args.plan else None)
+        profile = load_runtime_profile(Path(args.profile) if args.profile else None)
+        report = audit_identity_topology(plan, profile)
+        if args.out:
+            write_identity_topology_audit(Path(args.out), report)
+        if args.json:
+            print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            destination = f" — {args.out}" if args.out else ""
+            print(
+                f"LUREIDENTITY TOPOLOGY: {summary['verdict'].upper()} — "
+                f"coverage={summary['covered_enforcement_point_count']}/"
+                f"{summary['required_enforcement_point_count']} "
+                f"unmapped={summary['unmapped_node_count']} "
+                f"untrusted-workloads={summary['untrusted_workload_identity_count']}"
+                f"{destination}"
+            )
+            print(
+                "boundary: declared topology and trust-domain comparison only; "
+                "no discovery, SVID, delivery, or enforcement claim"
+            )
+        return 0 if report["summary"]["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_revocation_topology_audit(args: argparse.Namespace) -> int:
     try:
         from .revocation import load_revocation_plan
@@ -1725,6 +2178,182 @@ def build_parser() -> argparse.ArgumentParser:
     p_revocation_eval.add_argument("--out", "-o", help="new mode-0600 evaluation JSON")
     p_revocation_eval.add_argument("--json", action="store_true")
     p_revocation_eval.set_defaults(func=_cmd_revocation_eval)
+
+    p_identity_export = sub.add_parser(
+        "identity-export",
+        help="write an identity-lifecycle authorization-closure plan",
+    )
+    p_identity_export.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureIdentity plan JSON"
+    )
+    p_identity_export.set_defaults(func=_cmd_identity_export)
+
+    p_identity_compose = sub.add_parser(
+        "identity-compose",
+        help="derive exhaustive graph cuts, controls, and probes from an identity campaign",
+    )
+    p_identity_compose.add_argument("--campaign", required=True)
+    p_identity_compose.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureIdentity plan JSON"
+    )
+    p_identity_compose.set_defaults(func=_cmd_identity_compose)
+
+    p_artifact_compose = sub.add_parser(
+        "artifact-compose",
+        help="compile complete workload-to-artifact bindings from an identity plan",
+    )
+    p_artifact_compose.add_argument("--identity-plan", required=True)
+    p_artifact_compose.add_argument("--campaign", required=True)
+    p_artifact_compose.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureArtifact plan JSON"
+    )
+    p_artifact_compose.set_defaults(func=_cmd_artifact_compose)
+
+    p_artifact_observe = sub.add_parser(
+        "artifact-observe",
+        help="create a deterministic claimed-inventory fixture for a LureArtifact plan",
+    )
+    p_artifact_observe.add_argument("--plan", required=True)
+    p_artifact_observe.add_argument(
+        "--observation-id", default="lureartifact-reference-observation"
+    )
+    p_artifact_observe.add_argument("--captured-at")
+    p_artifact_observe.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 observation JSON"
+    )
+    p_artifact_observe.set_defaults(func=_cmd_artifact_observe)
+
+    p_artifact_eval = sub.add_parser(
+        "artifact-eval",
+        help="compare claimed deployment inventory with exact authorized artifact bindings",
+    )
+    p_artifact_eval.add_argument("--plan", required=True)
+    p_artifact_eval.add_argument("--observation", required=True)
+    p_artifact_eval.add_argument("--generated-at")
+    p_artifact_eval.add_argument("--out", "-o", help="new mode-0600 evaluation JSON")
+    p_artifact_eval.add_argument("--json", action="store_true")
+    p_artifact_eval.set_defaults(func=_cmd_artifact_eval)
+
+    p_artifact_verify = sub.add_parser(
+        "artifact-verify",
+        help="strictly parse and recompute a saved LureArtifact evaluation",
+    )
+    p_artifact_verify.add_argument("evaluation")
+    p_artifact_verify.set_defaults(func=_cmd_artifact_verify)
+
+    p_recall_compose = sub.add_parser(
+        "recall-compose",
+        help="derive transitive artifact blast radius, replacements, and response probes",
+    )
+    p_recall_compose.add_argument("--artifact-plan", required=True)
+    p_recall_compose.add_argument("--lineage", required=True)
+    p_recall_compose.add_argument("--advisory", required=True)
+    p_recall_compose.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureRecall plan JSON"
+    )
+    p_recall_compose.set_defaults(func=_cmd_recall_compose)
+
+    p_recall_run = sub.add_parser(
+        "recall-run",
+        help="create deterministic advisory-delivery, quarantine, and recovery observations",
+    )
+    p_recall_run.add_argument("--plan", required=True)
+    p_recall_run.add_argument("--run-id", default="lurerecall-reference-run")
+    p_recall_run.add_argument("--generated-at")
+    p_recall_run.add_argument("--engine-id", default="reference-recall-controller")
+    p_recall_run.add_argument("--engine-version", default="1.0.0")
+    p_recall_run.add_argument("--engine-artifact-sha256")
+    p_recall_run.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureRecall run JSON"
+    )
+    p_recall_run.set_defaults(func=_cmd_recall_run)
+
+    p_recall_eval = sub.add_parser(
+        "recall-eval",
+        help="measure transitive artifact quarantine, recovery, and collateral disruption",
+    )
+    p_recall_eval.add_argument("--plan", required=True)
+    p_recall_eval.add_argument("--run", required=True)
+    p_recall_eval.add_argument("--generated-at")
+    p_recall_eval.add_argument("--out", "-o", help="new mode-0600 evaluation JSON")
+    p_recall_eval.add_argument("--json", action="store_true")
+    p_recall_eval.set_defaults(func=_cmd_recall_eval)
+
+    p_recall_verify = sub.add_parser(
+        "recall-verify",
+        help="strictly parse and independently recompute a saved LureRecall evaluation",
+    )
+    p_recall_verify.add_argument("evaluation")
+    p_recall_verify.set_defaults(func=_cmd_recall_verify)
+
+    p_attest_compose = sub.add_parser(
+        "attest-compose",
+        help="bind SLSA claims to reviewed signer, builder, source, and parameter expectations",
+    )
+    p_attest_compose.add_argument("--artifact-plan", required=True)
+    p_attest_compose.add_argument("--policy", required=True)
+    p_attest_compose.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureAttest plan JSON"
+    )
+    p_attest_compose.set_defaults(func=_cmd_attest_compose)
+
+    p_attest_verify = sub.add_parser(
+        "attest-verify", help="strictly parse a saved LureAttest expectation plan"
+    )
+    p_attest_verify.add_argument("plan")
+    p_attest_verify.set_defaults(func=_cmd_attest_verify)
+
+    p_identity_run = sub.add_parser(
+        "identity-run",
+        help="create deterministic event and access observations for an identity plan",
+    )
+    p_identity_run.add_argument("--plan", help="LureIdentity plan; defaults to the reference")
+    p_identity_run.add_argument("--run-id", default="lureidentity-reference-run")
+    p_identity_run.add_argument("--engine-id", default="lureidentity-reference")
+    p_identity_run.add_argument("--engine-version", default="1.0.0")
+    p_identity_run.add_argument("--engine-artifact-sha256")
+    p_identity_run.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 identity observation JSON"
+    )
+    p_identity_run.set_defaults(func=_cmd_identity_run)
+
+    p_identity_otel = sub.add_parser(
+        "identity-otel-project",
+        help="project strict body-free OpenTelemetry events into a bound identity run",
+    )
+    p_identity_otel.add_argument("--plan", required=True)
+    p_identity_otel.add_argument("--logs", required=True)
+    p_identity_otel.add_argument("--run-id", required=True)
+    p_identity_otel.add_argument("--out", "-o", required=True, help="new projection JSON")
+    p_identity_otel.add_argument("--run-out", required=True, help="new LureIdentity run JSON")
+    p_identity_otel.set_defaults(func=_cmd_identity_otel_project)
+
+    p_identity_otel_verify = sub.add_parser(
+        "identity-otel-verify",
+        help="independently recompute a saved OpenTelemetry identity projection",
+    )
+    p_identity_otel_verify.add_argument("projection")
+    p_identity_otel_verify.set_defaults(func=_cmd_identity_otel_verify)
+
+    p_identity_eval = sub.add_parser(
+        "identity-eval",
+        help="measure lifecycle graph closure, convergence, stale access, and collateral denial",
+    )
+    p_identity_eval.add_argument("--plan", help="LureIdentity plan; defaults to the reference")
+    p_identity_eval.add_argument("--run", help="receiver observations; defaults to reference")
+    p_identity_eval.add_argument("--out", "-o", help="new mode-0600 identity evaluation JSON")
+    p_identity_eval.add_argument("--json", action="store_true")
+    p_identity_eval.set_defaults(func=_cmd_identity_eval)
+
+    p_identity_topology = sub.add_parser(
+        "identity-topology-audit",
+        help="cross-check identity nodes and workload trust domains against runtime",
+    )
+    p_identity_topology.add_argument("--plan", help="defaults to the identity reference plan")
+    p_identity_topology.add_argument("--profile", help="defaults to the runtime reference")
+    p_identity_topology.add_argument("--out", "-o", help="new mode-0600 audit JSON")
+    p_identity_topology.add_argument("--json", action="store_true")
+    p_identity_topology.set_defaults(func=_cmd_identity_topology_audit)
 
     p_revocation_topology = sub.add_parser(
         "revocation-topology-audit",

@@ -1,0 +1,614 @@
+{
+  "checks": [
+    {
+      "check_id": "identity_contract_bound",
+      "status": "pass"
+    },
+    {
+      "check_id": "observation_not_predated",
+      "status": "pass"
+    },
+    {
+      "check_id": "deployment_matrix_exact",
+      "status": "pass"
+    },
+    {
+      "check_id": "workload_identity_exact",
+      "status": "pass"
+    },
+    {
+      "check_id": "artifact_inventory_exact",
+      "status": "pass"
+    },
+    {
+      "check_id": "slsa_provenance_exact",
+      "status": "pass"
+    },
+    {
+      "check_id": "ai_bom_binding_exact",
+      "status": "pass"
+    },
+    {
+      "check_id": "approved_builder_policy",
+      "status": "pass"
+    },
+    {
+      "check_id": "non_executable_model_policy",
+      "status": "pass"
+    }
+  ],
+  "findings": [],
+  "generated_at": "2026-09-03T00:07:00Z",
+  "implementation": {
+    "name": "lurebench",
+    "version": "0.11.0"
+  },
+  "limitations": [
+    "evaluation_recomputes_declared_identity_deployment_artifact_provenance_and_ai_bom_equality",
+    "a_pass_does_not_authenticate_observation_origin_workload_identity_builder_or_artifact_source",
+    "digest_equality_does_not_establish_artifact_safety_quality_licensing_or_vulnerability_status",
+    "passing_is_not_supply_chain_containment_compliance_certification_or_deployment_authorization"
+  ],
+  "observation": {
+    "captured_at": "2026-09-03T00:06:00Z",
+    "deployments": [
+      {
+        "ai_bom": {
+          "artifact_id": "alpha-ai-bom",
+          "document_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "format": "spdx-3.0.1",
+          "subject_artifact_ids": [
+            "alpha-container",
+            "alpha-model",
+            "alpha-policy"
+          ]
+        },
+        "artifacts": [
+          {
+            "artifact_id": "alpha-ai-bom",
+            "media_type": "application/spdx+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": null,
+            "remote_code_required": false,
+            "role": "ai_sbom",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          {
+            "artifact_id": "alpha-container",
+            "media_type": "application/vnd.oci.image.manifest.v1+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "remote_code_required": false,
+            "role": "container_image",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "artifact_id": "alpha-model",
+            "media_type": "application/vnd.safetensors",
+            "model_embedded_code": false,
+            "model_serialization": "safetensors",
+            "package_url": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+            "remote_code_required": false,
+            "role": "model_weights",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "artifact_id": "alpha-policy",
+            "media_type": "application/vnd.openpolicyagent.bundle",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:generic/example/alpha-policy@1.0.0",
+            "remote_code_required": false,
+            "role": "policy_bundle",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "attestations": [
+          {
+            "attestation_id": "alpha-container-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "statement_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-container",
+            "subject_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "attestation_id": "alpha-model-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "statement_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-model",
+            "subject_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "attestation_id": "alpha-policy-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "statement_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-policy",
+            "subject_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "node_id": "identity-credential-broker",
+        "observation_id": "w001-n001",
+        "spiffe_id": "spiffe://example.com/agents/alpha",
+        "workload_principal_id": "workload-alpha"
+      },
+      {
+        "ai_bom": {
+          "artifact_id": "alpha-ai-bom",
+          "document_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "format": "spdx-3.0.1",
+          "subject_artifact_ids": [
+            "alpha-container",
+            "alpha-model",
+            "alpha-policy"
+          ]
+        },
+        "artifacts": [
+          {
+            "artifact_id": "alpha-ai-bom",
+            "media_type": "application/spdx+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": null,
+            "remote_code_required": false,
+            "role": "ai_sbom",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          {
+            "artifact_id": "alpha-container",
+            "media_type": "application/vnd.oci.image.manifest.v1+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "remote_code_required": false,
+            "role": "container_image",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "artifact_id": "alpha-model",
+            "media_type": "application/vnd.safetensors",
+            "model_embedded_code": false,
+            "model_serialization": "safetensors",
+            "package_url": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+            "remote_code_required": false,
+            "role": "model_weights",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "artifact_id": "alpha-policy",
+            "media_type": "application/vnd.openpolicyagent.bundle",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:generic/example/alpha-policy@1.0.0",
+            "remote_code_required": false,
+            "role": "policy_bundle",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "attestations": [
+          {
+            "attestation_id": "alpha-container-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "statement_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-container",
+            "subject_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "attestation_id": "alpha-model-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "statement_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-model",
+            "subject_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "attestation_id": "alpha-policy-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "statement_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-policy",
+            "subject_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "node_id": "identity-policy-gateway",
+        "observation_id": "w001-n002",
+        "spiffe_id": "spiffe://example.com/agents/alpha",
+        "workload_principal_id": "workload-alpha"
+      },
+      {
+        "ai_bom": {
+          "artifact_id": "beta-ai-bom",
+          "document_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "format": "cyclonedx-1.7",
+          "subject_artifact_ids": [
+            "beta-container",
+            "beta-model",
+            "beta-policy"
+          ]
+        },
+        "artifacts": [
+          {
+            "artifact_id": "beta-ai-bom",
+            "media_type": "application/vnd.cyclonedx+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": null,
+            "remote_code_required": false,
+            "role": "ai_sbom",
+            "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+          },
+          {
+            "artifact_id": "beta-container",
+            "media_type": "application/vnd.oci.image.manifest.v1+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:oci/example/lureagent-beta@sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "remote_code_required": false,
+            "role": "container_image",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          {
+            "artifact_id": "beta-model",
+            "media_type": "application/onnx",
+            "model_embedded_code": false,
+            "model_serialization": "onnx",
+            "package_url": "pkg:huggingface/example/model-beta@fedcba9876543210",
+            "remote_code_required": false,
+            "role": "model_weights",
+            "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          {
+            "artifact_id": "beta-policy",
+            "media_type": "application/vnd.openpolicyagent.bundle",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:generic/example/beta-policy@1.0.0",
+            "remote_code_required": false,
+            "role": "policy_bundle",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "attestations": [
+          {
+            "attestation_id": "beta-container-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "statement_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "beta-container",
+            "subject_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          {
+            "attestation_id": "beta-model-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "statement_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "beta-model",
+            "subject_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          {
+            "attestation_id": "beta-policy-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "statement_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "beta-policy",
+            "subject_sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "node_id": "identity-policy-gateway",
+        "observation_id": "w002-n001",
+        "spiffe_id": "spiffe://example.com/agents/beta",
+        "workload_principal_id": "workload-beta"
+      }
+    ],
+    "limitations": [
+      "observations_are_claimed_runtime_inventory_metadata_not_trusted_measurement_or_attestation",
+      "observation_collection_completeness_clock_quality_and_workload_identity_are_external",
+      "no_artifact_bytes_credentials_prompts_model_content_or_reasoning_are_collected"
+    ],
+    "observation_id": "lureartifact-conformance-observation",
+    "plan_sha256": "32d57b7e32770f6ef3f1b339364065d0bc32debf1f83557b7334b764d3892a7c",
+    "schema": "https://github.com/immu4989/lurebench/spec/lureartifact-observation-v1",
+    "schema_version": 1,
+    "system_id": "example-agent-system"
+  },
+  "observation_sha256": "5cb08a0672a203e7549f3c802f54da0fe14de95a1206ec98daeee51adf421cb8",
+  "plan": {
+    "created_at": "2026-09-03T00:05:00Z",
+    "identity": {
+      "plan_id": "example-identity-offboarding-campaign",
+      "plan_sha256": "dbf36e323ebd25ceb44dd258aa0956efcb81cb3edb19950ccc1b48738c13d771"
+    },
+    "limitations": [
+      "plan_binds_every_active_declared_workload_to_reviewed_artifact_metadata_at_declared_nodes",
+      "spiffe_ids_are_identifiers_only_and_do_not_prove_svid_issuance_validation_or_possession",
+      "slsa_fields_are_a_bounded_projection_not_statement_signature_or_build-platform_verification",
+      "ai_bom_fields_are_a_bounded_projection_not_spdx_or_cyclonedx_document_validation",
+      "plan_validation_does_not_fetch_scan_load_import_execute_or_deserialize_artifact_bytes"
+    ],
+    "nodes": [
+      {
+        "enforcement_point_id": "policy-gateway",
+        "node_id": "identity-policy-gateway"
+      },
+      {
+        "enforcement_point_id": "credential-broker",
+        "node_id": "identity-credential-broker"
+      }
+    ],
+    "plan_id": "lureartifact-conformance",
+    "policy": {
+      "allowed_model_serializations": [
+        "onnx",
+        "safetensors"
+      ],
+      "approved_builder_ids": [
+        "https://github.com/actions/runner"
+      ],
+      "model_embedded_code_allowed": false,
+      "provenance_required_for_roles": [
+        "container_image",
+        "model_weights",
+        "policy_bundle"
+      ],
+      "remote_model_code_allowed": false,
+      "required_artifact_roles": [
+        "ai_sbom",
+        "container_image",
+        "model_weights",
+        "policy_bundle"
+      ],
+      "sbom_subject_roles": [
+        "container_image",
+        "model_weights",
+        "policy_bundle"
+      ]
+    },
+    "schema": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1",
+    "schema_version": 1,
+    "standards": {
+      "provenance_predicate_type": "https://slsa.dev/provenance/v1",
+      "statement_type": "https://in-toto.io/Statement/v1",
+      "supported_ai_bom_formats": [
+        "cyclonedx-1.6",
+        "cyclonedx-1.7",
+        "spdx-3.0.1"
+      ]
+    },
+    "system_id": "example-agent-system",
+    "workloads": [
+      {
+        "ai_bom": {
+          "artifact_id": "alpha-ai-bom",
+          "document_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "format": "spdx-3.0.1",
+          "subject_artifact_ids": [
+            "alpha-container",
+            "alpha-model",
+            "alpha-policy"
+          ]
+        },
+        "artifacts": [
+          {
+            "artifact_id": "alpha-ai-bom",
+            "media_type": "application/spdx+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": null,
+            "remote_code_required": false,
+            "role": "ai_sbom",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          {
+            "artifact_id": "alpha-container",
+            "media_type": "application/vnd.oci.image.manifest.v1+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "remote_code_required": false,
+            "role": "container_image",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "artifact_id": "alpha-model",
+            "media_type": "application/vnd.safetensors",
+            "model_embedded_code": false,
+            "model_serialization": "safetensors",
+            "package_url": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+            "remote_code_required": false,
+            "role": "model_weights",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "artifact_id": "alpha-policy",
+            "media_type": "application/vnd.openpolicyagent.bundle",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:generic/example/alpha-policy@1.0.0",
+            "remote_code_required": false,
+            "role": "policy_bundle",
+            "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "attestations": [
+          {
+            "attestation_id": "alpha-container-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+            "statement_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-container",
+            "subject_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          {
+            "attestation_id": "alpha-model-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+            "statement_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-model",
+            "subject_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          {
+            "attestation_id": "alpha-policy-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+            "statement_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "alpha-policy",
+            "subject_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "node_ids": [
+          "identity-credential-broker",
+          "identity-policy-gateway"
+        ],
+        "spiffe_id": "spiffe://example.com/agents/alpha",
+        "workload_principal_id": "workload-alpha"
+      },
+      {
+        "ai_bom": {
+          "artifact_id": "beta-ai-bom",
+          "document_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+          "format": "cyclonedx-1.7",
+          "subject_artifact_ids": [
+            "beta-container",
+            "beta-model",
+            "beta-policy"
+          ]
+        },
+        "artifacts": [
+          {
+            "artifact_id": "beta-ai-bom",
+            "media_type": "application/vnd.cyclonedx+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": null,
+            "remote_code_required": false,
+            "role": "ai_sbom",
+            "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+          },
+          {
+            "artifact_id": "beta-container",
+            "media_type": "application/vnd.oci.image.manifest.v1+json",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:oci/example/lureagent-beta@sha256:4444444444444444444444444444444444444444444444444444444444444444",
+            "remote_code_required": false,
+            "role": "container_image",
+            "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          {
+            "artifact_id": "beta-model",
+            "media_type": "application/onnx",
+            "model_embedded_code": false,
+            "model_serialization": "onnx",
+            "package_url": "pkg:huggingface/example/model-beta@fedcba9876543210",
+            "remote_code_required": false,
+            "role": "model_weights",
+            "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          {
+            "artifact_id": "beta-policy",
+            "media_type": "application/vnd.openpolicyagent.bundle",
+            "model_embedded_code": false,
+            "model_serialization": null,
+            "package_url": "pkg:generic/example/beta-policy@1.0.0",
+            "remote_code_required": false,
+            "role": "policy_bundle",
+            "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "attestations": [
+          {
+            "attestation_id": "beta-container-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "statement_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "beta-container",
+            "subject_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          },
+          {
+            "attestation_id": "beta-model-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "statement_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "beta-model",
+            "subject_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          {
+            "attestation_id": "beta-policy-provenance",
+            "build_type": "https://github.com/actions/runner/build/v1",
+            "builder_id": "https://github.com/actions/runner",
+            "predicate_type": "https://slsa.dev/provenance/v1",
+            "source_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "statement_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "statement_type": "https://in-toto.io/Statement/v1",
+            "subject_artifact_id": "beta-policy",
+            "subject_sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        ],
+        "node_ids": [
+          "identity-policy-gateway"
+        ],
+        "spiffe_id": "spiffe://example.com/agents/beta",
+        "workload_principal_id": "workload-beta"
+      }
+    ]
+  },
+  "plan_sha256": "32d57b7e32770f6ef3f1b339364065d0bc32debf1f83557b7334b764d3892a7c",
+  "schema": "https://github.com/immu4989/lurebench/spec/lureartifact-evaluation-v1",
+  "schema_version": 1,
+  "summary": {
+    "active_workload_count": 2,
+    "compliant_deployment_count": 3,
+    "declared_node_count": 2,
+    "expected_deployment_count": 3,
+    "finding_count": 0,
+    "observed_deployment_count": 3,
+    "verdict": "pass"
+  }
+}

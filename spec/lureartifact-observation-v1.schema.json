@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureartifact-observation-v1",
+  "title": "LureArtifact claimed deployment observation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "observation_id", "captured_at", "system_id", "plan_sha256", "deployments", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureartifact-observation-v1"},
+    "schema_version": {"const": 1},
+    "observation_id": {"$ref": "#/$defs/id"},
+    "captured_at": {"type": "string", "format": "date-time"},
+    "system_id": {"$ref": "#/$defs/id"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "deployments": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/deployment"}},
+    "limitations": {"const": [
+      "observations_are_claimed_runtime_inventory_metadata_not_trusted_measurement_or_attestation",
+      "observation_collection_completeness_clock_quality_and_workload_identity_are_external",
+      "no_artifact_bytes_credentials_prompts_model_content_or_reasoning_are_collected"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "role", "sha256", "media_type", "package_url", "model_serialization", "model_embedded_code", "remote_code_required"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "role": {"enum": ["ai_sbom", "container_image", "model_weights", "policy_bundle"]},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "media_type": {"type": "string", "minLength": 3, "maxLength": 192, "pattern": "^[a-z0-9][a-z0-9.+-]{0,63}/[a-z0-9][a-z0-9.+-]{0,127}$"},
+        "package_url": {"oneOf": [{"type": "string", "minLength": 5, "maxLength": 2048, "pattern": "^pkg:[^\\s]+$"}, {"type": "null"}]},
+        "model_serialization": {"oneOf": [{"enum": ["gguf", "hdf5", "onnx", "pickle", "pytorch_pickle", "safetensors", "unknown"]}, {"type": "null"}]},
+        "model_embedded_code": {"type": "boolean"},
+        "remote_code_required": {"type": "boolean"}
+      }
+    },
+    "attestation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attestation_id", "subject_artifact_id", "subject_sha256", "statement_sha256", "statement_type", "predicate_type", "builder_id", "build_type", "source_sha256"],
+      "properties": {
+        "attestation_id": {"$ref": "#/$defs/id"},
+        "subject_artifact_id": {"$ref": "#/$defs/id"},
+        "subject_sha256": {"$ref": "#/$defs/digest"},
+        "statement_sha256": {"$ref": "#/$defs/digest"},
+        "statement_type": {"const": "https://in-toto.io/Statement/v1"},
+        "predicate_type": {"const": "https://slsa.dev/provenance/v1"},
+        "builder_id": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "build_type": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "source_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "ai_bom": {
+      "type": "object", "additionalProperties": false,
+      "required": ["artifact_id", "format", "document_sha256", "subject_artifact_ids"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "format": {"enum": ["cyclonedx-1.6", "cyclonedx-1.7", "spdx-3.0.1"]},
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "subject_artifact_ids": {"type": "array", "minItems": 1, "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "deployment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["observation_id", "node_id", "workload_principal_id", "spiffe_id", "artifacts", "attestations", "ai_bom"],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/id"},
+        "node_id": {"$ref": "#/$defs/id"},
+        "workload_principal_id": {"$ref": "#/$defs/id"},
+        "spiffe_id": {"type": "string", "minLength": 12, "maxLength": 2048, "pattern": "^spiffe://[a-z0-9._-]{1,255}(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+)+$"},
+        "artifacts": {"type": "array", "maxItems": 4, "items": {"$ref": "#/$defs/artifact"}},
+        "attestations": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/attestation"}},
+        "ai_bom": {"oneOf": [{"$ref": "#/$defs/ai_bom"}, {"type": "null"}]}
+      }
+    }
+  }
+}

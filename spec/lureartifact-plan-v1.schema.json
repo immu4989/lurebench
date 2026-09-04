@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1",
+  "title": "LureArtifact compiled plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "plan_id", "created_at", "system_id", "identity", "nodes", "workloads", "policy", "standards", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "schema_version": {"const": 1},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "system_id": {"$ref": "#/$defs/id"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["plan_id", "plan_sha256"],
+      "properties": {"plan_id": {"$ref": "#/$defs/id"}, "plan_sha256": {"$ref": "#/$defs/digest"}}
+    },
+    "nodes": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/node"}},
+    "workloads": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/workload"}},
+    "policy": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1#/$defs/policy"},
+    "standards": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1#/$defs/standards"},
+    "limitations": {"const": [
+      "plan_binds_every_active_declared_workload_to_reviewed_artifact_metadata_at_declared_nodes",
+      "spiffe_ids_are_identifiers_only_and_do_not_prove_svid_issuance_validation_or_possession",
+      "slsa_fields_are_a_bounded_projection_not_statement_signature_or_build-platform_verification",
+      "ai_bom_fields_are_a_bounded_projection_not_spdx_or_cyclonedx_document_validation",
+      "plan_validation_does_not_fetch_scan_load_import_execute_or_deserialize_artifact_bytes"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "node": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "enforcement_point_id"],
+      "properties": {"node_id": {"$ref": "#/$defs/id"}, "enforcement_point_id": {"$ref": "#/$defs/id"}}
+    },
+    "workload": {
+      "type": "object", "additionalProperties": false,
+      "required": ["workload_principal_id", "spiffe_id", "node_ids", "artifacts", "attestations", "ai_bom"],
+      "properties": {
+        "workload_principal_id": {"$ref": "#/$defs/id"},
+        "spiffe_id": {"type": "string", "minLength": 12, "maxLength": 2048, "pattern": "^spiffe://[a-z0-9._-]{1,255}(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+)+$"},
+        "node_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "artifacts": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1#/$defs/artifact"}},
+        "attestations": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1#/$defs/attestation"}},
+        "ai_bom": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1#/$defs/ai_bom"}
+      }
+    }
+  }
+}

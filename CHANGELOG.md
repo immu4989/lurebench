@@ -3,6 +3,97 @@
 ## Unreleased
 
 ### Added
+- Added LureAttest, a dependency-free compiler that binds every provenance
+  claim in one exact LureArtifact plan to a reviewed ECDSA P-256 signer,
+  builder identity, source URI/digest, build type, artifact subject, canonical
+  external-parameter commitment, and SLSA policy floor. It rejects incomplete
+  coverage, unauthorized signer–builder mappings, signer–builder substitution,
+  overclaimed policy levels, and attacker-controlled evidence
+  paths. Two Draft 2020-12 schemas, private no-overwrite CLI output, a real
+  three-envelope DSSE/SLSA conformance vector, an operator guide, and
+  adversarial tests are included. Compilation opens no envelope, key, source,
+  build, AI-BOM, or artifact bytes and makes no Sigstore, platform
+  certification, safety, compliance, or authorization claim.
+- Added LureRecall, a deterministic transitive AI-artifact incident-response
+  benchmark bound to one exact LureArtifact plan. A normalized bounded DAG maps
+  every deployed artifact root and `contains`, `depends_on`, `trained_on`, or
+  `fine_tuned_from` relationship; a digest-bound VEX-like advisory treats both
+  `affected` and `under_investigation` as actionable. The compiler derives all
+  impacted components, artifact roots, workloads, nodes, shortest explanation
+  paths, exact replacement/provenance requirements, and a complete
+  pre/quarantine/recovery probe matrix. Evaluation measures advisory delivery,
+  p95/maximum delay, quarantine recall, exact-replacement recovery,
+  post-deadline compromised use, and collateral disruption. Five Draft 2020-12
+  schemas, private no-overwrite CLI artifacts, a five-file golden vector, an
+  integration/claims guide, and adversarial tests are included. No artifact or
+  source document is fetched, parsed, loaded, imported, executed, or
+  deserialized, and a pass is not a containment or recovery claim.
+- Added LureArtifact, a fail-closed workload-to-artifact authorization
+  benchmark compiled from one exact LureIdentity plan. Every active workload
+  must be covered and can be bound per node to exact model weights, OCI image,
+  policy bundle, AI-BOM, and bounded in-toto/SLSA provenance metadata. The
+  strict policy denies pickle/HDF5/unknown model serialization, embedded model
+  code, required remote code, and unapproved builders; claimed observations
+  detect identity, deployment, artifact, provenance, and BOM substitution
+  without fetching or deserializing bytes. Four Draft 2020-12 schemas, private
+  no-overwrite CLI artifacts, a five-file golden conformance vector, an
+  operator guide, and adversarial recomputation tests are included. LureScope
+  independently implements the semantics and binds the result into its
+  deployment gate.
+- Added a fail-closed LureIdentity campaign compiler and public preregistration
+  schema. Operators declare a reviewed graph, projected event schedule,
+  enforcement topology, and thresholds but do not hand-author event sequences,
+  graph cuts, collateral controls, event digests, or probes. The compiler derives
+  every complete actor deauthorization and every unchanged baseline-authorized
+  actor outside the event cone, expands pre/window/post and preservation probes
+  across every node, and then invokes the ordinary plan validator. It rejects
+  partial cuts, incompatible targets, non-monotonic time, missing independent
+  controls, clock overflow, and matrices above 8,192 probes before writing a
+  private no-overwrite plan. A runnable example and adversarial tests are
+  included without claiming topology discovery or lifecycle authenticity. A
+  versioned campaign/expected-plan conformance pair is packaged so independent
+  implementations can exercise exact output; LureScope consumes it without
+  importing LureBench and binds the result into its deployment gate.
+- Added LureIdentity, an identity-lifecycle authorization-closure benchmark that
+  derives effective grants across a strict group → human → agent → workload DAG.
+  Human deactivation, group-membership removal, delegation revocation, and
+  workload retirement are evaluated independently; preregistered cut actors
+  must lose every baseline authorization, preserved actors must retain every
+  authorization, and any undeclared or alternate cut path invalidates the plan.
+  The reference design covers nine derived authorization cuts, all nine runtime
+  mediation points, 36 required event deliveries, 279 access probes,
+  invalid/duplicate event handling, convergence, stale access, and collateral
+  denial. Eight public
+  schemas, private no-overwrite CLI artifacts, independent report recomputation,
+  SPIFFE-bound workload metadata, an RFC 7643-scoped guide, and adversarial tests
+  are included. A fail-closed topology audit binds the exact identity plan and
+  runtime profile, rejects missing or undeclared enforcement points, checks
+  workload SPIFFE trust domains against the profile allowlist, and reports
+  replica counts without implying discovery or SVID authenticity. A strict
+  adapter accepts only caller-asserted, externally
+  authenticated/authorized RFC 7643 lifecycle metadata, binds the source-event
+  digest, resolves group removal to exactly one graph edge, and rejects
+  activation, ambiguity, extra fields, and trust mismatches without claiming
+  SCIM transport or identity authenticity.
+- Added a strict, body-free OpenTelemetry Logs Data Model bridge for
+  LureIdentity. Two fixed event names project lifecycle receipts and access
+  decisions into a complete run; exact-object validation rejects log bodies,
+  unknown or PII-bearing attributes, raw identities, malformed or reused trace
+  context, receiver/node drift, and access-time rebinding. Plan-ordered output
+  is stable under source-record reordering, while exact plan, source-export,
+  and run bytes remain SHA-256 bound. Two public schemas, private no-overwrite
+  CLI outputs, an operator guide, and adversarial tests are included without
+  claiming OTLP, semantic-convention, source, clock, or enforcement authenticity.
+- Replaced divergent SPIFFE regular expressions with one bounded parser shared
+  by LurePermit Runtime and LureIdentity. It follows the stable SPIFFE ID
+  trust-domain and path grammar, supports the specified 2,048-byte ID and
+  255-byte trust-domain limits, permits underscores, and rejects userinfo,
+  ports, percent encoding, queries, fragments, Unicode, empty/relative path
+  segments, trailing slashes, and root IDs in workload fields. Public schemas,
+  topology extraction, runtime allowlists, documentation, and adversarial
+  vectors now enforce the same canonical contract. A versioned machine-readable
+  conformance corpus and public Draft 2020-12 schema are wheel-packaged for
+  other implementations, without claiming SVID or Workload API authentication.
 - Added repository-wide CODEOWNERS coverage so protected branches can require
   maintainer review for benchmark code, schemas, workflows, and release policy.
   Executable workflow-security tests reject mutable action references, absent

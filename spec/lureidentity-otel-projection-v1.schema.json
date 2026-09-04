@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureidentity-otel-projection/v1",
+  "title": "Independently recomputable OpenTelemetry-to-LureIdentity projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "inputs", "run", "run_sha256", "clock_boundary", "privacy", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureidentity-otel-projection/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_plan", "identity_plan_sha256", "otel_log_export", "otel_log_export_sha256"],
+      "properties": {
+        "identity_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureidentity-plan-v1"},
+        "identity_plan_sha256": {"$ref": "#/$defs/digest"},
+        "otel_log_export": {"$ref": "https://github.com/immu4989/lurebench/spec/lureidentity-otel-log-export/v1"},
+        "otel_log_export_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "run": {"$ref": "https://github.com/immu4989/lurebench/spec/lureidentity-run-v1"},
+    "run_sha256": {"$ref": "#/$defs/digest"},
+    "clock_boundary": {"const": {"benchmark_time_field": "Timestamp", "collector_time_field": "ObservedTimestamp", "observed_timestamp_used_for_benchmark_timing": false, "timestamp_resolution": "millisecond_aligned_relative_to_time_origin_unix_nano", "access_timestamp_binding": "exact_preregistered_probe_attempt_time", "external_clock_assurance_required": true}},
+    "privacy": {"const": {"body_accepted": false, "raw_directory_or_subject_identifiers_accepted": false, "spiffe_ids_accepted_in_records": false, "tokens_credentials_prompts_payloads_or_targets_accepted": false, "opaque_plan_identifiers_and_digests_only": true}},
+    "limitations": {"const": ["projection_rejects_log_body_unknown_attributes_raw_directory_or_subject_ids_and_secrets", "benchmark_timing_uses_origin_clock_timestamp_not_collector_observed_timestamp", "access_event_timestamp_must_equal_the_preregistered_probe_attempt_time", "trace_context_correlates_records_but_does_not_authenticate_or_prove_causality", "projection_does_not_prove_telemetry_completeness_clock_sync_delivery_or_enforcement", "projection_is_not_otlp_or_opentelemetry_semantic_conventions_conformance"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1",
+  "title": "LureArtifact campaign v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "campaign_id", "created_at", "identity_plan_sha256", "workloads", "policy", "standards", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureartifact-campaign-v1"},
+    "schema_version": {"const": 1},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "identity_plan_sha256": {"$ref": "#/$defs/digest"},
+    "workloads": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/workload"}},
+    "policy": {"$ref": "#/$defs/policy"},
+    "standards": {"$ref": "#/$defs/standards"},
+    "limitations": {"const": [
+      "declared_artifact_metadata_only_no_artifact_bytes_credentials_prompts_or_model_content",
+      "campaign_is_compiled_against_one_exact_lureidentity_plan_and_does_not_discover_deployments",
+      "safe_serialization_and_provenance_fields_are_reviewed_claims_not_content_inspection",
+      "hashes_prove_equality_to_reviewed_bytes_not_that_content_builders_or_sources_are_benign",
+      "compilation_performs_no_network_access_artifact_loading_import_execution_or_deserialization"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "uri": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^(https://|urn:)[^\\s#]+$"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "role", "sha256", "media_type", "package_url", "model_serialization", "model_embedded_code", "remote_code_required"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "role": {"enum": ["ai_sbom", "container_image", "model_weights", "policy_bundle"]},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "media_type": {"type": "string", "minLength": 3, "maxLength": 192, "pattern": "^[a-z0-9][a-z0-9.+-]{0,63}/[a-z0-9][a-z0-9.+-]{0,127}$"},
+        "package_url": {"oneOf": [{"type": "string", "minLength": 5, "maxLength": 2048, "pattern": "^pkg:[^\\s]+$"}, {"type": "null"}]},
+        "model_serialization": {"oneOf": [{"enum": ["gguf", "onnx", "safetensors"]}, {"type": "null"}]},
+        "model_embedded_code": {"const": false},
+        "remote_code_required": {"const": false}
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attestation_id", "subject_artifact_id", "subject_sha256", "statement_sha256", "statement_type", "predicate_type", "builder_id", "build_type", "source_sha256"],
+      "properties": {
+        "attestation_id": {"$ref": "#/$defs/id"},
+        "subject_artifact_id": {"$ref": "#/$defs/id"},
+        "subject_sha256": {"$ref": "#/$defs/digest"},
+        "statement_sha256": {"$ref": "#/$defs/digest"},
+        "statement_type": {"const": "https://in-toto.io/Statement/v1"},
+        "predicate_type": {"const": "https://slsa.dev/provenance/v1"},
+        "builder_id": {"$ref": "#/$defs/uri"},
+        "build_type": {"$ref": "#/$defs/uri"},
+        "source_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "ai_bom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "format", "document_sha256", "subject_artifact_ids"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "format": {"enum": ["cyclonedx-1.6", "cyclonedx-1.7", "spdx-3.0.1"]},
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "subject_artifact_ids": {"type": "array", "minItems": 3, "maxItems": 3, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workload_principal_id", "node_ids", "artifacts", "attestations", "ai_bom"],
+      "properties": {
+        "workload_principal_id": {"$ref": "#/$defs/id"},
+        "node_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "artifacts": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/artifact"}},
+        "attestations": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"$ref": "#/$defs/attestation"}},
+        "ai_bom": {"$ref": "#/$defs/ai_bom"}
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_artifact_roles", "provenance_required_for_roles", "sbom_subject_roles", "allowed_model_serializations", "approved_builder_ids", "model_embedded_code_allowed", "remote_model_code_allowed"],
+      "properties": {
+        "required_artifact_roles": {"const": ["ai_sbom", "container_image", "model_weights", "policy_bundle"]},
+        "provenance_required_for_roles": {"const": ["container_image", "model_weights", "policy_bundle"]},
+        "sbom_subject_roles": {"const": ["container_image", "model_weights", "policy_bundle"]},
+        "allowed_model_serializations": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"enum": ["gguf", "onnx", "safetensors"]}},
+        "approved_builder_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/uri"}},
+        "model_embedded_code_allowed": {"const": false},
+        "remote_model_code_allowed": {"const": false}
+      }
+    },
+    "standards": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement_type", "provenance_predicate_type", "supported_ai_bom_formats"],
+      "properties": {
+        "statement_type": {"const": "https://in-toto.io/Statement/v1"},
+        "provenance_predicate_type": {"const": "https://slsa.dev/provenance/v1"},
+        "supported_ai_bom_formats": {"const": ["cyclonedx-1.6", "cyclonedx-1.7", "spdx-3.0.1"]}
+      }
+    }
+  }
+}

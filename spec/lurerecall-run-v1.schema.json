@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerecall-run-v1",
+  "title": "LureRecall response observations v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "generated_at", "implementation", "plan_sha256", "advisory_observations", "response_observations", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerecall-run-v1"},
+    "schema_version": {"const": 1},
+    "run_id": {"$ref": "#/$defs/id"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "artifact_sha256"],
+      "properties": {
+        "name": {"$ref": "#/$defs/id"},
+        "version": {"type": "string", "minLength": 1, "maxLength": 64},
+        "artifact_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "advisory_observations": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {"$ref": "#/$defs/advisoryObservation"}
+    },
+    "response_observations": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {"$ref": "#/$defs/responseObservation"}
+    },
+    "limitations": {"const": [
+      "observations_are_claimed_receiver_metadata_not_proof_of_advisory_delivery_or_enforcement",
+      "reference_run_is_offline_and_performs_no_quarantine_replacement_or_artifact_access",
+      "artifact_set_digests_are_metadata_commitments_and_no_artifact_bytes_are_collected"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "advisoryObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_id", "node_id", "received_at_ms", "advisory_sha256", "disposition"],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/id"},
+        "node_id": {"$ref": "#/$defs/id"},
+        "received_at_ms": {"type": "integer", "minimum": 0, "maximum": 259200000},
+        "advisory_sha256": {"$ref": "#/$defs/digest"},
+        "disposition": {"enum": ["applied", "duplicate", "invalid"]}
+      }
+    },
+    "responseObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_id", "probe_id", "decision", "reason_code", "observed_artifact_set_sha256"],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/id"},
+        "probe_id": {"$ref": "#/$defs/id"},
+        "decision": {"enum": ["allow", "block"]},
+        "reason_code": {"enum": ["artifact_authorized", "artifact_not_quarantined", "artifact_quarantined", "collateral_block", "replacement_authorized", "replacement_unavailable", "unaffected_artifact_preserved"]},
+        "observed_artifact_set_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"decision": {"const": "allow"}}, "required": ["decision"]},
+          "then": {"properties": {"observed_artifact_set_sha256": {"$ref": "#/$defs/digest"}}},
+          "else": {"properties": {"observed_artifact_set_sha256": {"type": "null"}}}
+        }
+      ]
+    }
+  }
+}

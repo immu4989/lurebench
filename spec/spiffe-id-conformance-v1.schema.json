@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/spiffe-id-conformance/v1",
+  "title": "SPIFFE ID syntax conformance vectors v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "specification", "canonicalization_boundary", "valid_ids", "invalid_ids", "valid_trust_domains", "invalid_trust_domains", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/spiffe-id-conformance/v1"},
+    "schema_version": {"const": 1},
+    "specification": {"const": "https://spiffe.io/docs/latest/spiffe-specs/spiffe-id/"},
+    "canonicalization_boundary": {"const": "lowercase_scheme_and_trust_domain_workload_fields_require_non_root_path"},
+    "valid_ids": {"type": "array", "minItems": 5, "maxItems": 64, "items": {"$ref": "#/$defs/valid_id"}},
+    "invalid_ids": {"type": "array", "minItems": 12, "maxItems": 128, "items": {"$ref": "#/$defs/invalid_id"}},
+    "valid_trust_domains": {"type": "array", "minItems": 3, "maxItems": 32, "uniqueItems": true, "items": {"type": "string"}},
+    "invalid_trust_domains": {"type": "array", "minItems": 5, "maxItems": 64, "uniqueItems": true, "items": {"type": "string"}},
+    "limitations": {"const": ["syntax_vectors_do_not_authenticate_svids_workload_api_responses_bundles_or_key_possession", "lowercase_scheme_is_a_project_canonicalization_rule_over_the_case_insensitive_uri_scheme", "workload_path_requirement_is_stricter_than_the_general_spiffe_id_root_identity_grammar"]}
+  },
+  "$defs": {
+    "valid_id": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "require_path", "trust_domain"],
+      "properties": {"value": {"type": "string", "minLength": 10, "maxLength": 2048}, "require_path": {"type": "boolean"}, "trust_domain": {"type": "string", "minLength": 1, "maxLength": 255}}
+    },
+    "invalid_id": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "require_path", "reason"],
+      "properties": {
+        "value": {"type": "string", "maxLength": 4096},
+        "require_path": {"type": "boolean"},
+        "reason": {"enum": ["authority", "canonical_scheme", "empty_path_segment", "forbidden_component", "non_ascii", "path_character", "relative_path_segment", "root_workload", "trailing_slash", "trust_domain_case", "trust_domain_encoding"]}
+      }
+    }
+  }
+}

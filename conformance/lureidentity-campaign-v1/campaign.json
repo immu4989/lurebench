@@ -1,0 +1,147 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lureidentity-campaign-v1",
+  "schema_version": 1,
+  "campaign_id": "example-identity-offboarding-campaign",
+  "created_at": "2026-09-03T00:00:00Z",
+  "system_id": "example-agent-system",
+  "directory": {
+    "issuer_id": "example-directory",
+    "tenant_id": "tenant-a",
+    "profile": "ietf-scim-rfc7643-lifecycle-metadata-projection",
+    "authentication_boundary": "externally_authenticated_and_authorized"
+  },
+  "principals": [
+    {
+      "principal_id": "group-ops",
+      "kind": "group",
+      "active": true,
+      "spiffe_id": null
+    },
+    {
+      "principal_id": "human-alice",
+      "kind": "human",
+      "active": true,
+      "spiffe_id": null
+    },
+    {
+      "principal_id": "agent-alpha",
+      "kind": "agent",
+      "active": true,
+      "spiffe_id": null
+    },
+    {
+      "principal_id": "workload-alpha",
+      "kind": "workload",
+      "active": true,
+      "spiffe_id": "spiffe://example.com/agents/alpha"
+    },
+    {
+      "principal_id": "human-bob",
+      "kind": "human",
+      "active": true,
+      "spiffe_id": null
+    },
+    {
+      "principal_id": "agent-beta",
+      "kind": "agent",
+      "active": true,
+      "spiffe_id": null
+    },
+    {
+      "principal_id": "workload-beta",
+      "kind": "workload",
+      "active": true,
+      "spiffe_id": "spiffe://example.com/agents/beta"
+    }
+  ],
+  "authority_edges": [
+    {
+      "edge_id": "membership-alice",
+      "source_id": "group-ops",
+      "target_id": "human-alice",
+      "relationship": "member_of"
+    },
+    {
+      "edge_id": "delegation-alpha",
+      "source_id": "human-alice",
+      "target_id": "agent-alpha",
+      "relationship": "delegates_to"
+    },
+    {
+      "edge_id": "runtime-alpha",
+      "source_id": "agent-alpha",
+      "target_id": "workload-alpha",
+      "relationship": "runs_as"
+    },
+    {
+      "edge_id": "membership-bob",
+      "source_id": "group-ops",
+      "target_id": "human-bob",
+      "relationship": "member_of"
+    },
+    {
+      "edge_id": "delegation-beta",
+      "source_id": "human-bob",
+      "target_id": "agent-beta",
+      "relationship": "delegates_to"
+    },
+    {
+      "edge_id": "runtime-beta",
+      "source_id": "agent-beta",
+      "target_id": "workload-beta",
+      "relationship": "runs_as"
+    }
+  ],
+  "grants": [
+    {
+      "grant_id": "ops-registry-read",
+      "principal_id": "group-ops",
+      "resource_id": "model-registry",
+      "action": "read"
+    }
+  ],
+  "nodes": [
+    {
+      "node_id": "identity-policy-gateway",
+      "enforcement_point_id": "policy-gateway"
+    },
+    {
+      "node_id": "identity-credential-broker",
+      "enforcement_point_id": "credential-broker"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "offboard-alice",
+      "occurred_at_ms": 10000,
+      "event_type": "scim_user_deactivated",
+      "target_principal_id": "human-alice",
+      "target_edge_id": null,
+      "source_event_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "acceptance": {
+    "maximum_convergence_ms": 500,
+    "maximum_deadline_miss_count": 0,
+    "maximum_post_deadline_stale_allow_count": 0,
+    "maximum_collateral_block_count": 0,
+    "minimum_delivery_coverage_rate": 1.0,
+    "minimum_cut_recall": 1.0,
+    "minimum_pre_event_allow_rate": 1.0,
+    "minimum_preserved_allow_rate": 1.0,
+    "minimum_signal_disposition_accuracy": 1.0
+  },
+  "probe_schedule": {
+    "pre_event_offset_ms": 50,
+    "propagation_probe_offset_ms": 50,
+    "post_deadline_offset_ms": 50
+  },
+  "limitations": [
+    "synthetic_projected_identity_metadata_only_no_credentials_tokens_or_raw_directory_payloads",
+    "campaign_composition_derives_graph_cuts_and_controls_but_does_not_discover_topology",
+    "every_unchanged_baseline_actor_outside_each_event_cone_is_used_as_a_collateral_control",
+    "composition_generates_probes_but_does_not_deliver_events_or_execute_access_requests",
+    "finite_declared_graph_coverage_does_not_prove_complete_mediation_compliance_or_containment"
+  ]
+}
+

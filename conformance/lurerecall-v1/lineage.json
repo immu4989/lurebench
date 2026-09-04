@@ -1,0 +1,85 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lureartifact-lineage-v1",
+  "schema_version": 1,
+  "lineage_id": "artifact-lineage-1",
+  "created_at": "2026-09-03T00:09:00Z",
+  "artifact_plan_sha256": "32d57b7e32770f6ef3f1b339364065d0bc32debf1f83557b7334b764d3892a7c",
+  "components": [
+    {
+      "component_id": "alpha-ai-bom-root",
+      "kind": "ai_bom",
+      "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "package_url": null,
+      "root": {"workload_principal_id": "workload-alpha", "artifact_id": "alpha-ai-bom"}
+    },
+    {
+      "component_id": "alpha-container-root",
+      "kind": "container",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "package_url": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "root": {"workload_principal_id": "workload-alpha", "artifact_id": "alpha-container"}
+    },
+    {
+      "component_id": "alpha-model-root",
+      "kind": "model",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "package_url": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+      "root": {"workload_principal_id": "workload-alpha", "artifact_id": "alpha-model"}
+    },
+    {
+      "component_id": "alpha-policy-root",
+      "kind": "policy",
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "package_url": "pkg:generic/example/alpha-policy@1.0.0",
+      "root": {"workload_principal_id": "workload-alpha", "artifact_id": "alpha-policy"}
+    },
+    {
+      "component_id": "beta-ai-bom-root",
+      "kind": "ai_bom",
+      "sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+      "package_url": null,
+      "root": {"workload_principal_id": "workload-beta", "artifact_id": "beta-ai-bom"}
+    },
+    {
+      "component_id": "beta-container-root",
+      "kind": "container",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "package_url": "pkg:oci/example/lureagent-beta@sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "root": {"workload_principal_id": "workload-beta", "artifact_id": "beta-container"}
+    },
+    {
+      "component_id": "beta-model-root",
+      "kind": "model",
+      "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "package_url": "pkg:huggingface/example/model-beta@fedcba9876543210",
+      "root": {"workload_principal_id": "workload-beta", "artifact_id": "beta-model"}
+    },
+    {
+      "component_id": "beta-policy-root",
+      "kind": "policy",
+      "sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "package_url": "pkg:generic/example/beta-policy@1.0.0",
+      "root": {"workload_principal_id": "workload-beta", "artifact_id": "beta-policy"}
+    },
+    {
+      "component_id": "alpha-base-model",
+      "kind": "model",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "package_url": "pkg:huggingface/example/base-model@89abcdef01234567",
+      "root": null
+    }
+  ],
+  "relationships": [
+    {
+      "dependent_component_id": "alpha-model-root",
+      "dependency_component_id": "alpha-base-model",
+      "relationship": "fine_tuned_from"
+    }
+  ],
+  "limitations": [
+    "lineage_is_a_caller_supplied_normalized_projection_not_direct_sbom_or_guac_ingestion",
+    "dependency_edges_express_declared_impact_reachability_not_runtime_execution_or_exploitability",
+    "component_and_root_digests_are_metadata_bindings_and_artifact_bytes_are_never_loaded",
+    "graph_completeness_authenticity_and_freshness_require_external_controls"
+  ]
+}

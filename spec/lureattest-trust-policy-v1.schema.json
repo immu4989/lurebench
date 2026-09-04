@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureattest-trust-policy-v1",
+  "title": "LureAttest reviewed trust policy v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "policy_id", "created_at", "artifact_plan_sha256", "trusted_builders", "attestation_expectations", "requirements", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureattest-trust-policy-v1"},
+    "schema_version": {"const": 1},
+    "policy_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+    "trusted_builders": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"$ref": "#/$defs/builder"}},
+    "attestation_expectations": {"type": "array", "minItems": 1, "maxItems": 384, "items": {"$ref": "#/$defs/expectation"}},
+    "requirements": {"$ref": "#/$defs/requirements"},
+    "limitations": {"const": [
+      "trusted_builder_levels_and_public_key_fingerprints_are_reviewed_external_policy_inputs",
+      "external_parameter_commitments_hide_values_but_do_not_establish_that_they_are_safe",
+      "policy_compilation_reads_no_dsse_envelope_public_key_source_tree_or_artifact_bytes",
+      "sigstore_certificate_transparency_timestamp_and_identity_verification_are_out_of_scope"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "uri": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^(https://|urn:)[^\\s#]+$"},
+    "level": {"type": "integer", "minimum": 1, "maximum": 3},
+    "builder": {
+      "type": "object", "additionalProperties": false,
+      "required": ["builder_id", "public_key_sha256", "signature_algorithm", "maximum_trusted_slsa_build_level"],
+      "properties": {
+        "builder_id": {"$ref": "#/$defs/uri"},
+        "public_key_sha256": {"$ref": "#/$defs/digest"},
+        "signature_algorithm": {"const": "ecdsa-p256-sha256"},
+        "maximum_trusted_slsa_build_level": {"$ref": "#/$defs/level"}
+      }
+    },
+    "expectation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["attestation_id", "public_key_sha256", "source_uri", "external_parameters_sha256", "minimum_slsa_build_level"],
+      "properties": {
+        "attestation_id": {"$ref": "#/$defs/id"},
+        "public_key_sha256": {"$ref": "#/$defs/digest"},
+        "source_uri": {"$ref": "#/$defs/uri"},
+        "external_parameters_sha256": {"$ref": "#/$defs/digest"},
+        "minimum_slsa_build_level": {"$ref": "#/$defs/level"}
+      }
+    },
+    "requirements": {
+      "type": "object", "additionalProperties": false,
+      "required": ["payload_type", "signature_algorithm", "signature_threshold", "require_exactly_one_signature", "require_exactly_one_subject", "require_statement_sha256", "require_subject_sha256", "require_builder_identity", "require_build_type", "require_source_dependency", "require_external_parameters_commitment"],
+      "properties": {
+        "payload_type": {"const": "application/vnd.in-toto+json"},
+        "signature_algorithm": {"const": "ecdsa-p256-sha256"},
+        "signature_threshold": {"const": 1},
+        "require_exactly_one_signature": {"const": true},
+        "require_exactly_one_subject": {"const": true},
+        "require_statement_sha256": {"const": true},
+        "require_subject_sha256": {"const": true},
+        "require_builder_identity": {"const": true},
+        "require_build_type": {"const": true},
+        "require_source_dependency": {"const": true},
+        "require_external_parameters_commitment": {"const": true}
+      }
+    }
+  }
+}

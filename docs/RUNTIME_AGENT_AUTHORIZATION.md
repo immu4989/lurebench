@@ -65,7 +65,7 @@ does not authenticate the sensor or prove coverage.
 
 | Control | Runtime behavior |
 |---|---|
-| Workload identity | Canonical SPIFFE ID and explicit trust-domain allowlist |
+| Workload identity | Spec-bounded canonical SPIFFE ID and explicit trust-domain allowlist |
 | Human authority | High-impact actions bind an operator, approval ID, and exact request digest |
 | Delegation and peers | Bounded depth; revoked or unauthorized peers safe-stop |
 | OAuth/OIDC metadata | MCP resource and audience binding; agent actor binding; no token values |
@@ -143,6 +143,11 @@ deployments still need OS/container isolation and authenticated workload identit
    is not the operation.
 7. Record independently produced sensor observations for the registered
    mediation point. Preserve `unknown`; never translate it to success.
+
+SPIFFE parsing is shared with LureIdentity and enforces the stable
+specification's 2,048-byte ID, 255-byte trust-domain, forbidden URI-component,
+and path-segment rules. Workload IDs require a non-root path. See the
+[validation and authentication boundary](SPIFFE_ID_VALIDATION.md).
 8. Build a trace and run `runtime-eval`. Sign the resulting independent evidence
    with LureScope.
 
@@ -187,7 +192,8 @@ Highlights:
 | MCP/OAuth audience and token-exchange boundary | Implemented metadata decision; external token validation/exchange required |
 | SPIFFE | Canonical ID/trust-domain validation; Workload API verification external |
 | OPA, Cedar, Envoy | Offline translators and strict response bindings; deployment external |
-| SCIM, NGAC | Not implemented |
+| SCIM | RFC 7643 lifecycle metadata projection and LureIdentity closure benchmark; protocol/authentication external |
+| NGAC | Not implemented; LureIdentity graph semantics are not an NGAC conformance claim |
 | Audit/non-repudiation | Chained receipts; organizational non-repudiation requires signed LureScope evidence and key governance |
 
 ## Claims and safety boundary

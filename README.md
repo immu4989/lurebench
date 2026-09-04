@@ -17,6 +17,10 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![LureBoundary](https://img.shields.io/badge/LureBoundary-14_safe_trajectories-7b61ff)
 ![LureInvariant](https://img.shields.io/badge/LureInvariant-graph_·_temporal_·_tri--state-7b61ff)
 ![LurePermit](https://img.shields.io/badge/LurePermit-21_offline_·_15_stateful-7b61ff)
+![LureIdentity](https://img.shields.io/badge/LureIdentity-9_points_·_279_probes-7b61ff)
+![LureArtifact](https://img.shields.io/badge/LureArtifact-model_·_image_·_policy_·_AI--BOM-7b61ff)
+![LureRecall](https://img.shields.io/badge/LureRecall-transitive_blast_radius_·_recovery-7b61ff)
+![LureAttest](https://img.shields.io/badge/LureAttest-DSSE_·_SLSA_expectations-7b61ff)
 ![Agent assurance](https://img.shields.io/badge/agent_assurance-OCI_·_coverage_·_delegation_·_IR-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
@@ -31,6 +35,10 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
   <a href="docs/LUREPERMIT_LURERANGE.md"><strong>Test an agent permit</strong></a> ·
   <a href="docs/RUNTIME_AGENT_AUTHORIZATION.md"><strong>Mediate agent actions</strong></a> ·
   <a href="docs/LUREREVOKE.md"><strong>Measure revocation convergence</strong></a> ·
+  <a href="docs/LUREIDENTITY.md"><strong>Close identity authority paths</strong></a> ·
+  <a href="docs/LUREARTIFACT.md"><strong>Authorize deployed AI artifacts</strong></a> ·
+  <a href="docs/LURERECALL.md"><strong>Recall compromised artifacts</strong></a> ·
+  <a href="docs/LUREATTEST.md"><strong>Authenticate provenance</strong></a> ·
   <a href="docs/LUREINVARIANT.md"><strong>Evaluate system invariants</strong></a> ·
   <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
@@ -78,6 +86,48 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > two strict log event types into a source-bound run while rejecting log bodies,
 > arbitrary attributes, topology drift, reused trace context, and inconsistent
 > timing.
+
+> **New — prove identity offboarding closes transitive agent authority.**
+> [LureIdentity](docs/LUREIDENTITY.md) models group → human → agent → workload
+> authority and recomputes the complete authorization cut caused by human
+> deactivation, group removal, delegation revocation, and workload retirement.
+> The reference suite exhaustively probes every preregistered cut at every node,
+> preserves an unrelated workload as a collateral-denial control, measures
+> propagation convergence and stale post-deadline allows, and rejects alternate
+> authority paths. SCIM fields are an RFC 7643 metadata projection—not a SCIM
+> endpoint, authentication, or interoperability claim. A fail-closed topology
+> audit binds the exact plan to a LurePermit Runtime profile, requires all nine
+> mediation points, and rejects undeclared points or workload SPIFFE trust
+> domains outside the profile allowlist.
+
+> **New — bind each authorized workload to its approved AI supply chain.**
+> [LureArtifact](docs/LUREARTIFACT.md) compiles every active LureIdentity
+> workload into exact per-node model, container, policy, AI-BOM, and SLSA
+> provenance bindings. It detects substitutions, missing or duplicate
+> deployments, SPIFFE drift, unapproved builders, unsafe model serialization,
+> embedded code, and required remote code. The benchmark is offline and never
+> fetches, opens, imports, executes, or deserializes artifact bytes; hashes and
+> metadata equality do not claim content safety or builder trust.
+
+> **New — turn an AI supply-chain incident into a measured recall.**
+> [LureRecall](docs/LURERECALL.md) binds a normalized dependency DAG and
+> VEX-like advisory to the exact LureArtifact plan, follows transitive
+> `contains`/`depends_on`/`trained_on`/`fine_tuned_from` paths, and derives every
+> affected artifact root, workload, node, replacement, and response probe.
+> It measures advisory delivery, quarantine deadline, exact replacement
+> recovery, and collateral disruption while treating `under_investigation` as
+> fail-closed. It never parses or fetches source documents or artifact bytes;
+> lineage, issuer, vulnerability, telemetry, and recovery authenticity remain
+> external controls.
+
+> **New — authenticate the provenance, then test what it says.**
+> [LureAttest](docs/LUREATTEST.md) compiles every LureArtifact provenance claim
+> into an exact signer–builder, subject, build-type, source-dependency, and
+> external-parameter expectation. Missing coverage, unauthorized signer–builder
+> mappings, and overclaimed SLSA policy levels fail closed. LureBench never
+> opens a key or envelope; LureScope independently authenticates the real
+> ECDSA P-256 DSSE payload bytes and evaluates the SLSA statement. This fixed-key
+> profile does not claim Sigstore transparency or build-platform certification.
 
 > **New — test invariants that cross the model, tools, network, identity, and
 > lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed
@@ -134,7 +184,7 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 | **A researcher** | Reproduce the provenance confound and its removal, add a detector in ~30 lines ([docs/adding-a-detector.md](docs/adding-a-detector.md)), or extend the corpus with new generators and typologies. |
 | **A policy / threat-intel analyst** | Ground claims about "AI-generated fraud detection" in measured numbers — including where it works, and where it is close to a coin flip. |
 | **A procurement or assurance team** | Evaluate a proprietary image against a private held-out set, preserve an immutable report, and pool compatible signed field evidence without collecting messages. |
-| **An agent platform or frontier AI team** | Test whether a policy gateway prevents typed isolation, identity, lifecycle, and control violations with LurePermit, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
+| **An agent platform or frontier AI team** | Test typed isolation and lifecycle controls with LurePermit/LureIdentity, bind every workload to approved models, images, policies, AI-BOMs, and provenance with LureArtifact, authenticate bounded DSSE/SLSA expectations with LureAttest, use LureRecall to scope and measure a transitive component recall, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
 
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 
@@ -261,6 +311,85 @@ The reference campaign covers 16 required event/node deliveries and 64 access
 probes. See the [LureRevoke threat model, integration contract, metrics, and
 claims boundary](docs/LUREREVOKE.md), or connect production-like telemetry with
 the [body-free OpenTelemetry workflow](docs/LUREREVOKE_OPENTELEMETRY.md).
+
+Prove that identity lifecycle changes close every preregistered human, agent,
+and workload authorization while an unrelated workload remains available:
+
+```bash
+# For a reviewed deployment campaign, derive every cut, control, and probe:
+lurebench identity-compose \
+  --campaign examples/lureidentity-campaign-v1.json \
+  --out identity-plan.json
+
+# Or export the built-in synthetic reference plan:
+lurebench identity-export --out identity-plan.json
+lurebench identity-run --plan identity-plan.json --out identity-run.json
+lurebench identity-eval \
+  --plan identity-plan.json --run identity-run.json \
+  --out identity-evaluation.json
+lurebench identity-topology-audit \
+  --plan identity-plan.json \
+  --out identity-topology-audit.json
+
+# With production-like, body-free telemetry:
+lurebench identity-otel-project \
+  --plan identity-plan.json --logs identity-otel-export.json \
+  --run-id identity-production-run-1 \
+  --out identity-otel-projection.json --run-out identity-run.json
+lurebench identity-otel-verify identity-otel-projection.json
+```
+
+The campaign compiler derives exact event cuts and every unrelated authorized
+control, then expands a bounded phase matrix across every declared node. The
+reference plan derives nine authorization cuts and runs 279 probes across all
+nine reference runtime mediation points; its topology audit also checks both
+workload trust domains. See the [LureIdentity graph model, campaign compiler,
+production integration contract, metrics, and claims boundary](docs/LUREIDENTITY.md).
+Connect reviewed instrumentation through the
+[privacy-minimized OpenTelemetry contract](docs/LUREIDENTITY_OPENTELEMETRY.md).
+Both identity and runtime contracts use the same
+[spec-bounded canonical SPIFFE ID parser](docs/SPIFFE_ID_VALIDATION.md).
+
+Bind every active workload in that exact identity plan to reviewed model,
+container, policy, AI-BOM, and SLSA provenance metadata, then test a claimed
+deployment inventory:
+
+```bash
+lurebench artifact-compose \
+  --identity-plan identity-plan.json \
+  --campaign examples/lureartifact-campaign-v1.json \
+  --out artifact-plan.json
+lurebench artifact-observe \
+  --plan artifact-plan.json --out artifact-observation.json
+lurebench artifact-eval \
+  --plan artifact-plan.json --observation artifact-observation.json \
+  --out artifact-evaluation.json
+lurebench artifact-verify artifact-evaluation.json
+```
+
+`artifact-observe` creates a synthetic passing fixture, not trusted production
+measurement. See the [LureArtifact contract, SLSA/SPDX/CycloneDX mapping,
+integration workflow, findings, and claims boundary](docs/LUREARTIFACT.md).
+
+Trace an actionable component advisory through that exact deployment inventory,
+then test quarantine, exact replacement recovery, and unaffected controls:
+
+```bash
+lurebench recall-compose \
+  --artifact-plan conformance/lureartifact-v1/plan.json \
+  --lineage conformance/lurerecall-v1/lineage.json \
+  --advisory conformance/lurerecall-v1/advisory.json \
+  --out recall-plan.json
+lurebench recall-run --plan recall-plan.json --out recall-run.json
+lurebench recall-eval \
+  --plan recall-plan.json --run recall-run.json \
+  --out recall-evaluation.json
+lurebench recall-verify recall-evaluation.json
+```
+
+`recall-run` is an offline passing fixture, not a claim that anything was
+quarantined. See the [LureRecall graph model, VEX projection, production adapter
+checklist, metrics, and claims boundary](docs/LURERECALL.md).
 
 Evaluate the reference cross-layer invariant remediation. The first command
 returns exit `1` because its valid report contains observed violations; the

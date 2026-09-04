@@ -1,6 +1,6 @@
 schema: https://github.com/immu4989/lurebench/docs/nist/agent-identity-demonstration/v1
 document_status: implementation_mapping_not_compliance
-updated: 2026-08-30
+updated: 2026-09-03
 reference:
   title: Accelerating the Adoption of Software and AI Agent Identity and Authorization
   publisher: NIST NCCoE
@@ -53,8 +53,11 @@ capabilities:
     cedar: offline_request_response_adapter
     envoy_ext_authz: offline_attribute_adapter_requires_reviewed_bridge
   lifecycle:
-    implementation: permit_revocation_policy_generation_safe_stop_and_sticky_stop
-    status: implemented_and_statefully_evaluated
+    implementation: permit_revocation_policy_generation_safe_stop_sticky_stop_and_lureidentity_graph_closure
+    status: implemented_and_statefully_evaluated_with_synthetic_metadata
+  authorization_graph:
+    implementation: directed_acyclic_group_human_agent_workload_authority_and_grant_closure
+    status: implemented_benchmark_semantics_not_policy_engine_conformance
   audit:
     implementation: exact_request_digest_nonce_sequence_and_sha256_receipt_chain
     status: implemented
@@ -62,6 +65,8 @@ capabilities:
     implementation: optional_lurescope_ecdsa_p256_dsse_checkpoint
     status: implemented_with_external_key_governance
   scim:
-    status: not_implemented
+    implementation: rfc7643_user_active_and_group_membership_lifecycle_metadata_projection
+    status: implemented_benchmark_projection_not_scim_protocol_conformance
+    external_responsibility: authenticate_authorize_and_validate_scim_http_operations
   ngac:
     status: not_implemented

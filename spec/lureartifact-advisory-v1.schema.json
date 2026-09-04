@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureartifact-advisory-v1",
+  "title": "LureArtifact bounded VEX-like advisory v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "advisory_id", "issued_at", "issued_at_ms", "artifact_plan_sha256", "lineage_sha256", "source", "vulnerability", "statements", "thresholds", "replacements", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureartifact-advisory-v1"},
+    "schema_version": {"const": 1},
+    "advisory_id": {"$ref": "#/$defs/id"},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "issued_at_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+    "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+    "lineage_sha256": {"$ref": "#/$defs/digest"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "document_sha256", "authentication_boundary"],
+      "properties": {
+        "format": {"enum": ["cisa-vex-minimum", "csaf-2.0-vex", "openvex-0.2.0"]},
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "authentication_boundary": {"const": "externally_verified_document_metadata"}
+      }
+    },
+    "vulnerability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identifier", "description_sha256"],
+      "properties": {
+        "identifier": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9._:/-]{0,126}[A-Za-z0-9])?$"},
+        "description_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "statements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/statement"}
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quarantine_deadline_ms", "recovery_deadline_ms"],
+      "properties": {
+        "quarantine_deadline_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "recovery_deadline_ms": {"type": "integer", "minimum": 2, "maximum": 172800000}
+      }
+    },
+    "replacements": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/replacement"}
+    },
+    "limitations": {"const": [
+      "vex_statuses_are_bounded_metadata_projections_not_openvex_csaf_or_cisa_document_validation",
+      "source_document_authentication_issuer_authority_and_vulnerability_truth_are_not_established",
+      "affected_and_under_investigation_are_fail_closed_actionable_states_for_this_benchmark",
+      "replacement_digests_and_provenance_are_declared_metadata_not_artifact_safety_evidence"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "statement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "sha256", "status", "justification"],
+      "properties": {
+        "component_id": {"$ref": "#/$defs/id"},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "status": {"enum": ["affected", "fixed", "not_affected", "under_investigation"]},
+        "justification": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "not_affected"}}, "required": ["status"]},
+          "then": {"properties": {"justification": {"enum": ["component_not_present", "inline_mitigations_already_exist", "vulnerable_code_cannot_be_controlled_by_adversary", "vulnerable_code_not_in_execute_path", "vulnerable_code_not_present"]}}},
+          "else": {"properties": {"justification": {"type": "null"}}}
+        }
+      ]
+    },
+    "replacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workload_principal_id", "artifact_id", "replacement_sha256", "provenance_statement_sha256"],
+      "properties": {
+        "workload_principal_id": {"$ref": "#/$defs/id"},
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "replacement_sha256": {"$ref": "#/$defs/digest"},
+        "provenance_statement_sha256": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

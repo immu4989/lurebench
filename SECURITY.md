@@ -37,10 +37,35 @@ otherwise.
 - Undefanged content in a shipped data shard: a real working URL, real contact
   details, real payment rails, or real personal data. See [DATA.md](DATA.md).
 - Dependency vulnerabilities that are actually reachable from this code.
-- LurePermit, LureRange, LureInvariant, runtime, topology, telemetry, or
-  LureRevoke evaluators producing a passing result from contradictory inputs,
-  incomplete required observations, altered bindings, contaminated controls, or
-  incorrectly recomputed metrics.
+- LurePermit, LureRange, LureInvariant, LureIdentity, runtime, topology,
+  telemetry, or LureRevoke evaluators producing a passing result from
+  contradictory inputs, incomplete required observations, alternate authority
+  paths, altered bindings, contaminated controls, or incorrectly recomputed
+  metrics.
+- LureIdentity telemetry accepting a log body, raw directory or workload
+  identity, unknown attribute, mismatched receiver/node, reused trace context,
+  or access timestamp not exactly bound to its preregistered probe.
+- LureIdentity campaign composition omitting a derived cut, accepting a partial
+  actor deauthorization, failing to cover an unchanged unrelated authorization,
+  producing duplicate or misphased probes, or bypassing its bounded matrix.
+- LureArtifact accepting an omitted active workload, undeclared node, model,
+  image, policy, AI-BOM, or provenance substitution, unapproved builder,
+  executable/remote model code, unsafe serialization, changed identity-plan
+  binding, contradictory summary, noncanonical JSON, or overwrite attempt.
+- LureRecall omitting a transitive affected component, artifact root, workload,
+  node, replacement, or probe; accepting a cycle, orphan, ambiguous VEX state,
+  unbound advisory or lineage, recalled replacement digest, post-deadline
+  compromised allow, wrong recovered artifact set, collateral block, altered
+  metric, noncanonical JSON, or overwrite attempt while still reporting pass.
+- LureAttest accepting an unbound artifact plan, missing or extra attestation
+  or builder, unauthorized signer–builder mapping, signer–builder substitution,
+  policy SLSA floor above reviewed builder trust, unsafe evidence
+  filename, weakened fixed requirement, duplicate key, noncanonical JSON, or
+  overwrite.
+- SPIFFE parsing that admits ambiguous authority components, percent encoding,
+  relative or empty path segments, Unicode, oversized IDs, or a root identity
+  where a workload path is required; or disagreement between identity, runtime,
+  topology, and public-schema validation.
 
 ## What is not a vulnerability
 

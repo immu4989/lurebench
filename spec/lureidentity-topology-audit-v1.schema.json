@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureidentity-topology-audit/v1",
+  "title": "LureIdentity to LurePermit runtime topology audit v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "inputs", "results", "missing_enforcement_point_ids", "unmapped_nodes", "workload_identities", "untrusted_workload_principal_ids", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureidentity-topology-audit/v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_plan", "identity_plan_sha256", "runtime_profile", "runtime_profile_sha256"],
+      "properties": {
+        "identity_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureidentity-plan-v1"},
+        "identity_plan_sha256": {"$ref": "#/$defs/digest"},
+        "runtime_profile": {"$ref": "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1"},
+        "runtime_profile_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["enforcement_point_id", "action_types", "required_sensor_ids", "node_ids", "replica_count", "covered"],
+        "properties": {
+          "enforcement_point_id": {"$ref": "#/$defs/id"},
+          "action_types": {"$ref": "#/$defs/ids"},
+          "required_sensor_ids": {"$ref": "#/$defs/ids"},
+          "node_ids": {"$ref": "#/$defs/optional_ids"},
+          "replica_count": {"type": "integer", "minimum": 0, "maximum": 64},
+          "covered": {"type": "boolean"}
+        }
+      }
+    },
+    "missing_enforcement_point_ids": {"$ref": "#/$defs/optional_ids"},
+    "unmapped_nodes": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["node_id", "enforcement_point_id"],
+        "properties": {"node_id": {"$ref": "#/$defs/id"}, "enforcement_point_id": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "workload_identities": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["principal_id", "spiffe_id", "trust_domain", "trusted"],
+        "properties": {
+          "principal_id": {"$ref": "#/$defs/id"},
+          "spiffe_id": {"type": "string", "minLength": 12, "maxLength": 2048, "pattern": "^spiffe://[a-z0-9._-]{1,255}(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+)+$"},
+          "trust_domain": {"type": "string", "minLength": 1, "maxLength": 255, "pattern": "^[a-z0-9._-]+$"},
+          "trusted": {"type": "boolean"}
+        }
+      }
+    },
+    "untrusted_workload_principal_ids": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_enforcement_point_count", "covered_enforcement_point_count", "missing_enforcement_point_count", "unmapped_node_count", "enforcement_point_coverage_rate", "workload_identity_count", "trusted_workload_identity_count", "untrusted_workload_identity_count", "workload_trust_domain_coverage_rate", "verdict"],
+      "properties": {
+        "required_enforcement_point_count": {"type": "integer", "minimum": 1, "maximum": 32},
+        "covered_enforcement_point_count": {"type": "integer", "minimum": 0, "maximum": 32},
+        "missing_enforcement_point_count": {"type": "integer", "minimum": 0, "maximum": 32},
+        "unmapped_node_count": {"type": "integer", "minimum": 0, "maximum": 64},
+        "enforcement_point_coverage_rate": {"$ref": "#/$defs/rate"},
+        "workload_identity_count": {"type": "integer", "minimum": 1, "maximum": 128},
+        "trusted_workload_identity_count": {"type": "integer", "minimum": 0, "maximum": 128},
+        "untrusted_workload_identity_count": {"type": "integer", "minimum": 0, "maximum": 128},
+        "workload_trust_domain_coverage_rate": {"$ref": "#/$defs/rate"},
+        "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "limitations": {"const": ["audit_compares_declared_identity_nodes_to_declared_runtime_mediation_points_only", "spiffe_trust_domain_membership_does_not_prove_svid_issuance_validation_or_possession", "a_pass_does_not_prove_discovery_completeness_reachability_event_delivery_or_enforcement", "replica_count_is_reported_but_no_fault_domain_independence_is_inferred", "audit_executes_no_discovery_directory_workload_probe_access_action_or_enforcement"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "ids": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "optional_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+  }
+}

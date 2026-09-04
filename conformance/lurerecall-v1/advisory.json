@@ -1,0 +1,44 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lureartifact-advisory-v1",
+  "schema_version": 1,
+  "advisory_id": "artifact-incident-1",
+  "issued_at": "2026-09-03T00:10:00Z",
+  "issued_at_ms": 1000,
+  "artifact_plan_sha256": "32d57b7e32770f6ef3f1b339364065d0bc32debf1f83557b7334b764d3892a7c",
+  "lineage_sha256": "db6000f9c341888976b63b00ada541bf058d8a0d302a8d411f9fee84e9007f1e",
+  "source": {
+    "format": "openvex-0.2.0",
+    "document_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "authentication_boundary": "externally_verified_document_metadata"
+  },
+  "vulnerability": {
+    "identifier": "CVE-2026-4989",
+    "description_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "statements": [
+    {
+      "component_id": "alpha-base-model",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "status": "under_investigation",
+      "justification": null
+    }
+  ],
+  "thresholds": {
+    "quarantine_deadline_ms": 500,
+    "recovery_deadline_ms": 2000
+  },
+  "replacements": [
+    {
+      "workload_principal_id": "workload-alpha",
+      "artifact_id": "alpha-model",
+      "replacement_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "provenance_statement_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "limitations": [
+    "vex_statuses_are_bounded_metadata_projections_not_openvex_csaf_or_cisa_document_validation",
+    "source_document_authentication_issuer_authority_and_vulnerability_truth_are_not_established",
+    "affected_and_under_investigation_are_fail_closed_actionable_states_for_this_benchmark",
+    "replacement_digests_and_provenance_are_declared_metadata_not_artifact_safety_evidence"
+  ]
+}

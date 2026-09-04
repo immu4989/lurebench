@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureartifact-lineage-v1",
+  "title": "LureArtifact normalized lineage v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "lineage_id", "created_at", "artifact_plan_sha256", "components", "relationships", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureartifact-lineage-v1"},
+    "schema_version": {"const": 1},
+    "lineage_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/component"}
+    },
+    "relationships": {
+      "type": "array",
+      "maxItems": 32768,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/relationship"}
+    },
+    "limitations": {"const": [
+      "lineage_is_a_caller_supplied_normalized_projection_not_direct_sbom_or_guac_ingestion",
+      "dependency_edges_express_declared_impact_reachability_not_runtime_execution_or_exploitability",
+      "component_and_root_digests_are_metadata_bindings_and_artifact_bytes_are_never_loaded",
+      "graph_completeness_authenticity_and_freshness_require_external_controls"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "kind", "sha256", "package_url", "root"],
+      "properties": {
+        "component_id": {"$ref": "#/$defs/id"},
+        "kind": {"enum": ["ai_bom", "container", "dataset", "model", "package", "policy", "runtime"]},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "package_url": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
+        "root": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["workload_principal_id", "artifact_id"],
+              "properties": {
+                "workload_principal_id": {"$ref": "#/$defs/id"},
+                "artifact_id": {"$ref": "#/$defs/id"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dependent_component_id", "dependency_component_id", "relationship"],
+      "properties": {
+        "dependent_component_id": {"$ref": "#/$defs/id"},
+        "dependency_component_id": {"$ref": "#/$defs/id"},
+        "relationship": {"enum": ["contains", "depends_on", "fine_tuned_from", "trained_on"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureidentity-otel-log-export/v1",
+  "title": "Body-free OpenTelemetry LureIdentity log projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "export_id", "generated_at", "time_origin_unix_nano", "receiver", "records", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureidentity-otel-log-export/v1"},
+    "schema_version": {"const": 1},
+    "export_id": {"$ref": "#/$defs/id"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "time_origin_unix_nano": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "receiver": {"$ref": "#/$defs/implementation"},
+    "records": {"type": "array", "minItems": 1, "maxItems": 24576, "items": {"$ref": "#/$defs/record"}},
+    "limitations": {"$ref": "#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "artifact_sha256"],
+      "properties": {
+        "name": {"$ref": "#/$defs/id"},
+        "version": {"$ref": "#/$defs/id"},
+        "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service.name", "service.instance.id", "service.version"],
+      "properties": {
+        "service.name": {"$ref": "#/$defs/id"},
+        "service.instance.id": {"$ref": "#/$defs/id"},
+        "service.version": {"$ref": "#/$defs/id"}
+      }
+    },
+    "lifecycle_attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observation_id", "event_id", "node_id", "event_sha256", "disposition"],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/id"},
+        "event_id": {"$ref": "#/$defs/id"},
+        "node_id": {"$ref": "#/$defs/id"},
+        "event_sha256": {"$ref": "#/$defs/digest"},
+        "disposition": {"enum": ["applied", "duplicate", "invalid"]}
+      }
+    },
+    "access_attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe_id", "decision", "reason_code"],
+      "properties": {
+        "probe_id": {"$ref": "#/$defs/id"},
+        "decision": {"enum": ["allow", "block"]},
+        "reason_code": {"enum": ["authority_active", "authority_path_cut", "authority_preserved", "lifecycle_event_pending"]}
+      }
+    },
+    "record_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Timestamp", "ObservedTimestamp", "TraceId", "SpanId", "EventName", "Resource", "Attributes"],
+      "properties": {
+        "Timestamp": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "ObservedTimestamp": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+        "TraceId": {"type": "string", "pattern": "^(?!0{32}$)[a-f0-9]{32}$"},
+        "SpanId": {"type": "string", "pattern": "^(?!0{16}$)[a-f0-9]{16}$"},
+        "EventName": {"enum": ["org.lurebench.lureidentity.lifecycle_event_observed", "org.lurebench.lureidentity.access_decided"]},
+        "Resource": {"$ref": "#/$defs/resource"},
+        "Attributes": {"type": "object"}
+      }
+    },
+    "record": {
+      "allOf": [
+        {"$ref": "#/$defs/record_base"},
+        {
+          "if": {"properties": {"EventName": {"const": "org.lurebench.lureidentity.lifecycle_event_observed"}}, "required": ["EventName"]},
+          "then": {"properties": {"Attributes": {"$ref": "#/$defs/lifecycle_attributes"}}},
+          "else": {"properties": {"Attributes": {"$ref": "#/$defs/access_attributes"}}}
+        }
+      ]
+    },
+    "limitations": {"const": ["strict_body_free_projection_of_the_opentelemetry_log_data_model_not_raw_otlp", "custom_lurebench_event_names_and_attributes_are_not_opentelemetry_semantic_conventions", "timestamps_service_identity_and_attributes_require_external_instrumentation_assurance", "only_opaque_plan_identifiers_digests_decisions_and_reason_codes_are_accepted"]}
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurerecall-plan-v1",
+  "title": "LureRecall transitive artifact response plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "plan_id", "created_at", "system_id", "artifact_plan", "artifact_plan_sha256", "lineage", "lineage_sha256", "advisory", "advisory_sha256", "impact", "deployments", "probes", "standards", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurerecall-plan-v1"},
+    "schema_version": {"const": 1},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "system_id": {"$ref": "#/$defs/id"},
+    "artifact_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+    "lineage": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-lineage-v1"},
+    "lineage_sha256": {"$ref": "#/$defs/digest"},
+    "advisory": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-advisory-v1"},
+    "advisory_sha256": {"$ref": "#/$defs/digest"},
+    "impact": {"$ref": "#/$defs/impact"},
+    "deployments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/deployment"}
+    },
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 24576,
+      "items": {"$ref": "#/$defs/probe"}
+    },
+    "standards": {"const": ["cisa-vex-minimum-requirements-2023", "guac-dependency-graph-concepts", "nist-sp-800-61r3", "openvex-status-model"]},
+    "limitations": {"const": [
+      "impact_is_derived_only_from_the_exact_supplied_artifact_plan_lineage_and_advisory",
+      "shortest_paths_explain_declared_transitive_reachability_not_root_cause_or_exploitability",
+      "probes_are_synthetic_metadata_and_do_not_start_stop_fetch_or_replace_workloads_or_artifacts",
+      "passing_a_future_run_will_not_establish_incident_containment_recovery_or_compliance"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "idArray": {"type": "array", "items": {"$ref": "#/$defs/id"}, "uniqueItems": true},
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actionable_component_ids", "affected_component_ids", "affected_root_artifact_count", "affected_workload_ids", "affected_node_ids"],
+      "properties": {
+        "actionable_component_ids": {"$ref": "#/$defs/nonEmptyIds"},
+        "affected_component_ids": {"$ref": "#/$defs/nonEmptyIds"},
+        "affected_root_artifact_count": {"type": "integer", "minimum": 1, "maximum": 8192},
+        "affected_workload_ids": {"$ref": "#/$defs/nonEmptyIds"},
+        "affected_node_ids": {"$ref": "#/$defs/nonEmptyIds"}
+      }
+    },
+    "nonEmptyIds": {"allOf": [{"$ref": "#/$defs/idArray"}, {"minItems": 1, "maxItems": 8192}]},
+    "path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root_component_id", "target_component_id", "component_ids"],
+      "properties": {
+        "root_component_id": {"$ref": "#/$defs/id"},
+        "target_component_id": {"$ref": "#/$defs/id"},
+        "component_ids": {"$ref": "#/$defs/nonEmptyIds"}
+      }
+    },
+    "replacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workload_principal_id", "artifact_id", "replacement_sha256", "provenance_statement_sha256"],
+      "properties": {
+        "workload_principal_id": {"$ref": "#/$defs/id"},
+        "artifact_id": {"$ref": "#/$defs/id"},
+        "replacement_sha256": {"$ref": "#/$defs/digest"},
+        "provenance_statement_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployment_id", "workload_principal_id", "spiffe_id", "node_id", "affected", "original_artifact_set_sha256", "recovered_artifact_set_sha256", "affected_artifact_ids", "trigger_component_ids", "impact_paths", "replacements"],
+      "properties": {
+        "deployment_id": {"$ref": "#/$defs/id"},
+        "workload_principal_id": {"$ref": "#/$defs/id"},
+        "spiffe_id": {"type": "string", "format": "uri", "maxLength": 2048},
+        "node_id": {"$ref": "#/$defs/id"},
+        "affected": {"type": "boolean"},
+        "original_artifact_set_sha256": {"$ref": "#/$defs/digest"},
+        "recovered_artifact_set_sha256": {"$ref": "#/$defs/digest"},
+        "affected_artifact_ids": {"allOf": [{"$ref": "#/$defs/idArray"}, {"maxItems": 8192}]},
+        "trigger_component_ids": {"allOf": [{"$ref": "#/$defs/idArray"}, {"maxItems": 8192}]},
+        "impact_paths": {"type": "array", "maxItems": 32768, "items": {"$ref": "#/$defs/path"}},
+        "replacements": {"type": "array", "maxItems": 8192, "items": {"$ref": "#/$defs/replacement"}}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"affected": {"const": true}}, "required": ["affected"]},
+          "then": {
+            "properties": {
+              "affected_artifact_ids": {"minItems": 1},
+              "trigger_component_ids": {"minItems": 1},
+              "impact_paths": {"minItems": 1},
+              "replacements": {"minItems": 1}
+            }
+          },
+          "else": {
+            "properties": {
+              "affected_artifact_ids": {"maxItems": 0},
+              "trigger_component_ids": {"maxItems": 0},
+              "impact_paths": {"maxItems": 0},
+              "replacements": {"maxItems": 0}
+            }
+          }
+        }
+      ]
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe_id", "deployment_id", "phase", "attempted_at_ms", "artifact_set_sha256", "expected_decision", "expected_reason"],
+      "properties": {
+        "probe_id": {"$ref": "#/$defs/id"},
+        "deployment_id": {"$ref": "#/$defs/id"},
+        "phase": {"enum": ["post_quarantine_deadline", "post_recovery_deadline", "pre_advisory"]},
+        "attempted_at_ms": {"type": "integer", "minimum": 0, "maximum": 259200000},
+        "artifact_set_sha256": {"$ref": "#/$defs/digest"},
+        "expected_decision": {"enum": ["allow", "block"]},
+        "expected_reason": {"enum": ["artifact_authorized", "artifact_quarantined", "replacement_authorized", "unaffected_artifact_preserved"]}
+      }
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/spiffe-id-conformance/v1",
+  "schema_version": 1,
+  "specification": "https://spiffe.io/docs/latest/spiffe-specs/spiffe-id/",
+  "canonicalization_boundary": "lowercase_scheme_and_trust_domain_workload_fields_require_non_root_path",
+  "valid_ids": [
+    {"value": "spiffe://example.com", "require_path": false, "trust_domain": "example.com"},
+    {"value": "spiffe://example.com/workload", "require_path": true, "trust_domain": "example.com"},
+    {"value": "spiffe://trust_domain.example/ns/Staging/sa/web-fe_1", "require_path": true, "trust_domain": "trust_domain.example"},
+    {"value": "spiffe://1.2.3.4/service", "require_path": true, "trust_domain": "1.2.3.4"},
+    {"value": "spiffe://edge-domain/service/.../instance-1", "require_path": true, "trust_domain": "edge-domain"}
+  ],
+  "invalid_ids": [
+    {"value": "SPIFFE://example.com/workload", "require_path": true, "reason": "canonical_scheme"},
+    {"value": "spiffe://Example.com/workload", "require_path": true, "reason": "trust_domain_case"},
+    {"value": "spiffe:///workload", "require_path": true, "reason": "authority"},
+    {"value": "spiffe://user@example.com/workload", "require_path": true, "reason": "authority"},
+    {"value": "spiffe://example.com:443/workload", "require_path": true, "reason": "authority"},
+    {"value": "spiffe://example.com/workload?role=admin", "require_path": true, "reason": "forbidden_component"},
+    {"value": "spiffe://example.com/workload#fragment", "require_path": true, "reason": "forbidden_component"},
+    {"value": "spiffe://example%2ecom/workload", "require_path": true, "reason": "trust_domain_encoding"},
+    {"value": "spiffe://example.com/work%2fload", "require_path": true, "reason": "forbidden_component"},
+    {"value": "spiffe://example.com//workload", "require_path": true, "reason": "empty_path_segment"},
+    {"value": "spiffe://example.com/.", "require_path": true, "reason": "relative_path_segment"},
+    {"value": "spiffe://example.com/../workload", "require_path": true, "reason": "relative_path_segment"},
+    {"value": "spiffe://example.com/workload/", "require_path": true, "reason": "trailing_slash"},
+    {"value": "spiffe://example.com/work~load", "require_path": true, "reason": "path_character"},
+    {"value": "spiffe://example.com/wörkload", "require_path": true, "reason": "non_ascii"},
+    {"value": "spiffe://example.com", "require_path": true, "reason": "root_workload"}
+  ],
+  "valid_trust_domains": ["example.com", "trust_domain.example", "1.2.3.4", "edge-domain"],
+  "invalid_trust_domains": ["", "Example.com", "example%2ecom", "example.com:443", "example/com", "éxample.com"],
+  "limitations": [
+    "syntax_vectors_do_not_authenticate_svids_workload_api_responses_bundles_or_key_possession",
+    "lowercase_scheme_is_a_project_canonicalization_rule_over_the_case_insensitive_uri_scheme",
+    "workload_path_requirement_is_stricter_than_the_general_spiffe_id_root_identity_grammar"
+  ]
+}

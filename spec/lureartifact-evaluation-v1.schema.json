@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lureartifact-evaluation-v1",
+  "title": "LureArtifact evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "generated_at", "implementation", "plan", "plan_sha256", "observation", "observation_sha256", "summary", "checks", "findings", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lureartifact-evaluation-v1"},
+    "schema_version": {"const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "implementation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}
+    },
+    "plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "observation": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-observation-v1"},
+    "observation_sha256": {"$ref": "#/$defs/digest"},
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["active_workload_count", "declared_node_count", "expected_deployment_count", "observed_deployment_count", "compliant_deployment_count", "finding_count", "verdict"],
+      "properties": {
+        "active_workload_count": {"$ref": "#/$defs/count"},
+        "declared_node_count": {"$ref": "#/$defs/count"},
+        "expected_deployment_count": {"$ref": "#/$defs/count"},
+        "observed_deployment_count": {"$ref": "#/$defs/count"},
+        "compliant_deployment_count": {"$ref": "#/$defs/count"},
+        "finding_count": {"$ref": "#/$defs/count"},
+        "verdict": {"enum": ["pass", "fail"]}
+      }
+    },
+    "checks": {
+      "type": "array", "minItems": 9, "maxItems": 9,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["check_id", "status"],
+        "properties": {
+          "check_id": {"enum": ["identity_contract_bound", "observation_not_predated", "deployment_matrix_exact", "workload_identity_exact", "artifact_inventory_exact", "slsa_provenance_exact", "ai_bom_binding_exact", "approved_builder_policy", "non_executable_model_policy"]},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "findings": {"type": "array", "maxItems": 65536, "items": {"$ref": "#/$defs/finding"}},
+    "limitations": {"const": [
+      "evaluation_recomputes_declared_identity_deployment_artifact_provenance_and_ai_bom_equality",
+      "a_pass_does_not_authenticate_observation_origin_workload_identity_builder_or_artifact_source",
+      "digest_equality_does_not_establish_artifact_safety_quality_licensing_or_vulnerability_status",
+      "passing_is_not_supply_chain_containment_compliance_certification_or_deployment_authorization"
+    ]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 65536},
+    "nullable_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "nullable_digest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "finding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["finding_id", "reason", "node_id", "workload_principal_id", "subject_id", "expected_sha256", "observed_sha256"],
+      "properties": {
+        "finding_id": {"$ref": "#/$defs/id"},
+        "reason": {"enum": ["plan_digest_mismatch", "system_id_mismatch", "observation_predates_plan", "deployment_missing", "deployment_unexpected", "deployment_duplicate", "spiffe_id_mismatch", "artifact_missing", "artifact_unexpected", "artifact_metadata_mismatch", "provenance_missing", "provenance_unexpected", "provenance_metadata_mismatch", "ai_bom_missing", "ai_bom_metadata_mismatch", "observed_builder_unapproved", "observed_model_serialization_disallowed", "observed_model_embedded_code", "observed_remote_model_code_required"]},
+        "node_id": {"$ref": "#/$defs/nullable_id"},
+        "workload_principal_id": {"$ref": "#/$defs/nullable_id"},
+        "subject_id": {"$ref": "#/$defs/nullable_id"},
+        "expected_sha256": {"$ref": "#/$defs/nullable_digest"},
+        "observed_sha256": {"$ref": "#/$defs/nullable_digest"}
+      }
+    }
+  }
+}

@@ -35,6 +35,7 @@ from .permit import (
     reference_permit_engine,
     validate_permit,
 )
+from .spiffe import parse_spiffe_id, validate_spiffe_trust_domain
 
 PROFILE_SCHEMA = "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-profile-v1"
 REQUEST_SCHEMA = "https://github.com/immu4989/lurebench/spec/lurepermit-runtime-request-v1"
@@ -51,10 +52,6 @@ MAX_RUNTIME_REQUESTS = 512
 RUNTIME_VERSION = "1.0.0"
 
 _DIGEST = re.compile(r"^[a-f0-9]{64}$")
-_SPIFFE = re.compile(
-    r"^spiffe://(?P<trust_domain>[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?)/"
-    r"(?P<path>[A-Za-z0-9._~!$&'()*+,;=:@%/-]{1,512})$"
-)
 _PROTOCOLS = {"cedar", "direct", "envoy_ext_authz", "mcp", "opa"}
 _MCP_METHODS = {"resources/read", "tools/call"}
 _TASK_STATES = {"corrupted", "healthy", "impossible"}
@@ -136,12 +133,7 @@ def _nullable_id(value: Any, field_name: str) -> Optional[str]:
 
 
 def _spiffe_id(value: Any, field_name: str) -> tuple[str, str]:
-    if not isinstance(value, str):
-        raise ValueError(f"{field_name} must be a SPIFFE URI")
-    match = _SPIFFE.fullmatch(value)
-    if match is None or "//" in match.group("path") or match.group("path").endswith("/"):
-        raise ValueError(f"{field_name} must be a canonical SPIFFE URI")
-    return value, match.group("trust_domain")
+    return parse_spiffe_id(value, field_name, require_path=True)
 
 
 def _timestamp_value(value: str) -> datetime:
@@ -317,18 +309,14 @@ def validate_runtime_profile(value: Any) -> Dict[str, Any]:
         ),
     )
     domains = identity["allowed_spiffe_trust_domains"]
-    if (
-        not isinstance(domains, list)
-        or not domains
-        or len(domains) > 32
-        or any(
-            not isinstance(item, str)
-            or len(item) > 253
-            or re.fullmatch(r"[a-z0-9]+(?:[.-][a-z0-9]+)*", item) is None
-            for item in domains
-        )
-        or len(set(domains)) != len(domains)
-    ):
+    if not isinstance(domains, list) or not domains or len(domains) > 32:
+        raise ValueError("runtime profile SPIFFE trust domains are invalid")
+    try:
+        for item in domains:
+            validate_spiffe_trust_domain(item, "runtime profile SPIFFE trust domain")
+    except ValueError as exc:
+        raise ValueError("runtime profile SPIFFE trust domains are invalid") from exc
+    if len(set(domains)) != len(domains):
         raise ValueError("runtime profile SPIFFE trust domains are invalid")
     if identity["require_workload_identity"] is not True:
         raise ValueError("runtime profile must require workload identity")
