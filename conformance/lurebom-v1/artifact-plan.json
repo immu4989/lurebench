@@ -1,0 +1,156 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1",
+  "schema_version": 1,
+  "plan_id": "lurebom-conformance-source",
+  "created_at": "2026-09-05T00:00:00Z",
+  "system_id": "example-agent-system",
+  "identity": {
+    "plan_id": "example-identity-offboarding-campaign",
+    "plan_sha256": "dbf36e323ebd25ceb44dd258aa0956efcb81cb3edb19950ccc1b48738c13d771"
+  },
+  "nodes": [
+    {
+      "node_id": "identity-credential-broker",
+      "enforcement_point_id": "credential-broker"
+    },
+    {
+      "node_id": "identity-policy-gateway",
+      "enforcement_point_id": "policy-gateway"
+    }
+  ],
+  "workloads": [
+    {
+      "workload_principal_id": "workload-alpha",
+      "spiffe_id": "spiffe://example.com/agents/alpha",
+      "node_ids": [
+        "identity-credential-broker",
+        "identity-policy-gateway"
+      ],
+      "artifacts": [
+        {
+          "artifact_id": "alpha-ai-bom",
+          "role": "ai_sbom",
+          "sha256": "76bf0b73e6ac970642b97a87cbd405c8ead9f66fc818622cc8d74f2ef0240dd4",
+          "media_type": "application/spdx+json",
+          "package_url": null,
+          "model_serialization": null,
+          "model_embedded_code": false,
+          "remote_code_required": false
+        },
+        {
+          "artifact_id": "alpha-container",
+          "role": "container_image",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "media_type": "application/vnd.oci.image.manifest.v1+json",
+          "package_url": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "model_serialization": null,
+          "model_embedded_code": false,
+          "remote_code_required": false
+        },
+        {
+          "artifact_id": "alpha-model",
+          "role": "model_weights",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "media_type": "application/vnd.safetensors",
+          "package_url": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+          "model_serialization": "safetensors",
+          "model_embedded_code": false,
+          "remote_code_required": false
+        },
+        {
+          "artifact_id": "alpha-policy",
+          "role": "policy_bundle",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "media_type": "application/vnd.openpolicyagent.bundle",
+          "package_url": "pkg:generic/example/alpha-policy@1.0.0",
+          "model_serialization": null,
+          "model_embedded_code": false,
+          "remote_code_required": false
+        }
+      ],
+      "attestations": [
+        {
+          "attestation_id": "alpha-container-provenance",
+          "subject_artifact_id": "alpha-container",
+          "subject_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "statement_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "statement_type": "https://in-toto.io/Statement/v1",
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "builder_id": "https://github.com/actions/runner",
+          "build_type": "https://github.com/actions/runner/build/v1",
+          "source_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "attestation_id": "alpha-model-provenance",
+          "subject_artifact_id": "alpha-model",
+          "subject_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "statement_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "statement_type": "https://in-toto.io/Statement/v1",
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "builder_id": "https://github.com/actions/runner",
+          "build_type": "https://github.com/actions/runner/build/v1",
+          "source_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        {
+          "attestation_id": "alpha-policy-provenance",
+          "subject_artifact_id": "alpha-policy",
+          "subject_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "statement_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+          "statement_type": "https://in-toto.io/Statement/v1",
+          "predicate_type": "https://slsa.dev/provenance/v1",
+          "builder_id": "https://github.com/actions/runner",
+          "build_type": "https://github.com/actions/runner/build/v1",
+          "source_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ],
+      "ai_bom": {
+        "artifact_id": "alpha-ai-bom",
+        "document_sha256": "76bf0b73e6ac970642b97a87cbd405c8ead9f66fc818622cc8d74f2ef0240dd4",
+        "format": "spdx-3.0.1",
+        "subject_artifact_ids": [
+          "alpha-container",
+          "alpha-model",
+          "alpha-policy"
+        ]
+      }
+    }
+  ],
+  "policy": {
+    "required_artifact_roles": [
+      "ai_sbom",
+      "container_image",
+      "model_weights",
+      "policy_bundle"
+    ],
+    "provenance_required_for_roles": [
+      "container_image",
+      "model_weights",
+      "policy_bundle"
+    ],
+    "sbom_subject_roles": [
+      "container_image",
+      "model_weights",
+      "policy_bundle"
+    ],
+    "allowed_model_serializations": ["onnx", "safetensors"],
+    "model_embedded_code_allowed": false,
+    "remote_model_code_allowed": false,
+    "approved_builder_ids": ["https://github.com/actions/runner"]
+  },
+  "standards": {
+    "supported_ai_bom_formats": [
+      "cyclonedx-1.6",
+      "cyclonedx-1.7",
+      "spdx-3.0.1"
+    ],
+    "statement_type": "https://in-toto.io/Statement/v1",
+    "provenance_predicate_type": "https://slsa.dev/provenance/v1"
+  },
+  "limitations": [
+    "plan_binds_every_active_declared_workload_to_reviewed_artifact_metadata_at_declared_nodes",
+    "spiffe_ids_are_identifiers_only_and_do_not_prove_svid_issuance_validation_or_possession",
+    "slsa_fields_are_a_bounded_projection_not_statement_signature_or_build-platform_verification",
+    "ai_bom_fields_are_a_bounded_projection_not_spdx_or_cyclonedx_document_validation",
+    "plan_validation_does_not_fetch_scan_load_import_execute_or_deserialize_artifact_bytes"
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurebom-evaluation-v1",
+  "title": "LureBOM Twin cross-standard semantic reconciliation evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "evaluation_id",
+    "evaluated_at",
+    "engine",
+    "artifact_plan",
+    "manifest",
+    "projections",
+    "components",
+    "dependencies",
+    "findings",
+    "summary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurebom-evaluation-v1"},
+    "schema_version": {"const": 1},
+    "evaluation_id": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1#/$defs/id"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "const": {"name": "lurebench-lurebom-reference", "version": "1.0.0"}
+    },
+    "artifact_plan": {"$ref": "https://github.com/immu4989/lurebench/spec/lureartifact-plan-v1"},
+    "manifest": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1"},
+    "projections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cyclonedx", "spdx"],
+      "properties": {
+        "cyclonedx": {"$ref": "#/$defs/projection"},
+        "spdx": {"$ref": "#/$defs/projection"}
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/componentResult"}
+    },
+    "dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cyclonedx", "spdx"],
+      "properties": {
+        "cyclonedx": {"$ref": "#/$defs/normalizedEdges"},
+        "spdx": {"$ref": "#/$defs/normalizedEdges"}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 65536,
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "summary": {"$ref": "#/$defs/summary"},
+    "limitations": {
+      "const": [
+        "projection_loss_lists_ignored_fields_but_does_not_interpret_their_semantics",
+        "source_documents_are_strictly_parsed_but_not_fully_validated_against_official_schemas",
+        "matching_metadata_does_not_establish_bom_completeness_authenticity_freshness_or_truth",
+        "no_artifact_model_container_policy_dataset_package_or_external_reference_is_opened",
+        "a_pass_is_not_vulnerability_license_safety_compliance_procurement_or_deployment_approval"
+      ]
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+    "nullablePurl": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "minLength": 5, "maxLength": 2048, "pattern": "^pkg:\\S+$"}
+      ]
+    },
+    "reference": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^\\S+$"},
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "document_sha256", "components", "dependencies", "ignored_field_paths", "coverage"],
+      "properties": {
+        "format": {"enum": ["cyclonedx-1.7", "spdx-3.0.1"]},
+        "document_sha256": {"$ref": "#/$defs/digest"},
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8192,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source_ref", "source_class", "sha256", "package_url"],
+            "properties": {
+              "source_ref": {"$ref": "#/$defs/reference"},
+              "source_class": {"type": "string", "minLength": 1, "maxLength": 64},
+              "sha256": {"$ref": "#/$defs/digest"},
+              "package_url": {"$ref": "#/$defs/nullablePurl"}
+            }
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "maxItems": 32768,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["dependent_ref", "dependency_ref"],
+            "properties": {
+              "dependent_ref": {"$ref": "#/$defs/reference"},
+              "dependency_ref": {"$ref": "#/$defs/reference"}
+            }
+          }
+        },
+        "ignored_field_paths": {
+          "type": "array",
+          "maxItems": 65536,
+          "items": {"type": "string", "minLength": 1, "maxLength": 4096}
+        },
+        "coverage": {
+          "const": {
+            "component_fields": ["source_class", "source_ref", "sha256", "package_url"],
+            "relationship_types": ["depends_on"]
+          }
+        }
+      }
+    },
+    "componentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_id",
+        "artifact_id",
+        "kind",
+        "cyclonedx_ref",
+        "spdx_id",
+        "cyclonedx_sha256",
+        "spdx_sha256",
+        "cyclonedx_package_url",
+        "spdx_package_url",
+        "sha256_match",
+        "package_url_match",
+        "kind_match",
+        "artifact_binding_match"
+      ],
+      "properties": {
+        "component_id": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1#/$defs/id"},
+        "artifact_id": {"oneOf": [{"type": "null"}, {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1#/$defs/id"}]},
+        "kind": {"enum": ["container", "dataset", "model", "package", "policy", "runtime"]},
+        "cyclonedx_ref": {"$ref": "#/$defs/reference"},
+        "spdx_id": {"$ref": "#/$defs/reference"},
+        "cyclonedx_sha256": {"$ref": "#/$defs/nullableDigest"},
+        "spdx_sha256": {"$ref": "#/$defs/nullableDigest"},
+        "cyclonedx_package_url": {"$ref": "#/$defs/nullablePurl"},
+        "spdx_package_url": {"$ref": "#/$defs/nullablePurl"},
+        "sha256_match": {"type": "boolean"},
+        "package_url_match": {"type": "boolean"},
+        "kind_match": {"type": "boolean"},
+        "artifact_binding_match": {"type": "boolean"}
+      }
+    },
+    "normalizedEdges": {
+      "type": "array",
+      "maxItems": 32768,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dependent_component_id", "dependency_component_id"],
+        "properties": {
+          "dependent_component_id": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1#/$defs/id"},
+          "dependency_component_id": {"$ref": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1#/$defs/id"}
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "subject"],
+      "properties": {
+        "code": {
+          "enum": [
+            "artifact_digest_mismatch",
+            "artifact_kind_mismatch",
+            "artifact_package_url_mismatch",
+            "component_kind_mismatch",
+            "cyclonedx_component_missing",
+            "cyclonedx_component_unmapped",
+            "cyclonedx_dependency_unmapped",
+            "dependency_missing_from_cyclonedx",
+            "dependency_missing_from_spdx",
+            "package_url_mismatch",
+            "sha256_mismatch",
+            "spdx_component_missing",
+            "spdx_component_unmapped",
+            "spdx_dependency_unmapped"
+          ]
+        },
+        "subject": {"type": "string", "minLength": 1, "maxLength": 4097}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "component_count",
+        "matched_component_count",
+        "component_parity_rate",
+        "dependency_count",
+        "matched_dependency_count",
+        "dependency_parity_rate",
+        "artifact_subject_count",
+        "ignored_field_count",
+        "finding_count",
+        "verdict"
+      ],
+      "properties": {
+        "component_count": {"type": "integer", "minimum": 1, "maximum": 8192},
+        "matched_component_count": {"type": "integer", "minimum": 0, "maximum": 8192},
+        "component_parity_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "dependency_count": {"type": "integer", "minimum": 0, "maximum": 32768},
+        "matched_dependency_count": {"type": "integer", "minimum": 0, "maximum": 32768},
+        "dependency_parity_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "artifact_subject_count": {"type": "integer", "minimum": 1, "maximum": 3},
+        "ignored_field_count": {"type": "integer", "minimum": 0, "maximum": 131072},
+        "finding_count": {"type": "integer", "minimum": 0, "maximum": 65536},
+        "verdict": {"enum": ["pass", "fail"]}
+      }
+    }
+  }
+}

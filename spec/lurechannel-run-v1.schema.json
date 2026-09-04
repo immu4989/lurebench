@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurechannel-run-v1",
+  "title": "LureChannel metadata-only canary observation run v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "observation_id", "campaign_id", "plan_sha256", "started_at", "completed_at", "probes", "sensor_windows", "privacy", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurechannel-run-v1"},
+    "schema_version": {"const": 1},
+    "observation_id": {"$ref": "#/$defs/id"},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "started_at": {"$ref": "#/$defs/timestamp"},
+    "completed_at": {"$ref": "#/$defs/timestamp"},
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["test_id", "probe_id", "canary_sha256", "emitted_at", "sightings"],
+        "properties": {
+          "test_id": {"$ref": "#/$defs/id"},
+          "probe_id": {"$ref": "#/$defs/id"},
+          "canary_sha256": {"$ref": "#/$defs/digest"},
+          "emitted_at": {"$ref": "#/$defs/timestamp"},
+          "sightings": {
+            "type": "array",
+            "maxItems": 16384,
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["sighting_id", "sensor_id", "observer_run_id", "channel_id", "observed_at"],
+              "properties": {
+                "sighting_id": {"$ref": "#/$defs/id"},
+                "sensor_id": {"$ref": "#/$defs/id"},
+                "observer_run_id": {"$ref": "#/$defs/id"},
+                "channel_id": {"$ref": "#/$defs/id"},
+                "observed_at": {"$ref": "#/$defs/timestamp"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "sensor_windows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2048,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sensor_id", "channel_id", "opened_at", "closed_at", "complete"],
+        "properties": {
+          "sensor_id": {"$ref": "#/$defs/id"},
+          "channel_id": {"$ref": "#/$defs/id"},
+          "opened_at": {"$ref": "#/$defs/timestamp"},
+          "closed_at": {"$ref": "#/$defs/timestamp"},
+          "complete": {"type": "boolean"}
+        }
+      }
+    },
+    "privacy": {"$ref": "lurechannel-plan-v1#/$defs/privacy"},
+    "limitations": {"$ref": "lurechannel-plan-v1#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"}
+  }
+}

@@ -21,6 +21,8 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![LureArtifact](https://img.shields.io/badge/LureArtifact-model_·_image_·_policy_·_AI--BOM-7b61ff)
 ![LureRecall](https://img.shields.io/badge/LureRecall-transitive_blast_radius_·_recovery-7b61ff)
 ![LureAttest](https://img.shields.io/badge/LureAttest-DSSE_·_SLSA_expectations-7b61ff)
+![LureBOM Twin](https://img.shields.io/badge/LureBOM_Twin-SPDX_3.0.1_↔_CycloneDX_1.7-7b61ff)
+![LureChannel](https://img.shields.io/badge/LureChannel-cross--run_canary_flows-7b61ff)
 ![Agent assurance](https://img.shields.io/badge/agent_assurance-OCI_·_coverage_·_delegation_·_IR-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
@@ -39,6 +41,8 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
   <a href="docs/LUREARTIFACT.md"><strong>Authorize deployed AI artifacts</strong></a> ·
   <a href="docs/LURERECALL.md"><strong>Recall compromised artifacts</strong></a> ·
   <a href="docs/LUREATTEST.md"><strong>Authenticate provenance</strong></a> ·
+  <a href="docs/LUREBOM.md"><strong>Reconcile AI-BOM twins</strong></a> ·
+  <a href="docs/LURECHANNEL.md"><strong>Test cross-run isolation</strong></a> ·
   <a href="docs/LUREINVARIANT.md"><strong>Evaluate system invariants</strong></a> ·
   <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
@@ -129,6 +133,26 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > ECDSA P-256 DSSE payload bytes and evaluates the SLSA statement. This fixed-key
 > profile does not claim Sigstore transparency or build-platform certification.
 
+> **New — detect when two signed BOMs disagree about the same AI system.**
+> [LureBOM Twin](docs/LUREBOM.md) reparses exact CycloneDX 1.7 and SPDX 3.0.1
+> JSON-LD bytes, binds the primary document to LureArtifact, and compares an
+> explicitly reviewed component map across SHA-256, Package URL, component
+> class, and directed `dependsOn` edges. Missing, extra, ambiguous, or
+> one-sided claims cannot become a quiet pass. Every richer field outside the
+> common profile is listed as projection loss rather than silently treated as
+> equivalent. This is bounded semantic reconciliation—not full schema
+> conformance, issuer authentication, inventory completeness, or artifact safety.
+
+> **New — test whether isolated agent runs can exchange information.**
+> [LureChannel](docs/LURECHANNEL.md) preregisters allowed and denied
+> cross-domain canary flows across shared services, network helpers, object
+> stores, metadata services, and residual filesystems. It requires positive
+> delivery controls and complete sensor windows, reports an observed forbidden
+> or post-termination flow as `fail`, and reports missing negative-space
+> evidence as `inconclusive`—never a quiet pass. Canaries are non-sensitive and
+> digest-only; the evaluator executes no agent action or exploit and does not
+> claim universal noninterference, containment, or safety.
+
 > **New — test invariants that cross the model, tools, network, identity, and
 > lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed
 > transitive reachability, required mediation, bounded shutdown, and prohibited
@@ -184,7 +208,7 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 | **A researcher** | Reproduce the provenance confound and its removal, add a detector in ~30 lines ([docs/adding-a-detector.md](docs/adding-a-detector.md)), or extend the corpus with new generators and typologies. |
 | **A policy / threat-intel analyst** | Ground claims about "AI-generated fraud detection" in measured numbers — including where it works, and where it is close to a coin flip. |
 | **A procurement or assurance team** | Evaluate a proprietary image against a private held-out set, preserve an immutable report, and pool compatible signed field evidence without collecting messages. |
-| **An agent platform or frontier AI team** | Test typed isolation and lifecycle controls with LurePermit/LureIdentity, bind every workload to approved models, images, policies, AI-BOMs, and provenance with LureArtifact, authenticate bounded DSSE/SLSA expectations with LureAttest, use LureRecall to scope and measure a transitive component recall, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
+| **An agent platform or frontier AI team** | Test typed isolation and lifecycle controls with LurePermit/LureIdentity, detect cross-run information transfer and residual state with LureChannel, bind every workload to approved models, images, policies, AI-BOMs, and provenance with LureArtifact, authenticate bounded DSSE/SLSA expectations with LureAttest, reconcile CycloneDX/SPDX release twins with LureBOM, use LureRecall to scope and measure a transitive component recall, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
 
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 

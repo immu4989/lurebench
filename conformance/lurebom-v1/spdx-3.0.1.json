@@ -1,0 +1,104 @@
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "@id": "_:creationinfo",
+      "type": "CreationInfo",
+      "specVersion": "3.0.1",
+      "created": "2026-09-05T00:01:00Z",
+      "createdBy": ["urn:lurebom:spdx:organization"]
+    },
+    {
+      "type": "Organization",
+      "spdxId": "urn:lurebom:spdx:organization",
+      "creationInfo": "_:creationinfo",
+      "name": "LureBOM conformance fixture"
+    },
+    {
+      "type": "SpdxDocument",
+      "spdxId": "urn:lurebom:spdx:document",
+      "creationInfo": "_:creationinfo",
+      "profileConformance": ["core", "software", "ai"],
+      "rootElement": [
+        "urn:lurebom:spdx:alpha-container",
+        "urn:lurebom:spdx:alpha-model",
+        "urn:lurebom:spdx:alpha-policy"
+      ]
+    },
+    {
+      "type": "software_Package",
+      "spdxId": "urn:lurebom:spdx:alpha-container",
+      "creationInfo": "_:creationinfo",
+      "name": "lureagent-alpha",
+      "software_packageVersion": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "software_primaryPurpose": "container",
+      "software_packageUrl": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "algorithm": "sha256",
+          "hashValue": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "type": "ai_AIPackage",
+      "spdxId": "urn:lurebom:spdx:alpha-model",
+      "creationInfo": "_:creationinfo",
+      "name": "model-alpha",
+      "software_packageVersion": "0123456789abcdef",
+      "software_primaryPurpose": "machineLearningModel",
+      "software_packageUrl": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+      "ai_typeOfModel": ["text-classification"],
+      "ai_informationAboutApplication": "Defanged fraud-lure evaluation",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "algorithm": "sha256",
+          "hashValue": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ]
+    },
+    {
+      "type": "software_Package",
+      "spdxId": "urn:lurebom:spdx:alpha-policy",
+      "creationInfo": "_:creationinfo",
+      "name": "alpha-policy",
+      "software_packageVersion": "1.0.0",
+      "software_primaryPurpose": "application",
+      "software_packageUrl": "pkg:generic/example/alpha-policy@1.0.0",
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "algorithm": "sha256",
+          "hashValue": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      ]
+    },
+    {
+      "type": "ai_AIPackage",
+      "spdxId": "urn:lurebom:spdx:alpha-base-model",
+      "creationInfo": "_:creationinfo",
+      "name": "base-model",
+      "software_packageVersion": "89abcdef01234567",
+      "software_primaryPurpose": "machineLearningModel",
+      "software_packageUrl": "pkg:huggingface/example/base-model@89abcdef01234567",
+      "ai_typeOfModel": ["foundation-model"],
+      "verifiedUsing": [
+        {
+          "type": "Hash",
+          "algorithm": "sha256",
+          "hashValue": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "type": "Relationship",
+      "spdxId": "urn:lurebom:spdx:relationship:model-base",
+      "creationInfo": "_:creationinfo",
+      "relationshipType": "dependsOn",
+      "from": "urn:lurebom:spdx:alpha-model",
+      "to": ["urn:lurebom:spdx:alpha-base-model"]
+    }
+  ]
+}

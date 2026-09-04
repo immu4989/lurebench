@@ -62,6 +62,18 @@ otherwise.
   policy SLSA floor above reviewed builder trust, unsafe evidence
   filename, weakened fixed requirement, duplicate key, noncanonical JSON, or
   overwrite.
+- LureBOM reconciliation accepting a changed primary or mirror document,
+  duplicate JSON key, unsupported standard version, ambiguous SHA-256, inferred
+  rather than reviewed identity, missing or extra component, incompatible
+  component class, artifact digest/PURL drift, unknown/self/duplicate edge,
+  one-sided dependency, hidden projection loss, altered metric or verdict,
+  unsafe path, oversized input, or overwrite while still reporting pass.
+- LureChannel accepting an unauthorized, residual, late, duplicate, or
+  unexpected-path sighting while reporting pass; treating an incomplete sensor
+  window or failed positive control as evidence of isolation; accepting
+  contradictory run lifetimes, same-domain transfer tests, untested denied
+  channels, changed bindings, duplicate canaries or identifiers, noncanonical
+  JSON, unsafe paths, oversized input, or overwrite.
 - SPIFFE parsing that admits ambiguous authority components, percent encoding,
   relative or empty path segments, Unicode, oversized IDs, or a root identity
   where a workload path is required; or disagreement between identity, runtime,
@@ -102,6 +114,14 @@ SHAs.
 Release builds are deliberately separated from the job that receives OIDC
 attestation and GitHub Release write authority, reducing the privilege available
 to package build backends.
+
+LureChannel is intended only for authorized, operator-controlled environments.
+Canaries must be non-sensitive and non-executable; never use credentials,
+customer data, real prompts, personal data, or exploit payloads. Do not probe a
+third-party service without authorization. Evaluations expose internal topology
+identifiers and should remain private. A `complete` sensor window is an operator
+assertion, not infrastructure discovery, and a passing declared matrix does not
+prove that unknown or uninstrumented communication paths are absent.
 
 ## Acceptable use
 

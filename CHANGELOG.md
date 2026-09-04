@@ -3,6 +3,30 @@
 ## Unreleased
 
 ### Added
+- Added LureChannel, a dependency-free metadata-only cross-run isolation
+  benchmark. A reviewed plan declares isolated run lifetimes, authorized and
+  denied channels, sensor topology, positive delivery controls, active denied
+  flows, and post-termination residue tests. The evaluator records only canary
+  SHA-256 digests and typed sightings, gives direct forbidden observations
+  precedence as `fail`, and returns `inconclusive` when sensor windows or
+  delivery controls are incomplete. Three Draft 2020-12 schemas, a public
+  plan/run/evaluation vector, private no-overwrite CLI output, an operator
+  guide, and adversarial tests are included. A pass is bounded evidence for the
+  declared matrix, not universal noninterference, containment, safety,
+  compliance, certification, or deployment authorization.
+- Added LureBOM Twin, a dependency-free cross-standard AI-BOM reconciliation
+  benchmark for one exact LureArtifact workload. It strictly parses CycloneDX
+  1.7 JSON and SPDX 3.0.1 JSON-LD, requires an explicit reviewed identity map,
+  binds the primary BOM digest to LureArtifact, and compares every mapped
+  component's SHA-256, Package URL, compatible class, artifact subject, and
+  directed `dependsOn` edge. Missing, extra, duplicate, ambiguous, and
+  one-sided claims fail or become explicit findings. Every unprojected field is
+  disclosed by path so a common-denominator pass cannot be mistaken for full
+  semantic equivalence. Two schemas, a five-source golden vector, private
+  no-overwrite CLI output, an operator guide, and adversarial tests are
+  included. This is not complete SPDX/CycloneDX conformance, issuer
+  authentication, inventory completeness, vulnerability/license analysis, or
+  artifact safety.
 - Added LureAttest, a dependency-free compiler that binds every provenance
   claim in one exact LureArtifact plan to a reviewed ECDSA P-256 signer,
   builder identity, source URI/digest, build type, artifact subject, canonical

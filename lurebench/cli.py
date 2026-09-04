@@ -1232,6 +1232,106 @@ def _cmd_artifact_verify(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_bom_reconcile(args: argparse.Namespace) -> int:
+    try:
+        from .bom import reconcile_bom_files
+
+        evaluation = reconcile_bom_files(
+            Path(args.artifact_plan),
+            Path(args.manifest),
+            Path(args.cyclonedx),
+            Path(args.spdx),
+            Path(args.out),
+            evaluated_at=args.evaluated_at,
+        )
+        summary = evaluation["summary"]
+        if args.json:
+            print(json.dumps(evaluation, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LUREBOM TWIN: {summary['verdict'].upper()} — "
+                f"components={summary['matched_component_count']}/{summary['component_count']} "
+                f"dependencies={summary['matched_dependency_count']}/"
+                f"{summary['dependency_count']} findings={summary['finding_count']} — {args.out}"
+            )
+            print(
+                "boundary: explicit SHA-256, Package URL, class, and dependsOn projection; "
+                "not full SPDX/CycloneDX conformance, completeness, authenticity, or safety"
+            )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureBOM reconciliation failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_bom_verify(args: argparse.Namespace) -> int:
+    try:
+        from .bom import load_bom_evaluation
+
+        evaluation = load_bom_evaluation(Path(args.evaluation))
+        summary = evaluation["summary"]
+        print(
+            f"LUREBOM VERIFIED: {summary['verdict'].upper()} — "
+            f"components={summary['matched_component_count']}/{summary['component_count']} "
+            f"dependencies={summary['matched_dependency_count']}/{summary['dependency_count']} "
+            f"findings={summary['finding_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureBOM verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_channel_eval(args: argparse.Namespace) -> int:
+    try:
+        from .channel import evaluate_channel_files
+
+        evaluation = evaluate_channel_files(
+            Path(args.plan),
+            Path(args.run),
+            Path(args.out),
+            evaluated_at=args.evaluated_at,
+        )
+        summary = evaluation["summary"]
+        if args.json:
+            print(json.dumps(evaluation, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LURECHANNEL: {summary['verdict'].upper()} — "
+                f"tests={summary['passed_test_count']}/{summary['test_count']} "
+                f"inconclusive={summary['inconclusive_test_count']} "
+                f"unauthorized={summary['unauthorized_flow_count']} "
+                f"residual={summary['residual_flow_count']} "
+                f"sensor-coverage={summary['sensor_coverage_rate']:.3f} — {args.out}"
+            )
+            print(
+                "boundary: non-sensitive canaries across declared runs, channels, sensors, "
+                "and windows; not universal noninterference, containment, or safety"
+            )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureChannel evaluation failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_channel_verify(args: argparse.Namespace) -> int:
+    try:
+        from .channel import load_channel_evaluation
+
+        evaluation = load_channel_evaluation(Path(args.evaluation))
+        summary = evaluation["summary"]
+        print(
+            f"LURECHANNEL VERIFIED: {summary['verdict'].upper()} — "
+            f"tests={summary['passed_test_count']}/{summary['test_count']} "
+            f"inconclusive={summary['inconclusive_test_count']} "
+            f"findings={summary['finding_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureChannel verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_recall_compose(args: argparse.Namespace) -> int:
     try:
         from .artifact import load_artifact_plan
@@ -2240,6 +2340,48 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_artifact_verify.add_argument("evaluation")
     p_artifact_verify.set_defaults(func=_cmd_artifact_verify)
+
+    p_bom_reconcile = sub.add_parser(
+        "bom-reconcile",
+        help="compare exact CycloneDX 1.7 and SPDX 3.0.1 AI-BOM projections",
+    )
+    p_bom_reconcile.add_argument("--artifact-plan", required=True)
+    p_bom_reconcile.add_argument("--manifest", required=True)
+    p_bom_reconcile.add_argument("--cyclonedx", required=True)
+    p_bom_reconcile.add_argument("--spdx", required=True)
+    p_bom_reconcile.add_argument("--evaluated-at")
+    p_bom_reconcile.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureBOM evaluation JSON"
+    )
+    p_bom_reconcile.add_argument("--json", action="store_true")
+    p_bom_reconcile.set_defaults(func=_cmd_bom_reconcile)
+
+    p_bom_verify = sub.add_parser(
+        "bom-verify",
+        help="strictly parse and recompute a saved LureBOM Twin evaluation",
+    )
+    p_bom_verify.add_argument("evaluation")
+    p_bom_verify.set_defaults(func=_cmd_bom_verify)
+
+    p_channel_eval = sub.add_parser(
+        "channel-eval",
+        help="evaluate canary flows across declared agent-run isolation boundaries",
+    )
+    p_channel_eval.add_argument("--plan", required=True)
+    p_channel_eval.add_argument("--run", required=True)
+    p_channel_eval.add_argument("--evaluated-at")
+    p_channel_eval.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureChannel evaluation JSON"
+    )
+    p_channel_eval.add_argument("--json", action="store_true")
+    p_channel_eval.set_defaults(func=_cmd_channel_eval)
+
+    p_channel_verify = sub.add_parser(
+        "channel-verify",
+        help="strictly parse and recompute a saved LureChannel evaluation",
+    )
+    p_channel_verify.add_argument("evaluation")
+    p_channel_verify.set_defaults(func=_cmd_channel_verify)
 
     p_recall_compose = sub.add_parser(
         "recall-compose",

@@ -1,0 +1,74 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lurechannel-run-v1",
+  "schema_version": 1,
+  "observation_id": "isolation-observation-1",
+  "campaign_id": "isolation-campaign-1",
+  "plan_sha256": "e6f1a21f38002583fdac1abbab6dcf1458a932d4bdec292182b8c83416c0a547",
+  "started_at": "2026-09-05T00:01:00Z",
+  "completed_at": "2026-09-05T00:07:00Z",
+  "probes": [
+    {
+      "test_id": "active-approved-control",
+      "probe_id": "probe-approved",
+      "canary_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "emitted_at": "2026-09-05T00:02:00Z",
+      "sightings": [
+        {
+          "sighting_id": "sighting-approved",
+          "sensor_id": "collab-sensor",
+          "observer_run_id": "run-b",
+          "channel_id": "approved-collab",
+          "observed_at": "2026-09-05T00:02:00.200000Z"
+        }
+      ]
+    },
+    {
+      "test_id": "active-package-isolation",
+      "probe_id": "probe-package",
+      "canary_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "emitted_at": "2026-09-05T00:03:00Z",
+      "sightings": []
+    },
+    {
+      "test_id": "post-termination-residue",
+      "probe_id": "probe-residue",
+      "canary_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "emitted_at": "2026-09-05T00:05:30Z",
+      "sightings": []
+    }
+  ],
+  "sensor_windows": [
+    {
+      "sensor_id": "collab-sensor",
+      "channel_id": "approved-collab",
+      "opened_at": "2026-09-05T00:01:00Z",
+      "closed_at": "2026-09-05T00:07:00Z",
+      "complete": true
+    },
+    {
+      "sensor_id": "filesystem-sensor",
+      "channel_id": "shared-filesystem",
+      "opened_at": "2026-09-05T00:01:00Z",
+      "closed_at": "2026-09-05T00:07:00Z",
+      "complete": true
+    },
+    {
+      "sensor_id": "package-sensor",
+      "channel_id": "package-cache",
+      "opened_at": "2026-09-05T00:01:00Z",
+      "closed_at": "2026-09-05T00:07:00Z",
+      "complete": true
+    }
+  ],
+  "privacy": {
+    "canary_payloads": "excluded_digest_only",
+    "customer_content": "excluded",
+    "secrets": "excluded"
+  },
+  "limitations": [
+    "canary_absence_only_applies_to_declared_channels_sensors_windows_and_runs",
+    "sensor_completeness_is_operator_asserted_not_independently_discovered",
+    "canaries_do_not_execute_exploits_or_establish_universal_noninterference",
+    "passing_is_not_containment_safety_compliance_certification_or_deployment_authorization"
+  ]
+}

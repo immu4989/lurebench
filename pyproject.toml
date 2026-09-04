@@ -120,6 +120,11 @@ packages = ["lurebench"]
 "spec/lurerecall-evaluation-v1.schema.json" = "lurebench/spec/lurerecall-evaluation-v1.schema.json"
 "spec/lureattest-trust-policy-v1.schema.json" = "lurebench/spec/lureattest-trust-policy-v1.schema.json"
 "spec/lureattest-plan-v1.schema.json" = "lurebench/spec/lureattest-plan-v1.schema.json"
+"spec/lurebom-manifest-v1.schema.json" = "lurebench/spec/lurebom-manifest-v1.schema.json"
+"spec/lurebom-evaluation-v1.schema.json" = "lurebench/spec/lurebom-evaluation-v1.schema.json"
+"spec/lurechannel-plan-v1.schema.json" = "lurebench/spec/lurechannel-plan-v1.schema.json"
+"spec/lurechannel-run-v1.schema.json" = "lurebench/spec/lurechannel-run-v1.schema.json"
+"spec/lurechannel-evaluation-v1.schema.json" = "lurebench/spec/lurechannel-evaluation-v1.schema.json"
 "spec/spiffe-id-conformance-v1.schema.json" = "lurebench/spec/spiffe-id-conformance-v1.schema.json"
 "conformance/lureeval-v1" = "lurebench/conformance_data/lureeval-v1"
 "conformance/lureboundary-v1" = "lurebench/conformance_data/lureboundary-v1"
@@ -128,6 +133,8 @@ packages = ["lurebench"]
 "conformance/lureartifact-v1" = "lurebench/conformance_data/lureartifact-v1"
 "conformance/lurerecall-v1" = "lurebench/conformance_data/lurerecall-v1"
 "conformance/lureattest-v1" = "lurebench/conformance_data/lureattest-v1"
+"conformance/lurebom-v1" = "lurebench/conformance_data/lurebom-v1"
+"conformance/lurechannel-v1" = "lurebench/conformance_data/lurechannel-v1"
 
 [tool.ruff]
 line-length = 100

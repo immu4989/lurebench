@@ -1,0 +1,54 @@
+{
+  "schema": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1",
+  "schema_version": 1,
+  "reconciliation_id": "lurebom-conformance",
+  "created_at": "2026-09-05T00:02:00Z",
+  "artifact_plan_sha256": "5e64f9391bc65f333641d0246b879d020dc7ac4dc2948432cd8211833c87636b",
+  "workload_principal_id": "workload-alpha",
+  "primary_format": "spdx-3.0.1",
+  "cyclonedx_document_sha256": "2d8ee763f2b4dcf5c7d0b3353ab569295fc3069f6cd8919b54389ce1314f242d",
+  "spdx_document_sha256": "76bf0b73e6ac970642b97a87cbd405c8ead9f66fc818622cc8d74f2ef0240dd4",
+  "components": [
+    {
+      "component_id": "alpha-base-model",
+      "artifact_id": null,
+      "kind": "model",
+      "cyclonedx_ref": "urn:lurebom:cyclonedx:alpha-base-model",
+      "spdx_id": "urn:lurebom:spdx:alpha-base-model"
+    },
+    {
+      "component_id": "alpha-container-root",
+      "artifact_id": "alpha-container",
+      "kind": "container",
+      "cyclonedx_ref": "urn:lurebom:cyclonedx:alpha-container",
+      "spdx_id": "urn:lurebom:spdx:alpha-container"
+    },
+    {
+      "component_id": "alpha-model-root",
+      "artifact_id": "alpha-model",
+      "kind": "model",
+      "cyclonedx_ref": "urn:lurebom:cyclonedx:alpha-model",
+      "spdx_id": "urn:lurebom:spdx:alpha-model"
+    },
+    {
+      "component_id": "alpha-policy-root",
+      "artifact_id": "alpha-policy",
+      "kind": "policy",
+      "cyclonedx_ref": "urn:lurebom:cyclonedx:alpha-policy",
+      "spdx_id": "urn:lurebom:spdx:alpha-policy"
+    }
+  ],
+  "policy": {
+    "require_all_components_mapped": true,
+    "require_artifact_subject_coverage": true,
+    "require_sha256_parity": true,
+    "require_package_url_parity": true,
+    "require_dependency_parity": true
+  },
+  "limitations": [
+    "component_identity_is_explicitly_reviewed_and_never_inferred_from_names_or_versions",
+    "only_sha256_package_url_component_class_and_directed_dependson_edges_are_compared",
+    "the_primary_bom_digest_is_bound_to_lureartifact_while_the_mirror_digest_is_manifest_bound",
+    "the_manifest_does_not_authenticate_bom_issuers_or_establish_source_document_conformance"
+  ]
+}

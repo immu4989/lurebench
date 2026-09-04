@@ -1,0 +1,96 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "serialNumber": "urn:uuid:02d8d2a2-1e06-4b0f-a2c5-946f06a5a001",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-05T00:01:00Z",
+    "component": {
+      "bom-ref": "urn:lurebom:cyclonedx:alpha-system",
+      "type": "application",
+      "name": "LureBOM alpha agent system",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "urn:lurebom:cyclonedx:alpha-container",
+      "type": "container",
+      "name": "lureagent-alpha",
+      "version": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "purl": "pkg:oci/example/lureagent-alpha@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    {
+      "bom-ref": "urn:lurebom:cyclonedx:alpha-model",
+      "type": "machine-learning-model",
+      "name": "model-alpha",
+      "version": "0123456789abcdef",
+      "purl": "pkg:huggingface/example/model-alpha@0123456789abcdef",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      ],
+      "modelCard": {
+        "modelParameters": {
+          "approach": {"type": "supervised"}
+        },
+        "considerations": {
+          "useCases": ["Defanged fraud-lure evaluation"]
+        }
+      }
+    },
+    {
+      "bom-ref": "urn:lurebom:cyclonedx:alpha-policy",
+      "type": "application",
+      "name": "alpha-policy",
+      "version": "1.0.0",
+      "purl": "pkg:generic/example/alpha-policy@1.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      ]
+    },
+    {
+      "bom-ref": "urn:lurebom:cyclonedx:alpha-base-model",
+      "type": "machine-learning-model",
+      "name": "base-model",
+      "version": "89abcdef01234567",
+      "purl": "pkg:huggingface/example/base-model@89abcdef01234567",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "urn:lurebom:cyclonedx:alpha-container",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:lurebom:cyclonedx:alpha-model",
+      "dependsOn": ["urn:lurebom:cyclonedx:alpha-base-model"]
+    },
+    {
+      "ref": "urn:lurebom:cyclonedx:alpha-policy",
+      "dependsOn": []
+    },
+    {
+      "ref": "urn:lurebom:cyclonedx:alpha-base-model",
+      "dependsOn": []
+    }
+  ]
+}

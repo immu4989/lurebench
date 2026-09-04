@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1",
+  "title": "LureBOM Twin reviewed cross-standard reconciliation manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "reconciliation_id",
+    "created_at",
+    "artifact_plan_sha256",
+    "workload_principal_id",
+    "primary_format",
+    "cyclonedx_document_sha256",
+    "spdx_document_sha256",
+    "components",
+    "policy",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurebom-manifest-v1"},
+    "schema_version": {"const": 1},
+    "reconciliation_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "artifact_plan_sha256": {"$ref": "#/$defs/digest"},
+    "workload_principal_id": {"$ref": "#/$defs/id"},
+    "primary_format": {"enum": ["cyclonedx-1.7", "spdx-3.0.1"]},
+    "cyclonedx_document_sha256": {"$ref": "#/$defs/digest"},
+    "spdx_document_sha256": {"$ref": "#/$defs/digest"},
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8192,
+      "items": {"$ref": "#/$defs/mapping"}
+    },
+    "policy": {
+      "const": {
+        "require_all_components_mapped": true,
+        "require_artifact_subject_coverage": true,
+        "require_sha256_parity": true,
+        "require_package_url_parity": true,
+        "require_dependency_parity": true
+      }
+    },
+    "limitations": {
+      "const": [
+        "component_identity_is_explicitly_reviewed_and_never_inferred_from_names_or_versions",
+        "only_sha256_package_url_component_class_and_directed_dependson_edges_are_compared",
+        "the_primary_bom_digest_is_bound_to_lureartifact_while_the_mirror_digest_is_manifest_bound",
+        "the_manifest_does_not_authenticate_bom_issuers_or_establish_source_document_conformance"
+      ]
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 96,
+      "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"
+    },
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^\\S+$"
+    },
+    "mapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "artifact_id", "kind", "cyclonedx_ref", "spdx_id"],
+      "properties": {
+        "component_id": {"$ref": "#/$defs/id"},
+        "artifact_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+        "kind": {"enum": ["container", "dataset", "model", "package", "policy", "runtime"]},
+        "cyclonedx_ref": {"$ref": "#/$defs/reference"},
+        "spdx_id": {"$ref": "#/$defs/reference"}
+      }
+    }
+  }
+}

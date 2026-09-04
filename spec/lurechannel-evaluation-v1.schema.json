@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/lurechannel-evaluation-v1",
+  "title": "LureChannel cross-run canary-flow evaluation v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "evaluation_id", "evaluated_at", "engine", "plan_sha256", "run_sha256", "plan", "run", "results", "findings", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/lurechannel-evaluation-v1"},
+    "schema_version": {"const": 1},
+    "evaluation_id": {"$ref": "#/$defs/id"},
+    "evaluated_at": {"$ref": "#/$defs/timestamp"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": {"const": "lurebench-lurechannel"},
+        "version": {"const": "1.0.0"}
+      }
+    },
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "run_sha256": {"$ref": "#/$defs/digest"},
+    "plan": {"$ref": "lurechannel-plan-v1"},
+    "run": {"$ref": "lurechannel-run-v1"},
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["test_id", "phase", "expectation", "status", "sighting_count", "complete_sensor_window_count", "required_sensor_window_count", "findings"],
+        "properties": {
+          "test_id": {"$ref": "#/$defs/id"},
+          "phase": {"enum": ["active", "post_termination"]},
+          "expectation": {"enum": ["deliver", "isolate"]},
+          "status": {"enum": ["pass", "fail", "inconclusive"]},
+          "sighting_count": {"type": "integer", "minimum": 0, "maximum": 16384},
+          "complete_sensor_window_count": {"type": "integer", "minimum": 0, "maximum": 512},
+          "required_sensor_window_count": {"type": "integer", "minimum": 1, "maximum": 512},
+          "findings": {"type": "array", "maxItems": 16384, "items": {"$ref": "#/$defs/finding"}}
+        }
+      }
+    },
+    "findings": {"type": "array", "maxItems": 65536, "items": {"$ref": "#/$defs/finding"}},
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "test_count", "passed_test_count", "failed_test_count", "inconclusive_test_count", "delivery_control_count", "delivered_control_count", "delivery_control_rate", "isolation_test_count", "clean_isolation_test_count", "unauthorized_flow_count", "residual_flow_count", "sighting_count", "required_sensor_window_count", "complete_sensor_window_count", "sensor_coverage_rate", "finding_count"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail", "inconclusive"]},
+        "test_count": {"$ref": "#/$defs/count"},
+        "passed_test_count": {"$ref": "#/$defs/count"},
+        "failed_test_count": {"$ref": "#/$defs/count"},
+        "inconclusive_test_count": {"$ref": "#/$defs/count"},
+        "delivery_control_count": {"$ref": "#/$defs/count"},
+        "delivered_control_count": {"$ref": "#/$defs/count"},
+        "delivery_control_rate": {"$ref": "#/$defs/rate"},
+        "isolation_test_count": {"$ref": "#/$defs/count"},
+        "clean_isolation_test_count": {"$ref": "#/$defs/count"},
+        "unauthorized_flow_count": {"$ref": "#/$defs/count"},
+        "residual_flow_count": {"$ref": "#/$defs/count"},
+        "sighting_count": {"$ref": "#/$defs/count"},
+        "required_sensor_window_count": {"$ref": "#/$defs/count"},
+        "complete_sensor_window_count": {"$ref": "#/$defs/count"},
+        "sensor_coverage_rate": {"$ref": "#/$defs/rate"},
+        "finding_count": {"$ref": "#/$defs/count"}
+      }
+    },
+    "limitations": {"$ref": "lurechannel-plan-v1#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,95}$"},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "test_id", "subject"],
+      "properties": {
+        "code": {"enum": ["duplicate_control_sighting", "late_delivery_control", "missing_delivery_control", "residual_state_flow", "sensor_window_incomplete", "unauthorized_flow", "unexpected_canary_path"]},
+        "test_id": {"$ref": "#/$defs/id"},
+        "subject": {"$ref": "#/$defs/id"}
+      }
+    }
+  }
+}
