@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-submission/v1",
+  "title": "LureMandate black-box conformance submission v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "submission_id",
+    "submitted_at",
+    "challenge_id",
+    "challenge_sha256",
+    "engine",
+    "results",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-submission/v1"},
+    "schema_version": {"const": 1},
+    "submission_id": {"$ref": "#/$defs/id"},
+    "submitted_at": {"type": "string", "format": "date-time"},
+    "challenge_id": {"$ref": "#/$defs/id"},
+    "challenge_sha256": {"$ref": "#/$defs/digest"},
+    "engine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["engine_id", "engine_version", "engine_artifact_sha256"],
+      "properties": {
+        "engine_id": {"$ref": "#/$defs/id"},
+        "engine_version": {"$ref": "#/$defs/id"},
+        "engine_artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+      }
+    },
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "decision", "reason_code"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^case-[0-9]{4}$"},
+          "decision": {"enum": ["allow", "block"]},
+          "reason_code": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/reason"}
+        }
+      }
+    },
+    "limitations": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-challenge/v1#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

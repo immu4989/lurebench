@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-approval-statement-v1",
+  "title": "LureMandate canonical approval signing statement v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "campaign_id", "plan_sha256", "approval"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-approval-statement-v1"},
+    "schema_version": {"const": 1},
+    "campaign_id": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/id"},
+    "plan_sha256": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/digest"},
+    "approval": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/approval"}
+  }
+}

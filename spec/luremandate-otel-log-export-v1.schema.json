@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-otel-log-export/v1",
+  "title": "Strict body-free OpenTelemetry LureMandate log export v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "export_id", "generated_at", "time_origin_unix_nano", "campaign_id", "plan_sha256", "run_id", "started_at", "completed_at", "receiver", "records", "privacy", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-otel-log-export/v1"},
+    "schema_version": {"const": 1},
+    "export_id": {"$ref": "#/$defs/id"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "time_origin_unix_nano": {"$ref": "#/$defs/unix_nano"},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "plan_sha256": {"$ref": "#/$defs/digest"},
+    "run_id": {"$ref": "#/$defs/id"},
+    "started_at": {"type": "string", "format": "date-time"},
+    "completed_at": {"type": "string", "format": "date-time"},
+    "receiver": {"$ref": "#/$defs/receiver"},
+    "records": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 77824,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/intent_record"},
+          {"$ref": "#/$defs/approval_record"},
+          {"$ref": "#/$defs/decision_record"},
+          {"$ref": "#/$defs/outcome_record"}
+        ]
+      }
+    },
+    "privacy": {"const": {"body_accepted": false, "instrumentation_scope_accepted": false, "free_text_or_transaction_content_accepted": false, "tokens_credentials_prompts_commands_payloads_hosts_urls_or_customer_content_accepted": false, "opaque_identifiers_spiffe_ids_digests_decisions_and_bounded_impact_units_only": true}},
+    "limitations": {"const": ["strict_body_free_projection_of_the_opentelemetry_log_data_model_not_raw_otlp", "custom_lurebench_event_names_and_attributes_are_not_opentelemetry_semantic_conventions", "timestamps_resource_identity_and_attributes_require_external_instrumentation_assurance", "only_opaque_identifiers_spiffe_ids_digests_decisions_and_bounded_impact_units_are_accepted"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "spiffe_id": {"type": "string", "minLength": 12, "maxLength": 2048, "pattern": "^spiffe://[^/]+/.+$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "unix_nano": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "trace_id": {"type": "string", "pattern": "^(?!0{32}$)[a-f0-9]{32}$"},
+    "span_id": {"type": "string", "pattern": "^(?!0{16}$)[a-f0-9]{16}$"},
+    "receiver": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "instance_id", "version", "artifact_sha256"],
+      "properties": {"name": {"$ref": "#/$defs/id"}, "instance_id": {"$ref": "#/$defs/id"}, "version": {"$ref": "#/$defs/id"}, "artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}
+    },
+    "resource": {
+      "type": "object", "additionalProperties": false,
+      "required": ["service.name", "service.instance.id", "service.version"],
+      "properties": {"service.name": {"$ref": "#/$defs/id"}, "service.instance.id": {"$ref": "#/$defs/id"}, "service.version": {"$ref": "#/$defs/id"}}
+    },
+    "record_base": {
+      "type": "object", "additionalProperties": false,
+      "required": ["Timestamp", "ObservedTimestamp", "TraceId", "SpanId", "EventName", "Resource", "Attributes"],
+      "properties": {"Timestamp": {"$ref": "#/$defs/unix_nano"}, "ObservedTimestamp": {"$ref": "#/$defs/unix_nano"}, "TraceId": {"$ref": "#/$defs/trace_id"}, "SpanId": {"$ref": "#/$defs/span_id"}, "EventName": {"type": "string"}, "Resource": {"$ref": "#/$defs/resource"}, "Attributes": {"type": "object"}}
+    },
+    "intent_attributes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["luremandate.transaction.id", "luremandate.transaction.sequence", "luremandate.intent.id", "luremandate.intent.proposed_at", "luremandate.tenant.id", "luremandate.run.id", "luremandate.agent.id", "luremandate.workload.spiffe_id", "luremandate.requester.id", "luremandate.policy.id", "luremandate.action", "luremandate.resource.id", "luremandate.impact_units", "luremandate.intent.nonce", "luremandate.intent.sha256"],
+      "properties": {
+        "luremandate.transaction.id": {"$ref": "#/$defs/id"},
+        "luremandate.transaction.sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "luremandate.intent.id": {"$ref": "#/$defs/id"},
+        "luremandate.intent.proposed_at": {"type": "string", "format": "date-time"},
+        "luremandate.tenant.id": {"$ref": "#/$defs/id"},
+        "luremandate.run.id": {"$ref": "#/$defs/id"},
+        "luremandate.agent.id": {"$ref": "#/$defs/id"},
+        "luremandate.workload.spiffe_id": {"$ref": "#/$defs/spiffe_id"},
+        "luremandate.requester.id": {"$ref": "#/$defs/id"},
+        "luremandate.policy.id": {"$ref": "#/$defs/id"},
+        "luremandate.action": {"$ref": "#/$defs/id"},
+        "luremandate.resource.id": {"$ref": "#/$defs/id"},
+        "luremandate.impact_units": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+        "luremandate.intent.nonce": {"$ref": "#/$defs/id"},
+        "luremandate.intent.sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "approval_attributes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["luremandate.transaction.id", "luremandate.approval.id", "luremandate.approver.id", "luremandate.approver.role", "luremandate.approval.decision", "luremandate.intent.sha256", "luremandate.approval.issued_at", "luremandate.approval.expires_at", "luremandate.approval.nonce"],
+      "properties": {
+        "luremandate.transaction.id": {"$ref": "#/$defs/id"},
+        "luremandate.approval.id": {"$ref": "#/$defs/id"},
+        "luremandate.approver.id": {"$ref": "#/$defs/id"},
+        "luremandate.approver.role": {"$ref": "#/$defs/id"},
+        "luremandate.approval.decision": {"enum": ["approve", "deny"]},
+        "luremandate.intent.sha256": {"$ref": "#/$defs/digest"},
+        "luremandate.approval.issued_at": {"type": "string", "format": "date-time"},
+        "luremandate.approval.expires_at": {"type": "string", "format": "date-time"},
+        "luremandate.approval.nonce": {"$ref": "#/$defs/id"}
+      }
+    },
+    "decision_attributes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["luremandate.transaction.id", "luremandate.decision.id", "luremandate.decision.decided_at", "luremandate.decision.value", "luremandate.decision.reason_code"],
+      "properties": {
+        "luremandate.transaction.id": {"$ref": "#/$defs/id"},
+        "luremandate.decision.id": {"$ref": "#/$defs/id"},
+        "luremandate.decision.decided_at": {"type": "string", "format": "date-time"},
+        "luremandate.decision.value": {"enum": ["allow", "block"]},
+        "luremandate.decision.reason_code": {"enum": ["agent_identity_mismatch", "agent_policy_denied", "approval_after_decision", "approval_binding_mismatch", "approval_count_insufficient", "approval_denied", "approval_expired", "approval_predates_intent", "approval_replay", "approval_window_invalid", "approver_role_unauthorized", "approver_unknown", "authority_satisfied", "cumulative_limit_exceeded", "impact_limit_exceeded", "policy_unknown", "requester_unknown", "required_role_missing", "run_binding_mismatch", "self_approval", "tenant_mismatch"]}
+      }
+    },
+    "outcome_attributes": {
+      "type": "object", "additionalProperties": false,
+      "required": ["luremandate.transaction.id", "luremandate.outcome.state", "luremandate.outcome.observed_at", "luremandate.sensor.id"],
+      "properties": {
+        "luremandate.transaction.id": {"$ref": "#/$defs/id"},
+        "luremandate.outcome.state": {"enum": ["effect_observed", "no_effect_observed", "not_attempted", "unknown"]},
+        "luremandate.outcome.observed_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        "luremandate.sensor.id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}
+      }
+    },
+    "intent_record": {"allOf": [{"$ref": "#/$defs/record_base"}, {"properties": {"EventName": {"const": "org.lurebench.luremandate.intent_proposed"}, "Attributes": {"$ref": "#/$defs/intent_attributes"}}}]},
+    "approval_record": {"allOf": [{"$ref": "#/$defs/record_base"}, {"properties": {"EventName": {"const": "org.lurebench.luremandate.approval_recorded"}, "Attributes": {"$ref": "#/$defs/approval_attributes"}}}]},
+    "decision_record": {"allOf": [{"$ref": "#/$defs/record_base"}, {"properties": {"EventName": {"const": "org.lurebench.luremandate.decision_recorded"}, "Attributes": {"$ref": "#/$defs/decision_attributes"}}}]},
+    "outcome_record": {"allOf": [{"$ref": "#/$defs/record_base"}, {"properties": {"EventName": {"const": "org.lurebench.luremandate.outcome_recorded"}, "Attributes": {"$ref": "#/$defs/outcome_attributes"}}}]}
+  }
+}

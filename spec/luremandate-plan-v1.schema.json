@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-plan-v1",
+  "title": "LureMandate transaction authority plan v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "campaign_id", "created_at", "environment", "people", "agents", "policies", "acceptance", "privacy", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-plan-v1"},
+    "schema_version": {"const": 1},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "environment": {
+      "type": "object", "additionalProperties": false, "required": ["environment_id", "tenant_id"],
+      "properties": {"environment_id": {"$ref": "#/$defs/id"}, "tenant_id": {"$ref": "#/$defs/id"}}
+    },
+    "people": {"type": "array", "minItems": 1, "maxItems": 512, "items": {"$ref": "#/$defs/person"}},
+    "agents": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/agent"}},
+    "policies": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/policy"}},
+    "acceptance": {
+      "type": "object", "additionalProperties": false,
+      "required": ["maximum_invalid_allow_count", "maximum_authority_bypass_count", "maximum_collateral_denial_count", "maximum_incorrect_reason_count", "require_complete_outcomes"],
+      "properties": {
+        "maximum_invalid_allow_count": {"const": 0}, "maximum_authority_bypass_count": {"const": 0},
+        "maximum_collateral_denial_count": {"const": 0}, "maximum_incorrect_reason_count": {"const": 0},
+        "require_complete_outcomes": {"const": true}
+      }
+    },
+    "privacy": {"$ref": "#/$defs/privacy"},
+    "limitations": {"$ref": "#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "spiffe": {"type": "string", "minLength": 12, "maxLength": 2048, "pattern": "^spiffe://[a-z0-9._-]{1,255}(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+)+$"},
+    "person": {
+      "type": "object", "additionalProperties": false, "required": ["person_id", "roles"],
+      "properties": {"person_id": {"$ref": "#/$defs/id"}, "roles": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}}
+    },
+    "agent": {
+      "type": "object", "additionalProperties": false, "required": ["agent_id", "workload_spiffe_id", "allowed_policy_ids"],
+      "properties": {"agent_id": {"$ref": "#/$defs/id"}, "workload_spiffe_id": {"$ref": "#/$defs/spiffe"}, "allowed_policy_ids": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}}
+    },
+    "policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["policy_id", "transaction_class", "maximum_impact_units", "cumulative_limit_units", "cumulative_window_ms", "cumulative_scope", "approval_ttl_ms", "minimum_distinct_approvers", "required_approver_roles", "prohibit_self_approval", "single_use_approvals"],
+      "properties": {
+        "policy_id": {"$ref": "#/$defs/id"}, "transaction_class": {"$ref": "#/$defs/id"},
+        "maximum_impact_units": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+        "cumulative_limit_units": {"type": "integer", "minimum": 1, "maximum": 1000000000},
+        "cumulative_window_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "cumulative_scope": {"enum": ["requester_policy", "tenant_policy"]},
+        "approval_ttl_ms": {"type": "integer", "minimum": 1, "maximum": 86400000},
+        "minimum_distinct_approvers": {"type": "integer", "minimum": 1, "maximum": 8},
+        "required_approver_roles": {"type": "array", "minItems": 1, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "prohibit_self_approval": {"const": true}, "single_use_approvals": {"const": true}
+      }
+    },
+    "privacy": {
+      "const": {"transaction_payloads": "excluded_digest_bound_metadata_only", "customer_content": "excluded", "personal_data": "synthetic_identifiers_only", "secrets": "excluded"}
+    },
+    "limitations": {
+      "const": ["synthetic_metadata_only_no_prompts_commands_payloads_credentials_hosts_urls_or_customer_content", "approval_identity_role_timestamp_and_effect_records_are_claims_not_authenticated_facts", "impact_units_are_organization_defined_ordinals_not_currency_or_a_safety_measure", "results_cover_only_submitted_transactions_and_do_not_establish_complete_runtime_mediation", "passing_is_not_compliance_certification_legal_authority_or_deployment_authorization"]
+    }
+  }
+}

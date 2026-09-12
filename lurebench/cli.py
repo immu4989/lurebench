@@ -1332,6 +1332,497 @@ def _cmd_channel_verify(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_mandate_init(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import default_mandate_plan, write_mandate_plan
+
+        write_mandate_plan(Path(args.out), default_mandate_plan())
+        print(f"wrote LureMandate authority plan — {args.out}")
+        return 0
+    except (FileExistsError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate plan creation failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_run(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import load_mandate_plan, reference_mandate_run, write_mandate_run
+
+        plan = load_mandate_plan(Path(args.plan) if args.plan else None)
+        run = reference_mandate_run(
+            plan,
+            run_id=args.run_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        write_mandate_run(Path(args.out), run, plan)
+        print(
+            f"wrote LureMandate reference run — transactions={len(run['transactions'])} "
+            f"— {args.out}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate reference run failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_statements(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import (
+            load_mandate_plan,
+            load_mandate_run,
+            write_approval_statements,
+        )
+
+        plan = load_mandate_plan(Path(args.plan))
+        run = load_mandate_run(Path(args.run), plan)
+        paths = write_approval_statements(Path(args.out_dir), plan, run)
+        print(f"wrote {len(paths)} canonical LureMandate approval statements — {args.out_dir}")
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate statement compilation failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_eval(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import evaluate_mandate_files
+
+        evaluation = evaluate_mandate_files(
+            Path(args.plan),
+            Path(args.run),
+            Path(args.out),
+            evaluated_at=args.evaluated_at,
+        )
+        summary = evaluation["summary"]
+        if args.json:
+            print(json.dumps(evaluation, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LUREMANDATE: {summary['verdict'].upper()} — "
+                f"transactions={summary['passed_transaction_count']}/"
+                f"{summary['transaction_count']} invalid-allows="
+                f"{summary['invalid_allow_count']} bypasses="
+                f"{summary['authority_bypass_count']} unknown="
+                f"{summary['unknown_outcome_count']} — {args.out}"
+            )
+            print(
+                "boundary: claimed metadata and organization-defined impact units only; "
+                "not identity authentication, legal authority, complete mediation, or compliance"
+            )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate evaluation failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_verify(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import load_mandate_evaluation
+
+        evaluation = load_mandate_evaluation(Path(args.evaluation))
+        summary = evaluation["summary"]
+        print(
+            f"LUREMANDATE VERIFIED: {summary['verdict'].upper()} — "
+            f"transactions={summary['passed_transaction_count']}/"
+            f"{summary['transaction_count']} findings={summary['finding_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_challenge(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import load_mandate_plan, load_mandate_run
+        from .mandate_conformance import (
+            compile_mandate_challenge,
+            write_mandate_challenge,
+        )
+
+        plan = load_mandate_plan(Path(args.plan))
+        run = load_mandate_run(Path(args.run), plan)
+        challenge = compile_mandate_challenge(
+            plan,
+            run,
+            challenge_id=args.challenge_id,
+            generated_at=args.generated_at,
+        )
+        write_mandate_challenge(Path(args.out), challenge)
+        print(
+            f"wrote answer-free LureMandate challenge — cases={len(challenge['cases'])} "
+            f"state={challenge['execution']['state_model']} — {args.out}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate challenge compilation failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_conformance_reference(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import write_exhaustive_mandate_conformance_template
+
+        plan_path, run_path = write_exhaustive_mandate_conformance_template(
+            Path(args.out_dir),
+            run_id=args.run_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        print(
+            "wrote exhaustive LureMandate conformance template — "
+            f"guards=21 cases=25 — {plan_path}, {run_path}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate conformance template failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_pairwise_reference(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_pairwise import write_pairwise_mandate_template
+
+        plan_path, run_path = write_pairwise_mandate_template(
+            Path(args.out_dir),
+            run_id=args.run_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        print(
+            "wrote LureMandate binary pairwise template — "
+            f"strength=2 factors=15 cases=16 — {plan_path}, {run_path}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate pairwise template failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_pairwise_assess(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import load_mandate_conformance_score
+        from .mandate_pairwise import (
+            evaluate_pairwise_mandate_conformance,
+            write_pairwise_mandate_conformance,
+        )
+
+        score = load_mandate_conformance_score(Path(args.score))
+        report = evaluate_pairwise_mandate_conformance(score)
+        write_pairwise_mandate_conformance(Path(args.out), report)
+        summary = report["summary"]
+        print(
+            f"LUREMANDATE PAIRWISE: {summary['verdict'].upper()} — "
+            f"strength=2 factors={summary['factor_count']} cases={summary['case_count']} "
+            f"interactions={summary['covered_interaction_count']}/"
+            f"{summary['required_interaction_count']} — {args.out}"
+        )
+        print(
+            "boundary: binary two-way reference-factor coverage only; not higher-strength "
+            "coverage, implementation structure, complete mediation, or certification"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate pairwise assessment failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_pairwise_verify(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_pairwise import load_pairwise_mandate_conformance
+
+        report = load_pairwise_mandate_conformance(Path(args.report))
+        summary = report["summary"]
+        print(
+            f"LUREMANDATE PAIRWISE VERIFIED: {summary['verdict'].upper()} — "
+            f"interactions={summary['covered_interaction_count']}/"
+            f"{summary['required_interaction_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate pairwise verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_counterfactual_reference(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_counterfactual import write_counterfactual_mandate_template
+
+        plan_path, run_path = write_counterfactual_mandate_template(
+            Path(args.out_dir),
+            run_id=args.run_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        print(
+            "wrote LureMandate counterfactual template — "
+            f"guards=20 pairs=20 cases=40 — {plan_path}, {run_path}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate counterfactual template failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_counterfactual_assess(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import load_mandate_conformance_score
+        from .mandate_counterfactual import (
+            evaluate_counterfactual_mandate_conformance,
+            write_counterfactual_mandate_conformance,
+        )
+
+        score = load_mandate_conformance_score(Path(args.score))
+        report = evaluate_counterfactual_mandate_conformance(score)
+        write_counterfactual_mandate_conformance(Path(args.out), report)
+        summary = report["summary"]
+        print(
+            f"LUREMANDATE COUNTERFACTUAL: {summary['verdict'].upper()} — "
+            f"pairs={summary['passed_guard_pair_count']}/{summary['guard_pair_count']} "
+            f"single-dimension={summary['single_dimension_pair_count']} — {args.out}"
+        )
+        print(
+            "boundary: declared semantic guard pairs, not formal MC/DC, source-code "
+            "causality, unrepresented interactions, mediation, or certification"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate counterfactual assessment failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_counterfactual_verify(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_counterfactual import load_counterfactual_mandate_conformance
+
+        report = load_counterfactual_mandate_conformance(Path(args.report))
+        summary = report["summary"]
+        print(
+            f"LUREMANDATE COUNTERFACTUAL VERIFIED: {summary['verdict'].upper()} — "
+            f"pairs={summary['passed_guard_pair_count']}/{summary['guard_pair_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate counterfactual verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_sequence_reference(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_sequence import write_sequence_mandate_template
+
+        plan_path, run_path = write_sequence_mandate_template(
+            Path(args.out_dir),
+            run_id=args.run_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        print(
+            "wrote LureMandate ordered-sequence template — "
+            f"operations=5 ordered-pairs=25 measured-cases=26 — {plan_path}, {run_path}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate sequence template failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_sequence_assess(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import load_mandate_conformance_score
+        from .mandate_sequence import (
+            evaluate_sequence_mandate_conformance,
+            write_sequence_mandate_conformance,
+        )
+
+        score = load_mandate_conformance_score(Path(args.score))
+        report = evaluate_sequence_mandate_conformance(score)
+        write_sequence_mandate_conformance(Path(args.out), report)
+        summary = report["summary"]
+        print(
+            f"LUREMANDATE SEQUENCE: {summary['verdict'].upper()} — "
+            f"operations={summary['passed_measured_case_count']}/"
+            f"{summary['measured_case_count']} ordered-pairs="
+            f"{summary['covered_ordered_pair_count']}/"
+            f"{summary['required_ordered_pair_count']} — {args.out}"
+        )
+        print(
+            "boundary: isolated-requester ordered strength-2 operation coverage only; "
+            "not longer sequences, cross-subject interference, complete mediation, "
+            "or certification"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate sequence assessment failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_sequence_verify(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_sequence import load_sequence_mandate_conformance
+
+        report = load_sequence_mandate_conformance(Path(args.report))
+        summary = report["summary"]
+        print(
+            f"LUREMANDATE SEQUENCE VERIFIED: {summary['verdict'].upper()} — "
+            f"ordered-pairs={summary['covered_ordered_pair_count']}/"
+            f"{summary['required_ordered_pair_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate sequence verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_reference_submission(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import (
+            load_mandate_challenge,
+            reference_mandate_submission,
+            write_mandate_submission,
+        )
+
+        challenge = load_mandate_challenge(Path(args.challenge))
+        submission = reference_mandate_submission(
+            challenge,
+            submission_id=args.submission_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+            submitted_at=args.submitted_at,
+        )
+        write_mandate_submission(Path(args.out), submission, challenge)
+        print(
+            f"wrote LureMandate reference submission — results={len(submission['results'])} "
+            f"— {args.out}"
+        )
+        print("boundary: reference answers do not exercise a proprietary external gateway")
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate reference submission failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_score(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import (
+            evaluate_mandate_conformance,
+            load_mandate_challenge,
+            load_mandate_submission,
+            write_mandate_conformance_score,
+        )
+
+        challenge = load_mandate_challenge(Path(args.challenge))
+        submission = load_mandate_submission(Path(args.submission), challenge)
+        score = evaluate_mandate_conformance(challenge, submission, evaluated_at=args.evaluated_at)
+        write_mandate_conformance_score(Path(args.out), score)
+        summary = score["summary"]
+        if args.json:
+            print(json.dumps(score, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LUREMANDATE CONFORMANCE: {summary['verdict'].upper()} — "
+                f"exact={summary['exact_match_count']}/{summary['case_count']} "
+                f"invalid-allows={summary['invalid_allow_count']} "
+                f"collateral-denials={summary['collateral_denial_count']} — {args.out}"
+            )
+            print(
+                "boundary: answer-free typed cases in one ordered session; not complete "
+                "mediation, source authentication, compliance, safety, or authorization"
+            )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate conformance scoring failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_score_verify(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import load_mandate_conformance_score
+
+        score = load_mandate_conformance_score(Path(args.score))
+        summary = score["summary"]
+        print(
+            f"LUREMANDATE CONFORMANCE VERIFIED: {summary['verdict'].upper()} — "
+            f"exact={summary['exact_match_count']}/{summary['case_count']} "
+            f"guards={summary['covered_reason_count']}"
+        )
+        return 0 if summary["verdict"] == "pass" else 1
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate conformance verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_otel_reference(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import load_mandate_plan, load_mandate_run
+        from .mandate_otel import reference_mandate_otel_export, write_mandate_otel_export
+
+        plan = load_mandate_plan(Path(args.plan))
+        run = load_mandate_run(Path(args.run), plan)
+        export = reference_mandate_otel_export(
+            plan,
+            run,
+            export_id=args.export_id,
+            service_instance_id=args.service_instance_id,
+            generated_at=args.generated_at,
+        )
+        write_mandate_otel_export(Path(args.out), export, plan)
+        print(
+            f"wrote body-free LureMandate OpenTelemetry reference — "
+            f"records={len(export['records'])} — {args.out}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate OpenTelemetry reference failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_otel_project(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import load_mandate_plan
+        from .mandate_otel import (
+            load_mandate_otel_log_export,
+            project_mandate_otel_run,
+            write_mandate_otel_projection_and_run,
+        )
+
+        plan = load_mandate_plan(Path(args.plan))
+        export = load_mandate_otel_log_export(Path(args.logs), plan)
+        projection = project_mandate_otel_run(plan, export)
+        write_mandate_otel_projection_and_run(Path(args.out), Path(args.run_out), projection)
+        print(
+            f"LUREMANDATE OTEL PROJECTED: records={len(export['records'])} "
+            f"transactions={len(projection['run']['transactions'])} — {args.out}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate OpenTelemetry projection failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_otel_verify(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_otel import load_mandate_otel_projection
+
+        projection = load_mandate_otel_projection(Path(args.projection))
+        print(
+            f"LUREMANDATE OTEL VERIFIED: records="
+            f"{len(projection['inputs']['otel_log_export']['records'])} "
+            f"transactions={len(projection['run']['transactions'])}"
+        )
+        return 0
+    except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate OpenTelemetry verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_recall_compose(args: argparse.Namespace) -> int:
     try:
         from .artifact import load_artifact_plan
@@ -1497,12 +1988,8 @@ def _cmd_identity_compose(args: argparse.Namespace) -> int:
         campaign = load_identity_campaign(Path(args.campaign))
         plan = compose_identity_plan(campaign)
         write_identity_plan(Path(args.out), plan)
-        cut_count = sum(
-            len(event["required_cut_actor_ids"]) for event in plan["events"]
-        )
-        preserve_count = sum(
-            len(event["required_preserve_actor_ids"]) for event in plan["events"]
-        )
+        cut_count = sum(len(event["required_cut_actor_ids"]) for event in plan["events"])
+        preserve_count = sum(len(event["required_preserve_actor_ids"]) for event in plan["events"])
         print(
             f"LUREIDENTITY PLAN COMPOSED: {len(plan['events'])} events, "
             f"{cut_count} cut actors, {preserve_count} preserved controls, "
@@ -1552,9 +2039,7 @@ def _cmd_identity_otel_project(args: argparse.Namespace) -> int:
         plan = load_identity_plan(Path(args.plan))
         export = load_identity_otel_log_export(Path(args.logs), plan)
         projection = project_identity_otel_run(plan, export, run_id=args.run_id)
-        write_identity_otel_projection_and_run(
-            Path(args.out), Path(args.run_out), projection
-        )
+        write_identity_otel_projection_and_run(Path(args.out), Path(args.run_out), projection)
         print(
             f"LUREIDENTITY OTEL PROJECTED: {len(export['records'])} records, "
             f"{len(projection['run']['event_observations'])} lifecycle observations, "
@@ -2382,6 +2867,254 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_channel_verify.add_argument("evaluation")
     p_channel_verify.set_defaults(func=_cmd_channel_verify)
+
+    p_mandate_init = sub.add_parser(
+        "mandate-init",
+        help="write a reviewed transaction-specific human-authority plan",
+    )
+    p_mandate_init.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureMandate plan JSON"
+    )
+    p_mandate_init.set_defaults(func=_cmd_mandate_init)
+
+    p_mandate_run = sub.add_parser(
+        "mandate-run",
+        help="write the 16-case metadata-only LureMandate reference run",
+    )
+    p_mandate_run.add_argument("--plan", help="LureMandate plan; defaults to the reference")
+    p_mandate_run.add_argument("--run-id", default="mandate-run-1")
+    p_mandate_run.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_run.add_argument("--engine-version", default="1.0.0")
+    p_mandate_run.add_argument("--engine-artifact-sha256")
+    p_mandate_run.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureMandate run JSON"
+    )
+    p_mandate_run.set_defaults(func=_cmd_mandate_run)
+
+    p_mandate_statements = sub.add_parser(
+        "mandate-statements",
+        help="compile one canonical signing payload per unique approval claim",
+    )
+    p_mandate_statements.add_argument("--plan", required=True)
+    p_mandate_statements.add_argument("--run", required=True)
+    p_mandate_statements.add_argument(
+        "--out-dir", required=True, help="new private directory for approval statements"
+    )
+    p_mandate_statements.set_defaults(func=_cmd_mandate_statements)
+
+    p_mandate_eval = sub.add_parser(
+        "mandate-eval",
+        help="evaluate exact approval binding, dual control, replay, and cumulative budgets",
+    )
+    p_mandate_eval.add_argument("--plan", required=True)
+    p_mandate_eval.add_argument("--run", required=True)
+    p_mandate_eval.add_argument("--evaluated-at")
+    p_mandate_eval.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 LureMandate evaluation JSON"
+    )
+    p_mandate_eval.add_argument("--json", action="store_true")
+    p_mandate_eval.set_defaults(func=_cmd_mandate_eval)
+
+    p_mandate_verify = sub.add_parser(
+        "mandate-verify",
+        help="strictly parse and recompute a saved LureMandate evaluation",
+    )
+    p_mandate_verify.add_argument("evaluation")
+    p_mandate_verify.set_defaults(func=_cmd_mandate_verify)
+
+    p_mandate_challenge = sub.add_parser(
+        "mandate-challenge",
+        help="strip expected answers from an ordered LureMandate conformance challenge",
+    )
+    p_mandate_challenge.add_argument("--plan", required=True)
+    p_mandate_challenge.add_argument("--run", required=True)
+    p_mandate_challenge.add_argument(
+        "--challenge-id", default="luremandate-conformance-challenge-1"
+    )
+    p_mandate_challenge.add_argument("--generated-at")
+    p_mandate_challenge.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 answer-free challenge JSON"
+    )
+    p_mandate_challenge.set_defaults(func=_cmd_mandate_challenge)
+
+    p_mandate_conformance_reference = sub.add_parser(
+        "mandate-conformance-reference",
+        help="write a separate 25-case template that reaches all 21 v1 authority outcomes",
+    )
+    p_mandate_conformance_reference.add_argument("--run-id", default="mandate-conformance-run-1")
+    p_mandate_conformance_reference.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_conformance_reference.add_argument("--engine-version", default="1.0.0")
+    p_mandate_conformance_reference.add_argument("--engine-artifact-sha256")
+    p_mandate_conformance_reference.add_argument(
+        "--out-dir", required=True, help="new private directory containing plan.json and run.json"
+    )
+    p_mandate_conformance_reference.set_defaults(func=_cmd_mandate_conformance_reference)
+
+    p_mandate_pairwise_reference = sub.add_parser(
+        "mandate-pairwise-reference",
+        help="write a 16-case binary orthogonal array covering every pair of 15 inputs",
+    )
+    p_mandate_pairwise_reference.add_argument("--run-id", default="mandate-pairwise-run-1")
+    p_mandate_pairwise_reference.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_pairwise_reference.add_argument("--engine-version", default="1.0.0")
+    p_mandate_pairwise_reference.add_argument("--engine-artifact-sha256")
+    p_mandate_pairwise_reference.add_argument(
+        "--out-dir", required=True, help="new private directory containing plan.json and run.json"
+    )
+    p_mandate_pairwise_reference.set_defaults(func=_cmd_mandate_pairwise_reference)
+
+    p_mandate_pairwise_assess = sub.add_parser(
+        "mandate-pairwise-assess",
+        help="combine exact gateway scoring with independently measured 2-way input coverage",
+    )
+    p_mandate_pairwise_assess.add_argument("score")
+    p_mandate_pairwise_assess.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 pairwise assurance report"
+    )
+    p_mandate_pairwise_assess.set_defaults(func=_cmd_mandate_pairwise_assess)
+
+    p_mandate_pairwise_verify = sub.add_parser(
+        "mandate-pairwise-verify",
+        help="strictly reparse and recompute a saved pairwise assurance report",
+    )
+    p_mandate_pairwise_verify.add_argument("report")
+    p_mandate_pairwise_verify.set_defaults(func=_cmd_mandate_pairwise_verify)
+
+    p_mandate_counterfactual_reference = sub.add_parser(
+        "mandate-counterfactual-reference",
+        help="write 20 adjacent valid-control/mutant authority guard pairs",
+    )
+    p_mandate_counterfactual_reference.add_argument(
+        "--run-id", default="mandate-counterfactual-run-1"
+    )
+    p_mandate_counterfactual_reference.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_counterfactual_reference.add_argument("--engine-version", default="1.0.0")
+    p_mandate_counterfactual_reference.add_argument("--engine-artifact-sha256")
+    p_mandate_counterfactual_reference.add_argument(
+        "--out-dir", required=True, help="new private directory containing plan.json and run.json"
+    )
+    p_mandate_counterfactual_reference.set_defaults(func=_cmd_mandate_counterfactual_reference)
+
+    p_mandate_counterfactual_assess = sub.add_parser(
+        "mandate-counterfactual-assess",
+        help="verify adjacent valid-control/mutant sensitivity for all denial guards",
+    )
+    p_mandate_counterfactual_assess.add_argument("score")
+    p_mandate_counterfactual_assess.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 counterfactual assurance report"
+    )
+    p_mandate_counterfactual_assess.set_defaults(func=_cmd_mandate_counterfactual_assess)
+
+    p_mandate_counterfactual_verify = sub.add_parser(
+        "mandate-counterfactual-verify",
+        help="strictly reparse and recompute a saved counterfactual assurance report",
+    )
+    p_mandate_counterfactual_verify.add_argument("report")
+    p_mandate_counterfactual_verify.set_defaults(func=_cmd_mandate_counterfactual_verify)
+
+    p_mandate_sequence_reference = sub.add_parser(
+        "mandate-sequence-reference",
+        help="write a stateful campaign covering every ordered pair of five operations",
+    )
+    p_mandate_sequence_reference.add_argument("--run-id", default="mandate-sequence-run-1")
+    p_mandate_sequence_reference.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_sequence_reference.add_argument("--engine-version", default="1.0.0")
+    p_mandate_sequence_reference.add_argument("--engine-artifact-sha256")
+    p_mandate_sequence_reference.add_argument(
+        "--out-dir", required=True, help="new private directory containing plan.json and run.json"
+    )
+    p_mandate_sequence_reference.set_defaults(func=_cmd_mandate_sequence_reference)
+
+    p_mandate_sequence_assess = sub.add_parser(
+        "mandate-sequence-assess",
+        help="combine exact gateway scoring with ordered strength-2 operation coverage",
+    )
+    p_mandate_sequence_assess.add_argument("score")
+    p_mandate_sequence_assess.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 sequence assurance report"
+    )
+    p_mandate_sequence_assess.set_defaults(func=_cmd_mandate_sequence_assess)
+
+    p_mandate_sequence_verify = sub.add_parser(
+        "mandate-sequence-verify",
+        help="strictly reparse and recompute a saved ordered-sequence assurance report",
+    )
+    p_mandate_sequence_verify.add_argument("report")
+    p_mandate_sequence_verify.set_defaults(func=_cmd_mandate_sequence_verify)
+
+    p_mandate_reference_submission = sub.add_parser(
+        "mandate-reference-submit",
+        help="produce a clearly marked reference-engine conformance submission",
+    )
+    p_mandate_reference_submission.add_argument("challenge")
+    p_mandate_reference_submission.add_argument(
+        "--submission-id", default="luremandate-reference-submission-1"
+    )
+    p_mandate_reference_submission.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_reference_submission.add_argument("--engine-version", default="1.0.0")
+    p_mandate_reference_submission.add_argument("--engine-artifact-sha256")
+    p_mandate_reference_submission.add_argument("--submitted-at")
+    p_mandate_reference_submission.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 reference submission JSON"
+    )
+    p_mandate_reference_submission.set_defaults(func=_cmd_mandate_reference_submission)
+
+    p_mandate_score = sub.add_parser(
+        "mandate-score",
+        help="score a black-box gateway submission without trusting submitted answers",
+    )
+    p_mandate_score.add_argument("--challenge", required=True)
+    p_mandate_score.add_argument("--submission", required=True)
+    p_mandate_score.add_argument("--evaluated-at")
+    p_mandate_score.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 conformance score JSON"
+    )
+    p_mandate_score.add_argument("--json", action="store_true")
+    p_mandate_score.set_defaults(func=_cmd_mandate_score)
+
+    p_mandate_score_verify = sub.add_parser(
+        "mandate-score-verify",
+        help="strictly reparse and recompute a saved conformance score",
+    )
+    p_mandate_score_verify.add_argument("score")
+    p_mandate_score_verify.set_defaults(func=_cmd_mandate_score_verify)
+
+    p_mandate_otel_reference = sub.add_parser(
+        "mandate-otel-reference",
+        help="encode a LureMandate run as a body-free OpenTelemetry reference export",
+    )
+    p_mandate_otel_reference.add_argument("--plan", required=True)
+    p_mandate_otel_reference.add_argument("--run", required=True)
+    p_mandate_otel_reference.add_argument("--export-id", default="luremandate-otel-conformance-1")
+    p_mandate_otel_reference.add_argument(
+        "--service-instance-id", default="authority-gateway-instance-1"
+    )
+    p_mandate_otel_reference.add_argument("--generated-at")
+    p_mandate_otel_reference.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 body-free log export"
+    )
+    p_mandate_otel_reference.set_defaults(func=_cmd_mandate_otel_reference)
+
+    p_mandate_otel_project = sub.add_parser(
+        "mandate-otel-project",
+        help="strictly reconstruct a LureMandate run from body-free OpenTelemetry events",
+    )
+    p_mandate_otel_project.add_argument("--plan", required=True)
+    p_mandate_otel_project.add_argument("--logs", required=True)
+    p_mandate_otel_project.add_argument(
+        "--out", "-o", required=True, help="new mode-0600 projection artifact"
+    )
+    p_mandate_otel_project.add_argument(
+        "--run-out", required=True, help="new mode-0600 reconstructed run"
+    )
+    p_mandate_otel_project.set_defaults(func=_cmd_mandate_otel_project)
+
+    p_mandate_otel_verify = sub.add_parser(
+        "mandate-otel-verify",
+        help="strictly reparse and recompute a saved LureMandate telemetry projection",
+    )
+    p_mandate_otel_verify.add_argument("projection")
+    p_mandate_otel_verify.set_defaults(func=_cmd_mandate_otel_verify)
 
     p_recall_compose = sub.add_parser(
         "recall-compose",

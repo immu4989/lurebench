@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-score/v1",
+  "title": "LureMandate independently recomputable conformance score v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "score_id",
+    "evaluated_at",
+    "evaluator",
+    "challenge_sha256",
+    "submission_sha256",
+    "challenge",
+    "submission",
+    "results",
+    "guard_coverage",
+    "summary",
+    "limitations"
+  ],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-score/v1"},
+    "schema_version": {"const": 1},
+    "score_id": {"$ref": "#/$defs/id"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "evaluator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {"name": {"const": "lurebench-luremandate-conformance"}, "version": {"$ref": "#/$defs/id"}}
+    },
+    "challenge_sha256": {"$ref": "#/$defs/digest"},
+    "submission_sha256": {"$ref": "#/$defs/digest"},
+    "challenge": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-challenge/v1"},
+    "submission": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-submission/v1"},
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "sequence",
+          "expected_decision",
+          "expected_reason_code",
+          "submitted_decision",
+          "submitted_reason_code",
+          "decision_match",
+          "reason_match",
+          "status"
+        ],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^case-[0-9]{4}$"},
+          "sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
+          "expected_decision": {"enum": ["allow", "block"]},
+          "expected_reason_code": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/reason"},
+          "submitted_decision": {"enum": ["allow", "block"]},
+          "submitted_reason_code": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/reason"},
+          "decision_match": {"type": "boolean"},
+          "reason_match": {"type": "boolean"},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "guard_coverage": {
+      "type": "array",
+      "minItems": 21,
+      "maxItems": 21,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["expected_reason_code", "case_count"],
+        "properties": {
+          "expected_reason_code": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1#/$defs/reason"},
+          "case_count": {"type": "integer", "minimum": 0, "maximum": 4096}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verdict",
+        "case_count",
+        "exact_match_count",
+        "decision_match_count",
+        "reason_match_count",
+        "invalid_allow_count",
+        "collateral_denial_count",
+        "covered_reason_count",
+        "reason_universe_count",
+        "reason_coverage_complete"
+      ],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "case_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "exact_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "decision_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "reason_match_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "invalid_allow_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "collateral_denial_count": {"type": "integer", "minimum": 0, "maximum": 4096},
+        "covered_reason_count": {"type": "integer", "minimum": 1, "maximum": 21},
+        "reason_universe_count": {"const": 21},
+        "reason_coverage_complete": {"type": "boolean"}
+      }
+    },
+    "limitations": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-challenge/v1#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

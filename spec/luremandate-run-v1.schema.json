@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1",
+  "title": "LureMandate transaction authority run v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "run_id", "campaign_id", "plan_sha256", "started_at", "completed_at", "engine", "transactions", "privacy", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-run-v1"}, "schema_version": {"const": 1},
+    "run_id": {"$ref": "#/$defs/id"}, "campaign_id": {"$ref": "#/$defs/id"}, "plan_sha256": {"$ref": "#/$defs/digest"},
+    "started_at": {"type": "string", "format": "date-time"}, "completed_at": {"type": "string", "format": "date-time"},
+    "engine": {
+      "type": "object", "additionalProperties": false, "required": ["engine_id", "engine_version", "engine_artifact_sha256"],
+      "properties": {"engine_id": {"$ref": "#/$defs/id"}, "engine_version": {"$ref": "#/$defs/id"}, "engine_artifact_sha256": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}}
+    },
+    "transactions": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/transaction"}},
+    "privacy": {"const": {"transaction_payloads": "excluded_digest_bound_metadata_only", "customer_content": "excluded", "personal_data": "synthetic_identifiers_only", "secrets": "excluded"}},
+    "limitations": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-plan-v1#/$defs/limitations"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "spiffe": {"type": "string", "minLength": 12, "maxLength": 2048, "pattern": "^spiffe://[a-z0-9._-]{1,255}(?:/(?!\\.{1,2}(?:/|$))[A-Za-z0-9._-]+)+$"},
+    "intent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["intent_id", "proposed_at", "tenant_id", "run_id", "agent_id", "workload_spiffe_id", "requester_id", "policy_id", "action", "resource_id", "impact_units", "intent_nonce"],
+      "properties": {"intent_id": {"$ref": "#/$defs/id"}, "proposed_at": {"type": "string", "format": "date-time"}, "tenant_id": {"$ref": "#/$defs/id"}, "run_id": {"$ref": "#/$defs/id"}, "agent_id": {"$ref": "#/$defs/id"}, "workload_spiffe_id": {"$ref": "#/$defs/spiffe"}, "requester_id": {"$ref": "#/$defs/id"}, "policy_id": {"$ref": "#/$defs/id"}, "action": {"$ref": "#/$defs/id"}, "resource_id": {"$ref": "#/$defs/id"}, "impact_units": {"type": "integer", "minimum": 1, "maximum": 1000000000}, "intent_nonce": {"$ref": "#/$defs/id"}}
+    },
+    "approval": {
+      "type": "object", "additionalProperties": false,
+      "required": ["approval_id", "approver_id", "approver_role", "decision", "intent_sha256", "issued_at", "expires_at", "nonce"],
+      "properties": {"approval_id": {"$ref": "#/$defs/id"}, "approver_id": {"$ref": "#/$defs/id"}, "approver_role": {"$ref": "#/$defs/id"}, "decision": {"enum": ["approve", "deny"]}, "intent_sha256": {"$ref": "#/$defs/digest"}, "issued_at": {"type": "string", "format": "date-time"}, "expires_at": {"type": "string", "format": "date-time"}, "nonce": {"$ref": "#/$defs/id"}}
+    },
+    "reason": {"enum": ["agent_identity_mismatch", "agent_policy_denied", "approval_after_decision", "approval_binding_mismatch", "approval_count_insufficient", "approval_denied", "approval_expired", "approval_predates_intent", "approval_replay", "approval_window_invalid", "approver_role_unauthorized", "approver_unknown", "authority_satisfied", "cumulative_limit_exceeded", "impact_limit_exceeded", "policy_unknown", "requester_unknown", "required_role_missing", "run_binding_mismatch", "self_approval", "tenant_mismatch"]},
+    "transaction": {
+      "type": "object", "additionalProperties": false,
+      "required": ["transaction_id", "sequence", "intent", "intent_sha256", "approvals", "decision", "outcome"],
+      "properties": {
+        "transaction_id": {"$ref": "#/$defs/id"}, "sequence": {"type": "integer", "minimum": 1, "maximum": 4096}, "intent": {"$ref": "#/$defs/intent"}, "intent_sha256": {"$ref": "#/$defs/digest"},
+        "approvals": {"type": "array", "maxItems": 16, "items": {"$ref": "#/$defs/approval"}},
+        "decision": {"type": "object", "additionalProperties": false, "required": ["decision_id", "decided_at", "decision", "reason_code"], "properties": {"decision_id": {"$ref": "#/$defs/id"}, "decided_at": {"type": "string", "format": "date-time"}, "decision": {"enum": ["allow", "block"]}, "reason_code": {"$ref": "#/$defs/reason"}}},
+        "outcome": {"type": "object", "additionalProperties": false, "required": ["state", "observed_at", "sensor_id"], "properties": {"state": {"enum": ["effect_observed", "no_effect_observed", "not_attempted", "unknown"]}, "observed_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}, "sensor_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}}}
+      }
+    }
+  }
+}

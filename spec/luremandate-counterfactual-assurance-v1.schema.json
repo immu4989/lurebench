@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-counterfactual-assurance/v1",
+  "title": "LureMandate counterfactual guard-pair assurance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "report_id", "evaluated_at", "method", "score_sha256", "score", "pairs", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-counterfactual-assurance/v1"},
+    "schema_version": {"const": 1},
+    "report_id": {"$ref": "#/$defs/id"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "dimension_ids", "guard_reasons"],
+      "properties": {
+        "name": {"const": "adjacent-valid-control-guard-pairs"},
+        "dimension_ids": {"type": "array", "minItems": 20, "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "guard_reasons": {"type": "array", "minItems": 20, "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "score_sha256": {"$ref": "#/$defs/digest"},
+    "score": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-score/v1"},
+    "pairs": {
+      "type": "array",
+      "minItems": 20,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pair_id", "guard_reason", "baseline_case_id", "mutant_case_id", "changed_dimensions", "expected_changed_dimensions", "baseline_expected_decision", "mutant_expected_decision", "baseline_submitted_decision", "mutant_submitted_decision", "status"],
+        "properties": {
+          "pair_id": {"$ref": "#/$defs/id"},
+          "guard_reason": {"$ref": "#/$defs/id"},
+          "baseline_case_id": {"$ref": "#/$defs/id"},
+          "mutant_case_id": {"$ref": "#/$defs/id"},
+          "changed_dimensions": {"$ref": "#/$defs/dimensions"},
+          "expected_changed_dimensions": {"$ref": "#/$defs/dimensions"},
+          "baseline_expected_decision": {"enum": ["allow", "block"]},
+          "mutant_expected_decision": {"enum": ["allow", "block"]},
+          "baseline_submitted_decision": {"enum": ["allow", "block"]},
+          "mutant_submitted_decision": {"enum": ["allow", "block"]},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "score_verdict", "case_count", "guard_pair_count", "passed_guard_pair_count", "single_dimension_pair_count", "dependency_coupled_pair_count", "guard_reason_coverage_complete"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "score_verdict": {"enum": ["pass", "fail"]},
+        "case_count": {"const": 40},
+        "guard_pair_count": {"const": 20},
+        "passed_guard_pair_count": {"type": "integer", "minimum": 0, "maximum": 20},
+        "single_dimension_pair_count": {"type": "integer", "minimum": 0, "maximum": 20},
+        "dependency_coupled_pair_count": {"type": "integer", "minimum": 0, "maximum": 20},
+        "guard_reason_coverage_complete": {"type": "boolean"}
+      }
+    },
+    "limitations": {"const": ["pairs_measure_declared_semantic_dimensions_not_source_code_conditions_or_formal_mcdc", "approval_count_and_replay_pairs_require_multiple_changed_dimensions_due_to_contract_dependencies", "reference_submission_tests_the_reference_semantics_not_an_external_gateway", "passing_does_not_establish_unrepresented_values_interactions_sequences_or_complete_mediation", "passing_is_not_compliance_certification_safety_legal_authority_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "dimensions": {"type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+  }
+}

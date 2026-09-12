@@ -23,6 +23,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 ![LureAttest](https://img.shields.io/badge/LureAttest-DSSE_·_SLSA_expectations-7b61ff)
 ![LureBOM Twin](https://img.shields.io/badge/LureBOM_Twin-SPDX_3.0.1_↔_CycloneDX_1.7-7b61ff)
 ![LureChannel](https://img.shields.io/badge/LureChannel-cross--run_canary_flows-7b61ff)
+![LureMandate](https://img.shields.io/badge/LureMandate-exact_approval_·_dual_control_·_anti--replay-7b61ff)
 ![Agent assurance](https://img.shields.io/badge/agent_assurance-OCI_·_coverage_·_delegation_·_IR-7b61ff)
 ![Status](https://img.shields.io/badge/status-research_pilot-e34948)
 [![Code of Conduct](https://img.shields.io/badge/code%20of%20conduct-Contributor%20Covenant-5c6470)](CODE_OF_CONDUCT.md)
@@ -43,6 +44,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
   <a href="docs/LUREATTEST.md"><strong>Authenticate provenance</strong></a> ·
   <a href="docs/LUREBOM.md"><strong>Reconcile AI-BOM twins</strong></a> ·
   <a href="docs/LURECHANNEL.md"><strong>Test cross-run isolation</strong></a> ·
+  <a href="docs/LUREMANDATE.md"><strong>Verify transaction authority</strong></a> ·
   <a href="docs/LUREINVARIANT.md"><strong>Evaluate system invariants</strong></a> ·
   <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
@@ -153,6 +155,38 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > digest-only; the evaluator executes no agent action or exploit and does not
 > claim universal noninterference, containment, or safety.
 
+> **New — prove a consequential action matched fresh, specific human authority.**
+> [LureMandate](docs/LUREMANDATE.md) binds every approval to the exact tenant,
+> run, agent, SPIFFE workload, requester, policy, action, resource, impact, and
+> nonce; enforces distinct-role dual control, self-approval denial, TTLs, and
+> one-time approval consumption; and detects split-action evasion with rolling
+> requester- or tenant-scoped budgets. Its 16-case reference campaign includes
+> four permitted controls and twelve correctly blocked authority failures. An
+> observed effect after a required block is `fail`; unknown effect evidence is
+> `inconclusive`. `mandate-statements` emits exact canonical approval payloads
+> for LureScope's optional externally pinned P-256 DSSE authentication. That
+> verifies submitted bytes and distinct signer keys—not directory identity,
+> human comprehension, complete mediation, legal authority, or compliance.
+> A strict body-free OpenTelemetry adapter reconstructs the same run from 67
+> correlated intent, approval, decision, and outcome events while rejecting log
+> bodies, free text, unknown attributes, and timestamp or trace rebinding.
+> An answer-free black-box challenge also strips transaction decisions, reasons,
+> expectations, and outcomes before a gateway test, binds a complete ordered
+> submission to the canonical challenge, and independently scores exact
+> decisions, invalid allows, collateral denials, and exercised guard coverage
+> without trusting the submitted answers. Its separate 25-case exhaustive
+> profile reaches all 21 v1 decision outcomes without changing the signed
+> 16-case core evidence chain. A complementary 16-case binary orthogonal-array
+> profile independently measures all 420 value combinations across every pair
+> of 15 authority input factors and passes only when both pair coverage and
+> gateway answers pass; it explicitly does not claim 3-way, production-domain,
+> implementation-structure, or complete-mediation coverage.
+> A third 40-case counterfactual profile places a valid control beside a mutant
+> for every denial guard, verifies the exact semantic delta, and confirms that
+> the gateway response changes appropriately. Eighteen pairs isolate one
+> declared dimension; approval-count and replay pairs disclose their dependent
+> multi-dimension changes. This is contract sensitivity evidence, not MC/DC.
+
 > **New — test invariants that cross the model, tools, network, identity, and
 > lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed
 > transitive reachability, required mediation, bounded shutdown, and prohibited
@@ -208,7 +242,7 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 | **A researcher** | Reproduce the provenance confound and its removal, add a detector in ~30 lines ([docs/adding-a-detector.md](docs/adding-a-detector.md)), or extend the corpus with new generators and typologies. |
 | **A policy / threat-intel analyst** | Ground claims about "AI-generated fraud detection" in measured numbers — including where it works, and where it is close to a coin flip. |
 | **A procurement or assurance team** | Evaluate a proprietary image against a private held-out set, preserve an immutable report, and pool compatible signed field evidence without collecting messages. |
-| **An agent platform or frontier AI team** | Test typed isolation and lifecycle controls with LurePermit/LureIdentity, detect cross-run information transfer and residual state with LureChannel, bind every workload to approved models, images, policies, AI-BOMs, and provenance with LureArtifact, authenticate bounded DSSE/SLSA expectations with LureAttest, reconcile CycloneDX/SPDX release twins with LureBOM, use LureRecall to scope and measure a transitive component recall, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
+| **An agent platform or frontier AI team** | Test typed isolation and lifecycle controls with LurePermit/LureIdentity, use LureMandate to verify transaction-specific human authority and split-budget resistance, detect cross-run information transfer and residual state with LureChannel, bind every workload to approved models, images, policies, AI-BOMs, and provenance with LureArtifact, authenticate bounded DSSE/SLSA expectations with LureAttest, reconcile CycloneDX/SPDX release twins with LureBOM, use LureRecall to scope and measure a transitive component recall, then measure monitor detection with LureBoundary—without exploit payloads or model reasoning. |
 
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 

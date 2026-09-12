@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+- Added an answer-free, stateful LureMandate black-box conformance workflow.
+  It strips transaction decisions, reason codes, expected answers, and outcomes
+  from an ordered challenge; requires a complete canonical-hash-bound gateway
+  submission; independently reconstructs the oracle and replay/rolling-budget
+  state; reports exact matches, invalid allows, collateral denials, and actual
+  guard coverage; includes a separate 25-case profile that reaches every one of
+  the 21 v1 decision outcomes without changing the signed 16-case core; ships
+  three strict schemas and deterministic public vectors; and refuses malformed,
+  reordered, tampered, or overwritten evidence.
+- Added complementary strength-2 LureMandate input-interaction assurance: a
+  deterministic 16-case binary orthogonal array covers all 420 configurations
+  across every pair of 15 authority factors; the self-recomputing report binds
+  the exact black-box score, derives factors from challenge inputs, enumerates
+  missing combinations, requires both answer correctness and 100% pair
+  coverage, and ships a strict schema, CLI, public corpus, and tamper tests.
+- Added a 40-case LureMandate counterfactual guard-pair profile with one valid
+  control and one mutant for every denial reason. Its self-recomputing report
+  verifies expected and submitted decision changes plus the exact 20-dimension
+  semantic delta, distinguishes 18 single-dimension pairs from two disclosed
+  dependency-coupled cases, and ships a schema, CLI, public corpus, and tamper
+  tests without mislabeling the contract-level evidence as formal MC/DC.
+
+- Added LureMandate, a strict metadata-only transaction-authority contract with
+  exact intent digests, agent/workload/run binding, distinct-role dual control,
+  self-approval denial, approval TTL and replay checks, per-action ceilings,
+  rolling requester/tenant budgets, observed-effect bypass detection, 16 public
+  conformance transactions, JSON Schemas, CLI workflows, and adversarial tests.
+- Added deterministic `mandate-statements` output and an approval-statement JSON
+  Schema so each unique approval can be signed over exact canonical bytes;
+  identical replay is deduplicated and conflicting approval-ID reuse fails
+  closed before signing.
+- Added a strict body-free OpenTelemetry-to-LureMandate projection with four
+  typed lifecycle events, one trace per transaction, unique spans, exact source
+  timestamp binding, collector-time separation, 67-record public conformance
+  export, JSON Schemas, CLI workflows, privacy allowlists, and adversarial
+  body/free-text/trace/missing-event/time-rebinding tests.
+
 ### Added
 - Added LureChannel, a dependency-free metadata-only cross-run isolation
   benchmark. A reviewed plan declares isolated run lifetimes, authorized and

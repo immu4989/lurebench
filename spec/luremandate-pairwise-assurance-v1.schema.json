@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-pairwise-assurance/v1",
+  "title": "LureMandate binary pairwise input assurance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "report_id", "evaluated_at", "method", "score_sha256", "score", "factor_rows", "pair_coverage", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-pairwise-assurance/v1"},
+    "schema_version": {"const": 1},
+    "report_id": {"$ref": "#/$defs/id"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strength", "factor_ids", "required_value_combinations"],
+      "properties": {
+        "name": {"const": "binary-pairwise-input-coverage"},
+        "strength": {"const": 2},
+        "factor_ids": {"const": ["tenant_binding", "run_binding", "agent_workload_binding", "agent_policy_assignment", "requester_registry_membership", "impact_within_limit", "approval_intent_binding", "approval_decision", "requester_separation", "security_approver_registry_membership", "mission_role_assignment", "mission_issue_before_decision", "mission_unexpired_at_decision", "security_ttl_within_policy", "required_security_role"]},
+        "required_value_combinations": {"const": ["00", "01", "10", "11"]}
+      }
+    },
+    "score_sha256": {"$ref": "#/$defs/digest"},
+    "score": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-score/v1"},
+    "factor_rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "values"],
+        "properties": {
+          "case_id": {"$ref": "#/$defs/id"},
+          "values": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["tenant_binding", "run_binding", "agent_workload_binding", "agent_policy_assignment", "requester_registry_membership", "impact_within_limit", "approval_intent_binding", "approval_decision", "requester_separation", "security_approver_registry_membership", "mission_role_assignment", "mission_issue_before_decision", "mission_unexpired_at_decision", "security_ttl_within_policy", "required_security_role"],
+            "properties": {
+              "tenant_binding": {"type": "boolean"},
+              "run_binding": {"type": "boolean"},
+              "agent_workload_binding": {"type": "boolean"},
+              "agent_policy_assignment": {"type": "boolean"},
+              "requester_registry_membership": {"type": "boolean"},
+              "impact_within_limit": {"type": "boolean"},
+              "approval_intent_binding": {"type": "boolean"},
+              "approval_decision": {"type": "boolean"},
+              "requester_separation": {"type": "boolean"},
+              "security_approver_registry_membership": {"type": "boolean"},
+              "mission_role_assignment": {"type": "boolean"},
+              "mission_issue_before_decision": {"type": "boolean"},
+              "mission_unexpired_at_decision": {"type": "boolean"},
+              "security_ttl_within_policy": {"type": "boolean"},
+              "required_security_role": {"type": "boolean"}
+            }
+          }
+        }
+      }
+    },
+    "pair_coverage": {
+      "type": "array",
+      "minItems": 105,
+      "maxItems": 105,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["factor_a", "factor_b", "covered_combinations", "missing_combinations"],
+        "properties": {
+          "factor_a": {"$ref": "#/$defs/id"},
+          "factor_b": {"$ref": "#/$defs/id"},
+          "covered_combinations": {"$ref": "#/$defs/combinations"},
+          "missing_combinations": {"$ref": "#/$defs/combinations"}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "score_verdict", "case_count", "factor_count", "factor_pair_count", "required_interaction_count", "covered_interaction_count", "interaction_coverage", "pairwise_coverage_complete"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "score_verdict": {"enum": ["pass", "fail"]},
+        "case_count": {"type": "integer", "minimum": 1, "maximum": 4096},
+        "factor_count": {"const": 15},
+        "factor_pair_count": {"const": 105},
+        "required_interaction_count": {"const": 420},
+        "covered_interaction_count": {"type": "integer", "minimum": 0, "maximum": 420},
+        "interaction_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "pairwise_coverage_complete": {"type": "boolean"}
+      }
+    },
+    "limitations": {"const": ["binary_two_way_input_coverage_does_not_establish_three_way_or_higher_interaction_coverage", "factor_abstraction_and_feasible_value_domains_are_specific_to_the_reference_campaign", "reference_submission_tests_the_reference_semantics_not_an_external_gateway", "passing_does_not_prove_implementation_structure_unrepresented_behavior_or_complete_mediation", "passing_is_not_compliance_certification_safety_legal_authority_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "combinations": {
+      "type": "array",
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {"enum": ["00", "01", "10", "11"]}
+    }
+  }
+}

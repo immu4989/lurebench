@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/luremandate-sequence-assurance/v1",
+  "title": "LureMandate ordered operation-pair assurance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "report_id", "evaluated_at", "method", "score_sha256", "score", "operation_results", "ordered_pair_coverage", "summary", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-sequence-assurance/v1"},
+    "schema_version": {"const": 1},
+    "report_id": {"$ref": "#/$defs/id"},
+    "evaluated_at": {"type": "string", "format": "date-time"},
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strength", "operation_alphabet"],
+      "properties": {
+        "name": {"const": "cyclic-de-bruijn-ordered-operation-coverage"},
+        "strength": {"const": 2},
+        "operation_alphabet": {"const": ["fresh-allow", "replay-block", "budget-boundary-allow", "budget-exceed-block", "expired-window-allow"]}
+      }
+    },
+    "score_sha256": {"$ref": "#/$defs/digest"},
+    "score": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-score/v1"},
+    "operation_results": {
+      "type": "array",
+      "minItems": 26,
+      "maxItems": 26,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "operation", "expected_decision", "expected_reason_code", "submitted_decision", "submitted_reason_code", "status"],
+        "properties": {
+          "case_id": {"$ref": "#/$defs/id"},
+          "operation": {"enum": ["fresh-allow", "replay-block", "budget-boundary-allow", "budget-exceed-block", "expired-window-allow"]},
+          "expected_decision": {"enum": ["allow", "block"]},
+          "expected_reason_code": {"$ref": "#/$defs/id"},
+          "submitted_decision": {"enum": ["allow", "block"]},
+          "submitted_reason_code": {"$ref": "#/$defs/id"},
+          "status": {"enum": ["pass", "fail"]}
+        }
+      }
+    },
+    "ordered_pair_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_pairs", "covered_pairs", "missing_pairs"],
+      "properties": {
+        "required_pairs": {"$ref": "#/$defs/pairs"},
+        "covered_pairs": {"$ref": "#/$defs/pairs"},
+        "missing_pairs": {"$ref": "#/$defs/pairs"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "score_verdict", "preamble_case_count", "measured_case_count", "passed_measured_case_count", "operation_count", "required_ordered_pair_count", "covered_ordered_pair_count", "ordered_pair_coverage_complete"],
+      "properties": {
+        "verdict": {"enum": ["pass", "fail"]},
+        "score_verdict": {"enum": ["pass", "fail"]},
+        "preamble_case_count": {"const": 20},
+        "measured_case_count": {"const": 26},
+        "passed_measured_case_count": {"type": "integer", "minimum": 0, "maximum": 26},
+        "operation_count": {"const": 5},
+        "required_ordered_pair_count": {"const": 25},
+        "covered_ordered_pair_count": {"type": "integer", "minimum": 0, "maximum": 25},
+        "ordered_pair_coverage_complete": {"type": "boolean"}
+      }
+    },
+    "limitations": {"const": ["ordered_strength_two_operation_coverage_does_not_establish_longer_sequence_coverage", "each_measured_operation_uses_an_isolated_requester_scope_to_keep_state_preconditions_stable", "reference_submission_tests_the_reference_semantics_not_an_external_gateway", "passing_does_not_establish_cross_subject_interference_unrepresented_operations_or_complete_mediation", "passing_is_not_compliance_certification_safety_legal_authority_or_deployment_authorization"]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 96, "pattern": "^[a-z0-9]+(?:[a-z0-9._-]*[a-z0-9])?$"},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "pairs": {"type": "array", "maxItems": 25, "uniqueItems": true, "items": {"type": "string", "minLength": 3, "maxLength": 64}}
+  }
+}
