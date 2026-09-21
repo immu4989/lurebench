@@ -1,14 +1,117 @@
 # LureMandate: prove the action matched the approval
 
-An approval ID beside an agent action is not enough. It does not show that the
-right person approved the exact action, that the approval was still fresh, that
-a second required role participated, or that the same approval was not replayed.
-It also misses a common limit-evasion pattern: split one high-impact action into
-several individually smaller actions.
+Availability: unreleased source-branch functionality. The published 0.11.0
+release predates these commands.
 
-LureMandate is a strict, metadata-only authority evaluator for that gap. It
-checks one ordered transaction record against a policy fixed before the run and
-derives the decision independently. It never authorizes or executes the action.
+See the [validation and release checklist](MANDATE_VALIDATION.md) for campaign
+boundaries, independent model checks, and installed-wheel verification.
+
+To check a source checkout or a newly built wheel without any external service:
+
+```sh
+lurebench mandate-selftest
+```
+
+This verifies seven packaged reference profiles and reports per-artifact hashes.
+Use `--json` for machine-readable diagnostics or `--out new-report.json` to save
+them. Missing or invalid examples cause failure. A self-test pass describes the
+installation's reference evidence, not a deployed gateway.
+
+Each profile also checks rejection of a boolean schema version, floating-point
+schema version, unknown field, and modified derived verdict or digest. The JSON
+diagnostic exposes every rejection result. These probes detect selected broken
+validators; they are not exhaustive tests or authentication of the installation.
+
+Strict JSON input is limited to 128 nested containers and rejects numerical
+overflow to infinity. Authority file reads are bounded before allocation and
+recheck the opened object's type. These are resource controls, not a sandbox;
+keep evidence in a trusted directory while verification runs.
+
+LureMandate evaluates metadata about proposed agent actions, the people who
+approved them, and the effects observed afterward. It checks exact action
+binding, approval freshness, separation of duties, replay, and rolling budgets
+against a policy fixed before the run. It never authorizes or executes actions.
+
+## Ordered operation-pair campaign
+
+`lurebench mandate-sequence-reference --out-dir sequence-template` creates
+20 explicit priming cases and 26 measured operations. Compile, submit, and
+score these using the standard `mandate-challenge`, `mandate-reference-submit`,
+and `mandate-score` commands. Then assess the score:
+
+```sh
+lurebench mandate-sequence-assess score.json --out sequence-assurance.json
+lurebench mandate-sequence-verify sequence-assurance.json
+```
+
+The fixed cyclic de Bruijn profile covers all 25 ordered pairs across fresh
+allow, replay block, exact-budget allow, one-unit-over-budget block, and
+expired-budget allow. Assessment checks actual priming history, exact approval
+reuse, budget totals, and expiry against policy; operation names alone cannot
+establish coverage. The public reference corpus is in
+`conformance/luremandate-sequence-v1/`.
+
+Measured operations have separate requester scopes. This is ordered operation
+coverage with explicit state setup; it does not demonstrate adjacent transitions
+within one requester, longer sequences, cross-requester interference, or an
+external gateway's behavior.
+
+## Timestamp precision and interpretation
+
+Authority timestamps use a strict microsecond profile of
+[RFC 3339](https://www.rfc-editor.org/rfc/rfc3339.html): a Gregorian date,
+uppercase `T`, seconds, optional one-to-six fractional digits, and either
+uppercase `Z` or a numeric hour/minute offset. Equivalent offsets compare as
+the same UTC instant; original strings remain part of their byte bindings.
+The RFC's `-00:00` convention is accepted as a known UTC instant with an
+unspecified local offset.
+
+Sub-microsecond values, offset seconds, invalid offset minutes, week dates,
+basic ISO forms, leap-second spellings, and unqualified local times are
+rejected. Precision is never truncated or rounded. Convert unsupported source
+timestamps explicitly before evidence generation and disclose any conversion
+in instrumentation documentation. The OpenTelemetry profile already requires
+microsecond-aligned Unix nanoseconds.
+
+Rolling reservations are included at the exact window boundary and excluded
+only after it. Approval expiry is inclusive at the stated expiry instant.
+These decisions use supplied event times, which do not establish clock accuracy
+or synchronization. The published schemas carry the same lexical constraint;
+calendar validity and UTC representability are checked by the implementation.
+
+## Shared-state transitions
+
+`lurebench mandate-transitions-reference --out-dir transitions` creates ten
+deterministic scenarios with 41 cases. Transactions within each scenario share
+requester, policy, replay, and budget state in one ordered session. Use the
+existing challenge/submission/score workflow; no adapter schema changes are
+needed. The public corpus is `conformance/luremandate-transitions-v1/`.
+
+| Cases | Property exercised |
+| --- | --- |
+| 1–4 | Budget-denied requests do not reserve capacity |
+| 5–8 | Approval-denied requests do not reserve capacity |
+| 9–11 | Approvals seen on denied requests remain consumed |
+| 12–16 | Requester budgets remain isolated |
+| 17–22 | Policy budgets remain isolated |
+| 23–26 | A reservation is live exactly at the window edge, then expires |
+| 27–31 | Reservations retire individually as their timestamps expire |
+| 32–34 | Replay history outlives the rolling budget window |
+| 35–38 | Tenant-scoped budgets aggregate across requesters |
+| 39–41 | Approval replay detection crosses policy scopes |
+
+Regression tests compare results against explicit expected reasons and inject
+seven engine defects: cleared replay history, cleared budget history, retaining
+only the latest reservation, early/late expiry by one millisecond, an increased
+budget limit, and an incorrect requester scope for a tenant policy. All seven
+are detected by exact decision-and-reason scoring. This is evidence about these
+specific seeded faults, not a general defect-detection rate.
+
+The distinction between input coverage and sequence coverage is motivated by
+[NIST's sequence-coverage research](https://www.nist.gov/publications/ensuring-reliability-through-combinatorial-sequence-coverage).
+These are selected sequential scenarios; concurrent requests, crashes, persistent
+storage, and production gateways require separate tests. Run budgets and approval
+times use supplied timestamps, so no waiting or network traffic is required.
 
 ## What is bound
 
@@ -91,7 +194,11 @@ coverage does not rewrite the signed core evidence chain.
 Send only `mandate-challenge.json` to the gateway adapter. Process every case
 in sequence in one session without resetting approval-replay or rolling-budget
 state. Return a submission matching
-`spec/luremandate-conformance-submission-v1.schema.json`:
+`spec/luremandate-conformance-submission-v1.schema.json`.
+
+The [gateway adapter SDK](MANDATE_GATEWAY_ADAPTER.md) automates this loop through
+`mandate-run-gateway`, preserving one session and writing the bound submission.
+The JSON below describes the same wire contract for non-Python integrations:
 
 ```json
 {

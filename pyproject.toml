@@ -151,6 +151,7 @@ packages = ["lurebench"]
 "conformance/luremandate-pairwise-v1" = "lurebench/conformance_data/luremandate-pairwise-v1"
 "conformance/luremandate-counterfactual-v1" = "lurebench/conformance_data/luremandate-counterfactual-v1"
 "conformance/luremandate-sequence-v1" = "lurebench/conformance_data/luremandate-sequence-v1"
+"conformance/luremandate-transitions-v1" = "lurebench/conformance_data/luremandate-transitions-v1"
 
 [tool.ruff]
 line-length = 100

@@ -6,7 +6,7 @@
   "required": ["schema", "schema_version", "evaluation_id", "evaluated_at", "engine", "plan_sha256", "run_sha256", "plan", "run", "results", "findings", "summary", "limitations"],
   "properties": {
     "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-evaluation-v1"}, "schema_version": {"const": 1},
-    "evaluation_id": {"$ref": "#/$defs/id"}, "evaluated_at": {"type": "string", "format": "date-time"},
+    "evaluation_id": {"$ref": "#/$defs/id"}, "evaluated_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "engine": {"const": {"name": "lurebench-luremandate", "version": "1.0.0"}},
     "plan_sha256": {"$ref": "#/$defs/digest"}, "run_sha256": {"$ref": "#/$defs/digest"},
     "plan": {"$ref": "https://github.com/immu4989/lurebench/spec/luremandate-plan-v1"},

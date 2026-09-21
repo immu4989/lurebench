@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import hashlib
 import os
+import stat
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence
 
-from .permit import _canonical, _exact, _identifier, _integer, _timestamp
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _exact, _identifier, _integer
 from .receipts import loads_strict_json
 from .spiffe import parse_spiffe_id
 
@@ -143,7 +145,9 @@ def validate_mandate_plan(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if plan["schema"] != PLAN_SCHEMA or plan["schema_version"] != 1:
+    if plan["schema"] != PLAN_SCHEMA or (
+        type(plan["schema_version"]) is not int or plan["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate plan schema")
     _identifier(plan["campaign_id"], "campaign_id")
     _instant(plan["created_at"], "created_at")
@@ -266,7 +270,7 @@ def validate_mandate_plan(value: Any) -> Dict[str, Any]:
         "maximum_incorrect_reason_count": 0,
         "require_complete_outcomes": True,
     }
-    if acceptance != expected_acceptance:
+    if _canonical(acceptance) != _canonical(expected_acceptance):
         raise ValueError("LureMandate v1 acceptance must remain fail closed")
     _validate_privacy(plan["privacy"], "plan privacy")
     _validate_limitations(plan["limitations"], "plan limitations")
@@ -356,7 +360,9 @@ def validate_mandate_run(value: Any, plan_value: Mapping[str, Any]) -> Dict[str,
             "limitations",
         ),
     )
-    if run["schema"] != RUN_SCHEMA or run["schema_version"] != 1:
+    if run["schema"] != RUN_SCHEMA or (
+        type(run["schema_version"]) is not int or run["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate run schema")
     _identifier(run["run_id"], "run_id")
     _identifier(run["campaign_id"], "campaign_id")
@@ -767,7 +773,9 @@ def validate_approval_statement(value: Any) -> Dict[str, Any]:
         "LureMandate approval statement",
         ("schema", "schema_version", "campaign_id", "plan_sha256", "approval"),
     )
-    if statement["schema"] != APPROVAL_STATEMENT_SCHEMA or statement["schema_version"] != 1:
+    if statement["schema"] != APPROVAL_STATEMENT_SCHEMA or (
+        type(statement["schema_version"]) is not int or statement["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate approval statement schema")
     _identifier(statement["campaign_id"], "approval statement campaign_id")
     _digest(statement["plan_sha256"], "approval statement plan_sha256")
@@ -895,9 +903,9 @@ def _authority_decision(
         else intent["tenant_id"]
     )
     key = (subject, policy["policy_id"])
-    window_start = decision_time - timedelta(milliseconds=policy["cumulative_window_ms"])
+    window = timedelta(milliseconds=policy["cumulative_window_ms"])
     consumed = sum(
-        impact for instant, impact in reservations.get(key, []) if instant >= window_start
+        impact for instant, impact in reservations.get(key, []) if decision_time - instant <= window
     )
     if consumed + intent["impact_units"] > policy["cumulative_limit_units"]:
         return "block", "cumulative_limit_exceeded"
@@ -1073,7 +1081,9 @@ def validate_mandate_evaluation(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if evaluation["schema"] != EVALUATION_SCHEMA or evaluation["schema_version"] != 1:
+    if evaluation["schema"] != EVALUATION_SCHEMA or (
+        type(evaluation["schema_version"]) is not int or evaluation["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate evaluation schema")
     _identifier(evaluation["evaluation_id"], "evaluation_id")
     if _exact(evaluation["engine"], "engine", ("name", "version")) != {
@@ -1087,7 +1097,7 @@ def validate_mandate_evaluation(value: Any) -> Dict[str, Any]:
     expected = _derive_mandate_evaluation(
         evaluation["plan"], evaluation["run"], evaluated_at=evaluation["evaluated_at"]
     )
-    if evaluation != expected:
+    if _canonical(evaluation) != _canonical(expected):
         raise ValueError("LureMandate evaluation does not independently recompute")
     return dict(evaluation)
 
@@ -1096,7 +1106,27 @@ def _read(path: Path, label: str) -> bytes:
     source = Path(path)
     if not source.is_file() or source.is_symlink() or source.parent.is_symlink():
         raise ValueError(f"{label} must be a regular non-symlink file")
-    payload = source.read_bytes()
+    # Bound allocation before parsing, and validate the opened object rather
+    # than relying only on the path check (which can race with replacement).
+    descriptor = os.open(
+        source,
+        os.O_RDONLY
+        | getattr(os, "O_NOFOLLOW", 0)
+        | getattr(os, "O_NONBLOCK", 0)
+        | getattr(os, "O_BINARY", 0),
+    )
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError(f"{label} must be a regular file")
+        if not 1 <= metadata.st_size <= MAX_DOCUMENT_BYTES:
+            raise ValueError(f"{label} exceeds its bounded size")
+        with os.fdopen(descriptor, "rb") as stream:
+            descriptor = -1
+            payload = stream.read(MAX_DOCUMENT_BYTES + 1)
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
     if not 1 <= len(payload) <= MAX_DOCUMENT_BYTES:
         raise ValueError(f"{label} must be non-empty and at most 8 MiB")
     return payload
@@ -1108,6 +1138,8 @@ def _load(path: Path, label: str) -> Any:
 
 def _write(path: Path, value: Mapping[str, Any]) -> None:
     payload = _canonical(value)
+    if not 1 <= len(payload) <= MAX_DOCUMENT_BYTES:
+        raise ValueError("generated LureMandate document exceeds the 8 MiB input limit")
     destination = Path(path)
     descriptor = os.open(
         destination,

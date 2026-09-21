@@ -10,6 +10,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
 from lurebench.cli import main
+from lurebench.mandate import _sha256
 from lurebench.mandate_conformance import (
     compile_mandate_challenge,
     evaluate_mandate_conformance,
@@ -124,6 +125,33 @@ def test_sequence_tampering_fails_closed():
     changed["ordered_pair_coverage"]["covered_pairs"].pop()
     with pytest.raises(ValueError, match="does not independently recompute"):
         validate_sequence_mandate_conformance(changed)
+
+
+@pytest.mark.parametrize(
+    "action,impact,message",
+    [
+        ("sequence-budget-boundary-allow", 49, "exactly exhaust"),
+        ("sequence-expired-window-allow", 40, "expired budget reservation"),
+    ],
+)
+def test_correct_gateway_answers_cannot_launder_false_operation_labels(action, impact, message):
+    plan = sequence_mandate_plan()
+    run = sequence_mandate_run(plan, engine_artifact_sha256="a" * 64)
+    transaction = next(t for t in run["transactions"] if t["intent"]["action"] == action)
+    transaction["intent"]["impact_units"] = impact
+    transaction["intent_sha256"] = _sha256(_canonical(transaction["intent"]))
+    for approval in transaction["approvals"]:
+        approval["intent_sha256"] = transaction["intent_sha256"]
+    challenge = compile_mandate_challenge(
+        plan, run, challenge_id="false-label", generated_at="2026-09-05T16:10:00Z"
+    )
+    submission = reference_mandate_submission(
+        challenge, submission_id="false-label-answer", submitted_at="2026-09-05T16:11:00Z"
+    )
+    score = evaluate_mandate_conformance(challenge, submission, evaluated_at="2026-09-05T16:12:00Z")
+    assert score["summary"]["verdict"] == "pass"
+    with pytest.raises(ValueError, match=message):
+        evaluate_sequence_mandate_conformance(score)
 
 
 def test_sequence_output_is_private_non_overwriting_and_cli_verifies(

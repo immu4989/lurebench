@@ -33,7 +33,8 @@ from .mandate import (
 )
 from .mandate import LIMITATIONS as RUN_LIMITATIONS
 from .mandate import PRIVACY as RUN_PRIVACY
-from .permit import _canonical, _exact, _identifier, _integer, _timestamp
+from .mandate_time import validate_mandate_timestamp as _timestamp
+from .permit import _canonical, _exact, _identifier, _integer
 
 OTEL_EXPORT_SCHEMA = "https://github.com/immu4989/lurebench/spec/luremandate-otel-log-export/v1"
 OTEL_PROJECTION_SCHEMA = "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1"
@@ -516,7 +517,9 @@ def validate_mandate_otel_log_export(value: Any, plan_value: Mapping[str, Any]) 
             "limitations",
         ),
     )
-    if export["schema"] != OTEL_EXPORT_SCHEMA or export["schema_version"] != 1:
+    if export["schema"] != OTEL_EXPORT_SCHEMA or (
+        type(export["schema_version"]) is not int or export["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate OpenTelemetry export schema")
     for name in ("export_id", "campaign_id", "run_id"):
         _identifier(export[name], f"OpenTelemetry export.{name}")
@@ -637,7 +640,9 @@ def validate_mandate_otel_projection(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if projection["schema"] != OTEL_PROJECTION_SCHEMA or projection["schema_version"] != 1:
+    if projection["schema"] != OTEL_PROJECTION_SCHEMA or (
+        type(projection["schema_version"]) is not int or projection["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate OpenTelemetry projection schema")
     inputs = projection["inputs"]
     if not isinstance(inputs, dict):
@@ -646,7 +651,7 @@ def validate_mandate_otel_projection(value: Any) -> Dict[str, Any]:
         inputs.get("mandate_plan"),
         inputs.get("otel_log_export"),
     )
-    if projection != expected:
+    if _canonical(projection) != _canonical(expected):
         raise ValueError("OpenTelemetry LureMandate projection does not independently recompute")
     return dict(projection)
 

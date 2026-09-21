@@ -9,7 +9,7 @@
     "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-sequence-assurance/v1"},
     "schema_version": {"const": 1},
     "report_id": {"$ref": "#/$defs/id"},
-    "evaluated_at": {"type": "string", "format": "date-time"},
+    "evaluated_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "method": {
       "type": "object",
       "additionalProperties": false,

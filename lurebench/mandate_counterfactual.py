@@ -482,10 +482,12 @@ def validate_counterfactual_mandate_conformance(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if report["schema"] != SCHEMA or report["schema_version"] != 1:
+    if report["schema"] != SCHEMA or (
+        type(report["schema_version"]) is not int or report["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate counterfactual assurance schema")
     _identifier(report["report_id"], "counterfactual report_id")
-    if report != _value(report["score"]):
+    if _canonical(report) != _canonical(_value(report["score"])):
         raise ValueError("LureMandate counterfactual assurance does not independently recompute")
     return dict(report)
 

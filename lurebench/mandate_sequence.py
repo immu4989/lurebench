@@ -11,6 +11,7 @@ from .mandate import (
     LIMITATIONS,
     PRIVACY,
     RUN_SCHEMA,
+    _instant,
     _sha256,
     _write,
     default_mandate_plan,
@@ -268,15 +269,72 @@ def sequence_mandate_run(
     return validate_mandate_run(run, plan)
 
 
+def _validate_operation_state(score: Mapping[str, Any]) -> None:
+    """Bind operation labels to actual priming history and policy boundaries."""
+    challenge = score["challenge"]
+    policies = {item["policy_id"]: item for item in challenge["plan"]["policies"]}
+    history: Dict[str, list[tuple[Mapping[str, Any], Mapping[str, Any]]]] = {}
+    for index, (case, result) in enumerate(zip(challenge["cases"], score["results"], strict=True)):
+        transaction = case["transaction"]
+        intent = transaction["intent"]
+        requester = intent["requester_id"]
+        prior = history.get(requester, [])
+        policy = policies.get(intent["policy_id"])
+        if policy is None or policy["cumulative_scope"] != "requester_policy":
+            raise ValueError("sequence profile requires requester-policy budget scope")
+        if index < 20:
+            if prior or result["expected_decision"] != "allow":
+                raise ValueError("sequence priming must allow once per requester")
+        else:
+            operation = intent["action"].removeprefix("sequence-")
+            if operation == "fresh-allow":
+                if prior:
+                    raise ValueError("fresh operation must have no prior requester history")
+            else:
+                if len(prior) != 1:
+                    raise ValueError("stateful operation requires exactly one priming case")
+                prime, prime_result = prior[0]
+                if prime["intent"]["policy_id"] != intent["policy_id"]:
+                    raise ValueError("priming policy must match measured policy")
+                if prime_result["expected_decision"] != "allow":
+                    raise ValueError("stateful operation requires allowed priming")
+                if operation == "replay-block":
+                    if not any(
+                        approval == old
+                        for approval in transaction["approvals"]
+                        for old in prime["approvals"]
+                    ):
+                        raise ValueError("replay operation requires exact primed approval reuse")
+                else:
+                    age = _instant(transaction["decided_at"], "decided_at") - _instant(
+                        prime["decided_at"], "prime decided_at"
+                    )
+                    window = timedelta(milliseconds=policy["cumulative_window_ms"])
+                    total = prime["intent"]["impact_units"] + intent["impact_units"]
+                    limit = policy["cumulative_limit_units"]
+                    if operation == "budget-boundary-allow" and not (
+                        age <= window and total == limit
+                    ):
+                        raise ValueError("boundary operation must exactly exhaust the live budget")
+                    if operation == "budget-exceed-block" and not (
+                        age <= window and total == limit + 1
+                    ):
+                        raise ValueError("exceed operation must exceed the live budget by one")
+                    if operation == "expired-window-allow" and not (
+                        age > window and total > limit and intent["impact_units"] <= limit
+                    ):
+                        raise ValueError("expired operation requires an expired budget reservation")
+        history.setdefault(requester, []).append((transaction, result))
+
+
 def _value(score_value: Mapping[str, Any]) -> Dict[str, Any]:
     score = validate_mandate_conformance_score(score_value)
     cases = score["challenge"]["cases"]
     results = score["results"]
+    _validate_operation_state(score)
     if len(cases) != 46:
         raise ValueError("sequence campaign must contain exactly 20 preamble and 26 measured cases")
-    if any(
-        case["transaction"]["intent"]["action"] != "state-prime" for case in cases[:20]
-    ):
+    if any(case["transaction"]["intent"]["action"] != "state-prime" for case in cases[:20]):
         raise ValueError("sequence campaign must begin with exactly 20 state-prime cases")
     measured = []
     for case, result in zip(cases[20:], results[20:], strict=True):
@@ -382,10 +440,12 @@ def validate_sequence_mandate_conformance(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if report["schema"] != SCHEMA or report["schema_version"] != 1:
+    if report["schema"] != SCHEMA or (
+        type(report["schema_version"]) is not int or report["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate sequence assurance schema")
     _identifier(report["report_id"], "sequence report_id")
-    if report != _value(report["score"]):
+    if _canonical(report) != _canonical(_value(report["score"])):
         raise ValueError("LureMandate sequence assurance does not independently recompute")
     return dict(report)
 

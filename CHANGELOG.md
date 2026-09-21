@@ -2,6 +2,54 @@
 
 ## Unreleased
 
+- Reject generated authority documents that exceed their loader's size limit
+  before creating output. Gateway lifecycle hooks must complete synchronously
+  and return the declared types; hidden coroutine/generator results fail closed.
+
+- Bounded authority file reads before allocation, checked opened file types,
+  and added growth/symlink/descriptor-failure regressions. Shared strict JSON
+  parsing now rejects floating-point overflow and more than 128 nested
+  containers before decoding; ordinary finite numeric types are preserved.
+
+- Added seeded integer-time model checking: 5,120 synthetic transactions per
+  implementation exercise replay, denials, requester/tenant budgets, exact
+  time boundaries, and positive integer unit scaling without calling the
+  production decision routine for expected answers.
+
+- Extended offline self-tests with four tamper-rejection probes per profile,
+  including canonical type aliases and altered derived claims. Packaging
+  regressions now cover missing, stale, duplicate, and corrupt wheel contents.
+
+- Added `mandate-selftest` for seven offline packaged authority profiles,
+  with per-artifact hashes and fail-closed diagnostics. CI now checks that
+  authority code, schemas, and evidence bytes survive wheel packaging exactly.
+
+- Enforced exact microsecond RFC 3339 timestamps throughout LureMandate and
+  its schemas, rejecting silent precision truncation and invalid offset
+  normalization. Rolling-window arithmetic also handles early Gregorian dates
+  without underflow while preserving inclusive boundary behavior.
+
+- Added a synchronous gateway adapter SDK and `mandate-run-gateway` command:
+  one ordered session, copied answer-free inputs, strict response validation,
+  guaranteed close after session entry, no automatic retries, private output,
+  and redacted CLI exceptions. An offline always-block example demonstrates
+  that successful submission export and a passing conformance score differ.
+
+- Added `mandate-transitions-reference`: ten shared-state scenarios and 41
+  conformance cases for denied-request accounting, replay persistence, scope
+  isolation, and exact rolling-window boundaries. Explicit golden answers and
+  seven seeded state-machine defects test the campaign's fault sensitivity.
+
+- Hardened LureMandate JSON validation: schema versions require Python integer
+  values, acceptance policy fields preserve boolean/integer types, and derived
+  evidence is compared by canonical JSON bytes to prevent equality aliases
+  such as `true == 1` and `26.0 == 26` from bypassing recomputation checks.
+
+- Added a 46-case ordered-operation reference campaign covering all 25 pairs
+  of five operations. Coverage assessment checks actual state priming,
+  approval reuse, exact budget boundaries, and expiry, rejecting correctly
+  answered cases with misleading operation labels.
+
 - Added an answer-free, stateful LureMandate black-box conformance workflow.
   It strips transaction decisions, reason codes, expected answers, and outcomes
   from an ordered challenge; requires a complete canonical-hash-bound gateway

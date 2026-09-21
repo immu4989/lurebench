@@ -344,11 +344,13 @@ def validate_pairwise_mandate_conformance(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if report["schema"] != SCHEMA or report["schema_version"] != 1:
+    if report["schema"] != SCHEMA or (
+        type(report["schema_version"]) is not int or report["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate pairwise assurance schema")
     _identifier(report["report_id"], "pairwise report_id")
     expected = _value(report["score"])
-    if report != expected:
+    if _canonical(report) != _canonical(expected):
         raise ValueError("LureMandate pairwise assurance does not independently recompute")
     return dict(report)
 

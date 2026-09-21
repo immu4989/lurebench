@@ -34,6 +34,8 @@ jobs:
         run: uv run --frozen ruff check lurebench tests scripts
       - name: Tests
         run: uv run --frozen pytest -q
+      - name: Verify packaged authority reference evidence
+        run: uv run --frozen lurebench mandate-selftest
       - name: Run packaged LureEval semantic conformance
         if: matrix.python-version == '3.12'
         run: >-
@@ -42,6 +44,18 @@ jobs:
       - name: Build distributions
         if: matrix.python-version == '3.12'
         run: uv build
+      - name: Check packaged authority code and evidence
+        if: matrix.python-version == '3.12'
+        run: uv run --frozen python scripts/check_mandate_wheel.py dist/*.whl --package lurebench
+      - name: Verify installed authority CLI outside the checkout
+        if: matrix.python-version == '3.12'
+        run: |
+          mandate_smoke_root="$(mktemp -d)"
+          uv pip install --offline --no-deps --target "$mandate_smoke_root/installed" dist/*.whl
+          cd "$mandate_smoke_root"
+          "$GITHUB_WORKSPACE/.venv/bin/python" \
+            "$GITHUB_WORKSPACE/scripts/check_installed_mandate.py" \
+            --package lurebench --installed-root "$mandate_smoke_root/installed"
 
   container-contract:
     runs-on: ubuntu-latest

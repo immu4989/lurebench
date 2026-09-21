@@ -1612,6 +1612,26 @@ def _cmd_mandate_counterfactual_verify(args: argparse.Namespace) -> int:
         return 2
 
 
+def _cmd_mandate_transitions_reference(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_transitions import write_transition_mandate_template
+
+        plan_path, run_path = write_transition_mandate_template(
+            Path(args.out_dir),
+            run_id=args.run_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+        )
+        print(
+            f"wrote LureMandate shared-state template — 10 scenarios, 41 cases: {plan_path}, {run_path}"
+        )
+        return 0
+    except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
+        print(f"! LureMandate transition template failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_mandate_sequence_reference(args: argparse.Namespace) -> int:
     try:
         from .mandate_sequence import write_sequence_mandate_template
@@ -1677,6 +1697,59 @@ def _cmd_mandate_sequence_verify(args: argparse.Namespace) -> int:
         return 0 if summary["verdict"] == "pass" else 1
     except (FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         print(f"! LureMandate sequence verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_selftest(args: argparse.Namespace) -> int:
+    try:
+        from .mandate import _write
+        from .mandate_selftest import run_mandate_selftest
+
+        result = run_mandate_selftest()
+        if args.out:
+            _write(Path(args.out), result)
+        summary = result["summary"]
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
+        else:
+            print(
+                f"LUREMANDATE REFERENCE SELFTEST: {summary['status'].upper()} — "
+                f"{summary['passed']}/{summary['total']}"
+            )
+            print(result["boundary"])
+        return 0 if summary["status"] == "pass" else 1
+    except (OSError, ValueError) as exc:
+        print(f"! LureMandate reference selftest failed: {exc}", file=sys.stderr)
+        return 2
+
+
+def _cmd_mandate_run_gateway(args: argparse.Namespace) -> int:
+    try:
+        from .mandate_conformance import load_mandate_challenge
+        from .mandate_gateway import run_mandate_gateway_to_file
+
+        result = run_mandate_gateway_to_file(
+            load_mandate_challenge(Path(args.challenge)),
+            args.adapter,
+            Path(args.out),
+            submission_id=args.submission_id,
+            engine_id=args.engine_id,
+            engine_version=args.engine_version,
+            engine_artifact_sha256=args.engine_artifact_sha256,
+            submitted_at=args.submitted_at,
+        )
+        print(f"wrote gateway submission — cases={len(result['results'])} — {args.out}")
+        print(
+            "Run mandate-score to assess the answers; exporting a submission does not imply a pass."
+        )
+        return 0
+    except Exception as exc:
+        # Adapter exceptions can contain transport credentials or response bodies.
+        print(
+            f"! LureMandate gateway execution failed ({type(exc).__name__}); "
+            "no complete submission was exported",
+            file=sys.stderr,
+        )
         return 2
 
 
@@ -3012,6 +3085,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_mandate_counterfactual_verify.add_argument("report")
     p_mandate_counterfactual_verify.set_defaults(func=_cmd_mandate_counterfactual_verify)
 
+    p_mandate_transitions_reference = sub.add_parser(
+        "mandate-transitions-reference",
+        help="write 41 shared-state cases for replay, budget scope, and rolling-window edges",
+    )
+    p_mandate_transitions_reference.add_argument("--run-id", default="mandate-transitions-run-1")
+    p_mandate_transitions_reference.add_argument("--engine-id", default="luremandate-reference")
+    p_mandate_transitions_reference.add_argument("--engine-version", default="1.0.0")
+    p_mandate_transitions_reference.add_argument("--engine-artifact-sha256")
+    p_mandate_transitions_reference.add_argument("--out-dir", required=True)
+    p_mandate_transitions_reference.set_defaults(func=_cmd_mandate_transitions_reference)
+
     p_mandate_sequence_reference = sub.add_parser(
         "mandate-sequence-reference",
         help="write a stateful campaign covering every ordered pair of five operations",
@@ -3041,6 +3125,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_mandate_sequence_verify.add_argument("report")
     p_mandate_sequence_verify.set_defaults(func=_cmd_mandate_sequence_verify)
+
+    p_mandate_selftest = sub.add_parser(
+        "mandate-selftest", help="verify packaged authority reference evidence offline"
+    )
+    p_mandate_selftest.add_argument("--json", action="store_true")
+    p_mandate_selftest.add_argument("--out", help="optional new diagnostic JSON file")
+    p_mandate_selftest.set_defaults(func=_cmd_mandate_selftest)
+
+    p_mandate_gateway = sub.add_parser(
+        "mandate-run-gateway",
+        help="run a trusted Python adapter through one ordered challenge session",
+    )
+    p_mandate_gateway.add_argument("challenge")
+    p_mandate_gateway.add_argument("--adapter", required=True, help="trusted module:factory")
+    p_mandate_gateway.add_argument("--submission-id", required=True)
+    p_mandate_gateway.add_argument("--engine-id", required=True)
+    p_mandate_gateway.add_argument("--engine-version", required=True)
+    p_mandate_gateway.add_argument("--engine-artifact-sha256")
+    p_mandate_gateway.add_argument("--submitted-at")
+    p_mandate_gateway.add_argument("--out", "-o", required=True)
+    p_mandate_gateway.set_defaults(func=_cmd_mandate_run_gateway)
 
     p_mandate_reference_submission = sub.add_parser(
         "mandate-reference-submit",

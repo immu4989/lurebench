@@ -45,6 +45,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
   <a href="docs/LUREBOM.md"><strong>Reconcile AI-BOM twins</strong></a> ·
   <a href="docs/LURECHANNEL.md"><strong>Test cross-run isolation</strong></a> ·
   <a href="docs/LUREMANDATE.md"><strong>Verify transaction authority</strong></a> ·
+  <a href="docs/MANDATE_GATEWAY_ADAPTER.md"><strong>Connect a test gateway</strong></a> ·
   <a href="docs/LUREINVARIANT.md"><strong>Evaluate system invariants</strong></a> ·
   <a href="https://immu4989.github.io/lurescope/"><strong>Open the LureScope browser lab ↗</strong></a>
 </p>
@@ -186,6 +187,13 @@ More than a corpus, it is a **method for building the corpus honestly**. Getting
 > the gateway response changes appropriately. Eighteen pairs isolate one
 > declared dimension; approval-count and replay pairs disclose their dependent
 > multi-dimension changes. This is contract sensitivity evidence, not MC/DC.
+
+For the unreleased authority tooling, start with `lurebench mandate-selftest`
+to check seven packaged reference profiles and their tamper-rejection probes.
+Then [connect a disposable test gateway](docs/MANDATE_GATEWAY_ADAPTER.md).
+The [41-case shared-state campaign](docs/LUREMANDATE.md#shared-state-transitions)
+tests replay persistence, budget scope, and rolling-window transitions. None
+of these reference checks demonstrate that a production gateway is secure.
 
 > **New — test invariants that cross the model, tools, network, identity, and
 > lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed

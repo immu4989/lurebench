@@ -19,7 +19,7 @@
     "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-conformance-submission/v1"},
     "schema_version": {"const": 1},
     "submission_id": {"$ref": "#/$defs/id"},
-    "submitted_at": {"type": "string", "format": "date-time"},
+    "submitted_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "challenge_id": {"$ref": "#/$defs/id"},
     "challenge_sha256": {"$ref": "#/$defs/digest"},
     "engine": {

@@ -237,7 +237,9 @@ def validate_mandate_challenge(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if challenge["schema"] != CHALLENGE_SCHEMA or challenge["schema_version"] != 1:
+    if challenge["schema"] != CHALLENGE_SCHEMA or (
+        type(challenge["schema_version"]) is not int or challenge["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance challenge schema")
     _identifier(challenge["challenge_id"], "challenge_id")
     generated = _instant(challenge["generated_at"], "generated_at")
@@ -269,7 +271,7 @@ def validate_mandate_challenge(value: Any) -> Dict[str, Any]:
         expected_case_id = f"case-{index + 1:04d}"
         if case_id != expected_case_id:
             raise ValueError("conformance case IDs must be opaque contiguous identifiers")
-        if case["sequence"] != index + 1:
+        if type(case["sequence"]) is not int or case["sequence"] != index + 1:
             raise ValueError("conformance cases must use contiguous execution order")
         transaction = _exact(
             case["transaction"],
@@ -364,7 +366,9 @@ def validate_mandate_submission(value: Any, challenge_value: Mapping[str, Any]) 
             "limitations",
         ),
     )
-    if submission["schema"] != SUBMISSION_SCHEMA or submission["schema_version"] != 1:
+    if submission["schema"] != SUBMISSION_SCHEMA or (
+        type(submission["schema_version"]) is not int or submission["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance submission schema")
     _identifier(submission["submission_id"], "submission_id")
     if _instant(submission["submitted_at"], "submitted_at") < _instant(
@@ -555,12 +559,14 @@ def validate_mandate_conformance_score(value: Any) -> Dict[str, Any]:
             "limitations",
         ),
     )
-    if score["schema"] != SCORE_SCHEMA or score["schema_version"] != 1:
+    if score["schema"] != SCORE_SCHEMA or (
+        type(score["schema_version"]) is not int or score["schema_version"] != 1
+    ):
         raise ValueError("unsupported LureMandate conformance score schema")
     expected = _score_value(
         score["challenge"], score["submission"], evaluated_at=score["evaluated_at"]
     )
-    if score != expected:
+    if _canonical(score) != _canonical(expected):
         raise ValueError("LureMandate conformance score does not independently recompute")
     return dict(score)
 

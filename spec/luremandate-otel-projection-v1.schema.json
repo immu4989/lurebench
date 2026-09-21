@@ -8,7 +8,7 @@
   "properties": {
     "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-otel-projection/v1"},
     "schema_version": {"const": 1},
-    "generated_at": {"type": "string", "format": "date-time"},
+    "generated_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "implementation": {"type": "object", "additionalProperties": false, "required": ["name", "version"], "properties": {"name": {"const": "lurebench"}, "version": {"$ref": "#/$defs/id"}}},
     "inputs": {
       "type": "object", "additionalProperties": false,

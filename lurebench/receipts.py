@@ -78,6 +78,28 @@ class VerifiedReceipt:
     key_ids: Tuple[str, ...]
 
 
+def _check_json_nesting(text: str) -> None:
+    """Bound structural depth before the platform JSON decoder allocates it."""
+    depth = 0
+    in_string = escaped = False
+    for character in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+        elif character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > 128:
+                raise ValueError("JSON nesting exceeds 128 container levels")
+        elif character in "]}":
+            depth -= 1
+
+
 def loads_strict_json(payload: bytes) -> Any:
     """Decode UTF-8 JSON while rejecting duplicate keys and non-finite constants."""
 
@@ -92,14 +114,22 @@ def loads_strict_json(payload: bytes) -> Any:
     def reject_constant(value: str) -> None:
         raise ValueError(f"non-standard JSON constant: {value}")
 
+    def finite_float(value: str) -> float:
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("JSON number exceeds finite floating-point range")
+        return number
+
     try:
         text = payload.decode("utf-8")
+        _check_json_nesting(text)
         return json.loads(
             text,
             object_pairs_hook=object_no_duplicates,
             parse_constant=reject_constant,
+            parse_float=finite_float,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+    except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError("artifact is not strict UTF-8 JSON") from exc
 
 

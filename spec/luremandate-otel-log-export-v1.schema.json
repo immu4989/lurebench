@@ -9,13 +9,13 @@
     "schema": {"const": "https://github.com/immu4989/lurebench/spec/luremandate-otel-log-export/v1"},
     "schema_version": {"const": 1},
     "export_id": {"$ref": "#/$defs/id"},
-    "generated_at": {"type": "string", "format": "date-time"},
+    "generated_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "time_origin_unix_nano": {"$ref": "#/$defs/unix_nano"},
     "campaign_id": {"$ref": "#/$defs/id"},
     "plan_sha256": {"$ref": "#/$defs/digest"},
     "run_id": {"$ref": "#/$defs/id"},
-    "started_at": {"type": "string", "format": "date-time"},
-    "completed_at": {"type": "string", "format": "date-time"},
+    "started_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
+    "completed_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
     "receiver": {"$ref": "#/$defs/receiver"},
     "records": {
       "type": "array",
@@ -62,7 +62,7 @@
         "luremandate.transaction.id": {"$ref": "#/$defs/id"},
         "luremandate.transaction.sequence": {"type": "integer", "minimum": 1, "maximum": 4096},
         "luremandate.intent.id": {"$ref": "#/$defs/id"},
-        "luremandate.intent.proposed_at": {"type": "string", "format": "date-time"},
+        "luremandate.intent.proposed_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
         "luremandate.tenant.id": {"$ref": "#/$defs/id"},
         "luremandate.run.id": {"$ref": "#/$defs/id"},
         "luremandate.agent.id": {"$ref": "#/$defs/id"},
@@ -86,8 +86,8 @@
         "luremandate.approver.role": {"$ref": "#/$defs/id"},
         "luremandate.approval.decision": {"enum": ["approve", "deny"]},
         "luremandate.intent.sha256": {"$ref": "#/$defs/digest"},
-        "luremandate.approval.issued_at": {"type": "string", "format": "date-time"},
-        "luremandate.approval.expires_at": {"type": "string", "format": "date-time"},
+        "luremandate.approval.issued_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
+        "luremandate.approval.expires_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
         "luremandate.approval.nonce": {"$ref": "#/$defs/id"}
       }
     },
@@ -97,7 +97,7 @@
       "properties": {
         "luremandate.transaction.id": {"$ref": "#/$defs/id"},
         "luremandate.decision.id": {"$ref": "#/$defs/id"},
-        "luremandate.decision.decided_at": {"type": "string", "format": "date-time"},
+        "luremandate.decision.decided_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"},
         "luremandate.decision.value": {"enum": ["allow", "block"]},
         "luremandate.decision.reason_code": {"enum": ["agent_identity_mismatch", "agent_policy_denied", "approval_after_decision", "approval_binding_mismatch", "approval_count_insufficient", "approval_denied", "approval_expired", "approval_predates_intent", "approval_replay", "approval_window_invalid", "approver_role_unauthorized", "approver_unknown", "authority_satisfied", "cumulative_limit_exceeded", "impact_limit_exceeded", "policy_unknown", "requester_unknown", "required_role_missing", "run_binding_mismatch", "self_approval", "tenant_mismatch"]}
       }
@@ -108,7 +108,7 @@
       "properties": {
         "luremandate.transaction.id": {"$ref": "#/$defs/id"},
         "luremandate.outcome.state": {"enum": ["effect_observed", "no_effect_observed", "not_attempted", "unknown"]},
-        "luremandate.outcome.observed_at": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        "luremandate.outcome.observed_at": {"oneOf": [{"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:[.][0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])$"}, {"type": "null"}]},
         "luremandate.sensor.id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]}
       }
     },
