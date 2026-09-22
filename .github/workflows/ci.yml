@@ -34,6 +34,9 @@ jobs:
         run: uv run --frozen ruff check lurebench tests scripts
       - name: Tests
         run: uv run --frozen pytest -q
+      - name: Check checkpoint parser against Safetensors reference reader
+        if: matrix.python-version == '3.12'
+        run: uv run --frozen --with safetensors==0.8.0 pytest -q tests/test_checkpoint_reference.py
       - name: Verify packaged authority reference evidence
         run: uv run --frozen lurebench mandate-selftest
       - name: Run packaged LureEval semantic conformance

@@ -177,8 +177,53 @@ def test_bootstrap_is_reproducible_and_contains_estimate():
     second = bootstrap_ci(values, statistic, replicates=100, seed=7)
     assert first == second
     assert first.lower <= first.estimate <= first.upper
+    assert first.replicates == first.requested_replicates == 100
+    assert first.undefined_replicates == 0
+    assert first.conditional_on_defined is False
+
+
+def test_bootstrap_discloses_undefined_resamples():
+    from lurebench.metrics import roc_auc
+
+    def statistic(truth, score):
+        value = roc_auc(truth, score)
+        return value if value is not None else math.nan
+
+    result = bootstrap_ci([(0, .1), (1, .9)], statistic, replicates=100, seed=814)
+    assert 0 < result.replicates < 100
+    assert result.replicates + result.undefined_replicates == result.requested_replicates == 100
+    assert result.conditional_on_defined is True
+    assert result.estimate == 1
 
 
 def test_invalid_calibration_inputs_fail_closed():
     with pytest.raises(ValueError):
         calibration_metrics([1], [1.2])
+
+
+@pytest.mark.parametrize("ids", [["same", "same"], ["a\nb", "c"], ["a", ""], ["a", 1]])
+def test_policy_rejects_duplicate_or_ambiguous_record_ids(ids):
+    with pytest.raises(ValueError, match="record IDs"):
+        build_policy("detector", "fraud", ids, [0, 1], [.1, .9])
+
+
+@pytest.mark.parametrize("objective", ["max_mcc", "target_fpr", "risk_controlled_fpr"])
+def test_calibration_cli_never_drops_abstentions(tmp_path, monkeypatch, capsys, objective):
+    from types import SimpleNamespace
+
+    import lurebench.cli as cli
+
+    records = [Lure(id="negative", text="weekly meeting", label=0, source="human",
+                    typology="benign"),
+               Lure(id="positive", text="verify your account", label=1, source="human",
+                    typology="phishing")]
+    source = tmp_path / "validation.jsonl"
+    output = tmp_path / "policy.json"
+    save_jsonl(records, source)
+    detector = SimpleNamespace(name="partial", task="fraud", score=lambda lure: None)
+    monkeypatch.setattr(cli, "get_detector", lambda *a, **k: detector)
+    monkeypatch.setattr(cli, "build_policy", lambda **k: pytest.fail("policy builder invoked"))
+    assert main(["calibrate", "-d", str(source), "-m", "heuristic-v0",
+                 "--objective", objective, "--target-fpr", ".01", "-o", str(output)]) == 1
+    assert "abstentions cannot be silently dropped" in capsys.readouterr().err
+    assert not output.exists()

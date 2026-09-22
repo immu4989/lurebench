@@ -2,6 +2,79 @@
 
 ## Unreleased
 
+- Bootstrap reports disclose requested, defined, and undefined resamples and
+  flag intervals conditional on defined statistics, including console output.
+
+- Adaptive attacks now stop explicitly on abstentions, invalid probabilities,
+  or unavailable generation instead of claiming confidence/resistance. Completed
+  experiment work is persisted across failure. Generated narratives no longer
+  claim verified intent, deterministic providers, independent replicates, or a
+  fixed detector ranking; missing replicate rates no longer disappear from means.
+
+- Calibration CLI refuses policy export when any validation score is missing;
+  policy construction rejects duplicate/control-containing record IDs instead
+  of treating duplicated or ambiguous provenance as independent evidence.
+
+- Empirical threshold selection now uses a tie-aware O(n log n) sweep and
+  computes the full metric bundle only once. Exhaustive four-record regression
+  cases preserve objective ordering, tie-breaking, and attainable FPR budgets;
+  a 10,000-record test guards against per-candidate full recomputation.
+
+- Public ranking metrics reject non-finite inputs before tie sweeps (preventing
+  NaN stalls), validate binary labels/counts and FPR budgets, and retain support
+  for finite non-probability margins. Calibration rejects invalid probabilities
+  and controls before computation; unit-interval policies no longer export an
+  unusable threshold above one. Added independent brute-force metric regressions.
+
+- Hardened compatible-provider transport with HTTPS-by-default configuration,
+  no authenticated redirects, bounded strict response parsing, redacted error
+  bodies, protected request fields, bounded retry settings, and explicit
+  rejection of incomplete completions. Tests use an in-memory HTTP handler.
+
+- LLM fraud/provenance judges now require an exact ASCII 0–100 integer response
+  instead of extracting stray numbers or guessing from words. Score-cache
+  identities bind parser, prompt, provider/model, and generation configuration;
+  legacy or mismatched contexts stop before paid reruns. Historical scores were
+  not relabeled or recomputed under the changed measurement contract.
+
+- Hardened paid-call caching: same-key concurrent work is coalesced within one
+  cache instance; flush snapshots cannot overwrite newer snapshots out of order;
+  writes are private and bounded; corrupt caches stop rather than silently
+  repaying for calls. The convenience completion wrapper persists even one call.
+
+- Leaderboard slices reuse the original per-record score snapshot instead of
+  querying detectors again, preserving outcome consistency and avoiding extra
+  provider calls when no disk cache is configured.
+
+- Evaluation and leaderboard outputs now disclose class-specific answer coverage
+  and logical full-population accuracy/recall/FPR completion bounds. Exhaustive
+  tests check all completions of 1,296 small label/outcome configurations; the
+  bounds make no missing-at-random or statistical-confidence claim.
+
+- Enforced finite detector probabilities across evaluation, score collection,
+  hard prediction, cache hits/misses, slices, and robustness. Hard prediction
+  now raises on abstention. Robustness no longer counts missing attacked scores
+  as evasion: ASR is nullable with explicit unknown counts and logical bounds,
+  including an undefined result for zero eligible clean detections.
+
+- Authority builders now default optional timestamps only when omitted/None;
+  explicit empty strings, false, zero, and empty containers are rejected rather
+  than silently stamped with the current time. Added creation-path regressions.
+
+- Hardened legacy receipt, permit, runtime, identity, revocation, recall, BOM,
+  and channel evidence reads: check the opened regular file, bound allocation,
+  reject observed mutations, and close descriptors on failure. Added resource,
+  replacement, FIFO, private-permission, and protocol integration regressions.
+
+- Added an offline, non-executing `checkpoint-inspect` preflight for a bounded
+  sharded Safetensors profile, with no-follow regular-file reads, exact tensor
+  membership and byte-layout checks, streaming hashes, and adversarial tests.
+  Structural acceptance is explicitly not model safety or provenance assurance.
+
+- Updated the optional HTTPX2/HTTPCore2 lock to 2.13.0 and added a tested uv
+  HTTPX2 security floor. Documented the separate unresolved Accelerate advisory
+  and the limits of static call-path inspection; no security alert was dismissed.
+
 - Reject generated authority documents that exceed their loader's size limit
   before creating output. Gateway lifecycle hooks must complete synchronously
   and return the declared types; hidden coroutine/generator results fail closed.

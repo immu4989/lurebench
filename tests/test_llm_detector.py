@@ -15,16 +15,15 @@ def test_parses_integer_score():
     assert det.score(_lure()) == 0.87
 
 
-def test_clamps_and_maps_range():
+def test_maps_range_without_extracting_stray_numbers():
     assert LLMJudgeDetector(complete_fn=lambda s, u: "0").score(_lure()) == 0.0
     assert LLMJudgeDetector(complete_fn=lambda s, u: "100").score(_lure()) == 1.0
-    # extracts the first integer even with stray text
-    assert LLMJudgeDetector(complete_fn=lambda s, u: "score: 42.").score(_lure()) == 0.42
+    assert LLMJudgeDetector(complete_fn=lambda s, u: "score: 42.").score(_lure()) is None
 
 
-def test_word_fallback_when_no_number():
-    assert LLMJudgeDetector(complete_fn=lambda s, u: "this is a phishing scam").score(_lure()) == 0.9
-    assert LLMJudgeDetector(complete_fn=lambda s, u: "benign message").score(_lure()) == 0.1
+def test_words_are_not_guessed_into_probabilities():
+    assert LLMJudgeDetector(complete_fn=lambda s, u: "this is a phishing scam").score(_lure()) is None
+    assert LLMJudgeDetector(complete_fn=lambda s, u: "benign message").score(_lure()) is None
 
 
 def test_abstains_on_empty_or_unparseable():
@@ -180,9 +179,7 @@ def test_model_rejection_400_raises_but_record_level_400_still_abstains(monkeypa
     assert gen2.complete("sys", "user") == ""   # abstains, does not raise
 
 
-def test_error_body_is_read_once_and_surfaced(monkeypatch):
-    # The body is a stream; reading it twice yields nothing the second time, which
-    # would silently drop the provider's explanation from the message.
+def test_error_body_is_not_republished_in_exception(monkeypatch):
     import pytest
 
     from lurebench.generate import get_generator
@@ -194,4 +191,5 @@ def test_error_body_is_read_once_and_surfaced(monkeypatch):
     monkeypatch.setattr(gen, "_post", lambda p: (_ for _ in ()).throw(_http_error(404, body)))
     with pytest.raises(ProviderConfigurationError) as ei:
         gen.complete("sys", "user")
-    assert "data policy blocks all endpoints" in str(ei.value)
+    assert "data policy blocks all endpoints" not in str(ei.value)
+    assert "redacted" in str(ei.value)

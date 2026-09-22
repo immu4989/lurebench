@@ -168,6 +168,11 @@ def _cmd_calibrate(args: argparse.Namespace) -> int:
         detector = get_detector(args.detector, **kwargs)
         records = load_jsonl(args.validation)
         ids, truths, scores = collect_scores(detector, records, task=args.task)
+        if len(ids) != len(records):
+            raise ValueError(
+                "calibration requires a score for every validation record; "
+                "detector abstentions cannot be silently dropped from policy evidence"
+            )
         policy, metrics = build_policy(
             detector=getattr(detector, "name", args.detector),
             task=args.task,
@@ -341,6 +346,7 @@ def _cmd_eval(args: argparse.Namespace) -> int:
                 "task": r.task,
                 "threshold": r.threshold,
                 "n_skipped": r.n_skipped,
+                "coverage": r.coverage_summary(),
                 "metrics": r.metrics.as_dict(),
             }
             if args.bootstrap:
@@ -360,9 +366,11 @@ def _cmd_eval(args: argparse.Namespace) -> int:
                 intervals = r.confidence_intervals(args.bootstrap, args.confidence)
                 rendered = "  ".join(
                     f"{name.upper()} {ci.estimate:.3f} [{ci.lower:.3f}, {ci.upper:.3f}]"
+                    f" (defined {ci.replicates}/{ci.requested_replicates}"
+                    f"{' ; conditional' if ci.conditional_on_defined else ''})"
                     for name, ci in intervals.items()
                 )
-                print(f"    {int(args.confidence * 100)}% paired bootstrap: {rendered}")
+                print(f"    nominal {int(args.confidence * 100)}% paired bootstrap: {rendered}")
         print()
     return 0
 
@@ -2445,9 +2453,45 @@ def _cmd_assemble_core_v2(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_checkpoint_inspect(args: argparse.Namespace) -> int:
+    from .checkpoint import inspect_checkpoint
+    from .mandate import _write
+
+    try:
+        output = Path(args.out) if args.out else None
+        if output is not None and (output.exists() or output.is_symlink()):
+            raise FileExistsError("checkpoint inspection output already exists")
+        report = inspect_checkpoint(Path(args.directory), max_total_bytes=args.max_bytes)
+        if output is not None:
+            _write(output, report)
+        if args.json:
+            print(json.dumps(report, sort_keys=True, indent=2))
+        else:
+            summary = report["summary"]
+            print(
+                f"CHECKPOINT STRUCTURE: PASS — shards={summary['shard_count']} "
+                f"tensors={summary['tensor_count']} bytes={summary['file_bytes']}"
+            )
+            print("Boundary: structure and hashes only; not model safety or publisher authentication.")
+        return 0
+    except (OSError, ValueError) as exc:
+        # Parser exceptions can contain private tensor names or local paths.
+        print(f"! checkpoint preflight rejected input ({type(exc).__name__})", file=sys.stderr)
+        return 2
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lurebench", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p_checkpoint = sub.add_parser(
+        "checkpoint-inspect", help="inspect and hash local sharded Safetensors without model loading"
+    )
+    p_checkpoint.add_argument("directory", help="trusted directory containing the checkpoint index")
+    p_checkpoint.add_argument("--max-bytes", type=int, default=32 * 1024**3)
+    p_checkpoint.add_argument("--out", help="new private inspection report; never overwritten")
+    p_checkpoint.add_argument("--json", action="store_true")
+    p_checkpoint.set_defaults(func=_cmd_checkpoint_inspect)
 
     p_eval = sub.add_parser("eval", help="run detectors over a dataset")
     p_eval.add_argument("--dataset", "-d", required=True, help="path to a JSONL dataset")

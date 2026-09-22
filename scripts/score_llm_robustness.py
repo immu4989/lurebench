@@ -23,10 +23,31 @@ from dataclasses import replace
 
 from lurebench.attacks import get_attack
 from lurebench.detectors import get_detector
+from lurebench.probability import validate_score
 from lurebench.robustness import run_robustness
 from lurebench.schema import Lure, load_jsonl
 
 CHAR_ATTACKS = ["homoglyph", "leet", "zero-width", "whitespace"]
+
+
+def _cached_asr(sample, cache, attack):
+    """Summarize cached outcomes without conflating missing scores with evasion."""
+    caught = []
+    clean_unknown = 0
+    for record in sample:
+        score = validate_score(cache.get(f"{record.id}|clean"))
+        if score is None:
+            clean_unknown += 1
+        elif score >= 0.5:
+            caught.append(record)
+    if not caught:
+        return f"n/a (0 eligible; {clean_unknown} clean unknown)"
+    outcomes = [validate_score(cache.get(f"{r.id}|{attack}")) for r in caught]
+    unknown = sum(score is None for score in outcomes)
+    evaded = sum(score is not None and score < 0.5 for score in outcomes)
+    lower, upper = evaded / len(caught), (evaded + unknown) / len(caught)
+    rate = f"inconclusive [{lower:.2f}, {upper:.2f}]" if unknown else f"{lower:.2f}"
+    return f"{rate} (of {len(caught)}; unknown clean/after={clean_unknown}/{unknown})"
 
 
 def _load_env():
@@ -106,32 +127,24 @@ def main():
         list(ex.map(para_key, para_todo))
     json.dump(cache, open(cache_path, "w"))
 
-    # llm-judge ASR per attack (threshold 0.5)
-    def llm_asr(attack):
-        caught = [r for r in sample if (cache.get(f"{r.id}|clean") or 0) >= 0.5]
-        if not caught:
-            return None, 0
-        still = sum(1 for r in caught if (cache.get(f"{r.id}|{attack}") or 0) >= 0.5)
-        return 1 - still / len(caught), len(caught)
-
     # baseline ASR (local, no API)
     def base_asr(name, attack):
         d = get_detector(name)
         rep = run_robustness(d, sample, get_attack(attack))
-        return rep.attack_success_rate, rep.n_detected_clean
+        return rep.asr_label()
 
     attacks = CHAR_ATTACKS + ["paraphrase"]
     print("\n# Attack success rate (higher = more brittle). ASR of caught fraud lures.\n")
     print("| Attack | heuristic-v0 | tfidf-logreg | llm-judge |")
     print("|---|---|---|---|")
     for a in attacks:
-        la, ln = llm_asr(a)
+        la = _cached_asr(sample, cache, a)
         if a == "paraphrase":
-            print(f"| {a} | (n/a) | (n/a) | {la:.2f} (of {ln}) |")
+            print(f"| {a} | (n/a) | (n/a) | {la} |")
         else:
-            ha, _ = base_asr("heuristic-v0", a)
-            ta, _ = base_asr("tfidf-logreg", a)
-            print(f"| {a} | {ha:.2f} | {ta:.2f} | {la:.2f} |")
+            ha = base_asr("heuristic-v0", a)
+            ta = base_asr("tfidf-logreg", a)
+            print(f"| {a} | {ha} | {ta} | {la} |")
 
 
 if __name__ == "__main__":

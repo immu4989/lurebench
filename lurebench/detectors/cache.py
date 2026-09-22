@@ -31,7 +31,8 @@ import hashlib
 import threading
 from typing import Iterable, List, Optional
 
-from ..diskcache import JsonDiskCache
+from ..diskcache import CacheReadError, JsonDiskCache
+from ..probability import validate_score
 from ..schema import Lure
 from .base import Detector
 
@@ -46,8 +47,8 @@ class CachedDetector(Detector):
     Args:
         inner: the detector to wrap; its ``name`` and ``task`` are adopted so the
             wrapper is transparent to the harness and the leaderboard.
-        path: cache file. Created on first :meth:`flush`; missing or corrupt files
-            start an empty cache rather than raising.
+        path: cache file. Created on first :meth:`flush`; only a missing file
+            starts empty. Invalid existing caches fail before provider work.
         flush_every: write to disk after this many new scores (0 disables
             autoflush, in which case call :meth:`flush` yourself).
     """
@@ -58,7 +59,19 @@ class CachedDetector(Detector):
         self.path = path
         self.name = getattr(inner, "name", "detector")
         self.task = getattr(inner, "task", "fraud")
+        namespace = getattr(inner, "cache_namespace", None)
+        if path and hasattr(inner, "cache_namespace") and namespace is None:
+            raise ValueError("persistent custom LLM score caching requires an explicit cache_context")
+        self.cache_name = self.name if namespace is None else f"{self.name}\ncontext={namespace}"
         self.store = JsonDiskCache(path, flush_every=flush_every)
+        if namespace is not None and any(
+            key.startswith(self.name + "\n") and not key.startswith(self.cache_name + "\n")
+            for key in self.store._data
+        ):
+            raise CacheReadError(
+                "score cache contains legacy or different detector context; preserve it "
+                "and explicitly choose a new cache path before any paid rerun"
+            )
 
     # Cache statistics, kept as attributes so callers can read them directly.
     @property
@@ -79,26 +92,24 @@ class CachedDetector(Detector):
         self.store.flush()
 
     def score(self, lure: Lure) -> Optional[float]:
-        key = _key(self.name, lure.text)
-        hit, cached = self.store.lookup(key)
-        if hit:
-            return cached  # may legitimately be None (a cached abstention)
-        value = self.inner.score(lure)
-        value = None if value is None else float(value)
-        self.store.set(key, value)
-        return value
+        key = _key(self.cache_name, lure.text)
+        return validate_score(self.store.get_or_compute(
+            key, lambda: validate_score(self.inner.score(lure)),
+        ))
 
 
 def prewarm(detector: CachedDetector, dataset: Iterable[Lure], workers: int = 8,
             progress_every: int = 200) -> int:
-    """Concurrently fill ``detector``'s cache for every record. Returns new scores.
+    """Fill the cache concurrently; return the number of scheduled records.
 
     Records already in the cache are skipped, so this is resumable. Failures are
     left uncached (the detector itself decides whether to abstain), so a rerun
     retries only what genuinely failed.
+    Identical keys in concurrent records share one computation, so scheduled
+    records are not necessarily the number of underlying provider requests.
     """
     records: List[Lure] = list(dataset)
-    todo = [r for r in records if _key(detector.name, r.text) not in detector._cache]
+    todo = [r for r in records if _key(detector.cache_name, r.text) not in detector._cache]
     if not todo:
         return 0
 

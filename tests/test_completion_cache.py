@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from lurebench.generate.completion_cache import CompletionCache, cached_complete_fn
 
 
@@ -66,3 +68,45 @@ def test_in_memory_only_when_no_path_given():
     complete("sys", "lure")
     complete("sys", "lure")
     assert calls["n"] == 1      # still memoises, just never touches disk
+
+
+@pytest.mark.parametrize("value", [None, 3, {}, [], b"bytes"])
+def test_nonstring_provider_output_is_not_cached(value):
+    inner, calls = _counting(returns=value)
+    cache = CompletionCache()
+    complete = cache.wrap(inner, model="m")
+    with pytest.raises(ValueError, match="string"):
+        complete("s", "u")
+    assert len(cache.store) == 0
+
+
+def test_invalid_cached_completion_does_not_trigger_a_paid_retry():
+    from lurebench.generate.completion_cache import _key
+
+    inner, calls = _counting()
+    cache = CompletionCache()
+    cache.store.set(_key("m", "s", "u"), {"invalid": "cached output"})
+    with pytest.raises(ValueError, match="provider was not retried"):
+        cache.wrap(inner, model="m")("s", "u")
+    assert calls["n"] == 0
+
+
+def test_convenience_wrapper_persists_even_a_single_completion(tmp_path):
+    path = str(tmp_path / "one-completion.json")
+    first, first_calls = _counting()
+    assert cached_complete_fn(first, path, model="m")("s", "u") == "rewritten"
+    assert first_calls["n"] == 1
+    second, second_calls = _counting()
+    assert cached_complete_fn(second, path, model="m")("s", "u") == "rewritten"
+    assert second_calls["n"] == 0
+
+
+@pytest.mark.parametrize("model,system,user", [
+    ("m", "a\x00b", "c"), ("m", "a", "b\x00c"), ("m\x00a", "b", "c"),
+])
+def test_ambiguous_separator_inputs_rejected_before_provider_call(model, system, user):
+    inner, calls = _counting()
+    complete = CompletionCache().wrap(inner, model=model)
+    with pytest.raises(ValueError, match="NUL"):
+        complete(system, user)
+    assert calls["n"] == 0

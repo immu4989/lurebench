@@ -1058,7 +1058,9 @@ def _derive_mandate_evaluation(
 def evaluate_mandate(
     plan: Mapping[str, Any], run: Mapping[str, Any], *, evaluated_at: Optional[str] = None
 ) -> Dict[str, Any]:
-    return _derive_mandate_evaluation(plan, run, evaluated_at=evaluated_at or _now())
+    return _derive_mandate_evaluation(
+        plan, run, evaluated_at=_now() if evaluated_at is None else evaluated_at
+    )
 
 
 def validate_mandate_evaluation(value: Any) -> Dict[str, Any]:

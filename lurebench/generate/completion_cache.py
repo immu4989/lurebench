@@ -4,10 +4,10 @@ Detector scores are cached, which makes re-running an evaluation free. Attacks
 were not: an adaptive attack issues a generation per round per lure, so
 regenerating its table re-paid for every rewrite even though nothing had changed.
 
-Caching a completion is only sound if the same input reliably produces the same
-output, so this is meant for the attack path, which pins ``temperature=0`` for
-exactly that reason. Do not wrap a sampling generator with it: you would cache one
-draw and then replay it forever, quietly turning a distribution into a constant.
+Caching preserves one observed completion, not the provider's determinism.
+Even temperature zero does not guarantee identical uncached outputs. Do not
+reuse a cache to claim independent stochastic replicates: it replays one draw.
+Keep cache paths separate for different provider configurations and experiments.
 
     complete = cached_complete_fn(
         provider_complete_fn("openrouter", "deepseek/deepseek-v4-flash"),
@@ -28,6 +28,8 @@ from ..diskcache import JsonDiskCache
 def _key(model: str, system: str, user: str) -> str:
     # The model id is part of the key: the same prompt to a different model is a
     # different completion, and these caches get reused across panels.
+    if any(not isinstance(value, str) or "\x00" in value for value in (model, system, user)):
+        raise ValueError("completion cache inputs must be strings without NUL separators")
     h = hashlib.sha1("\x00".join((model, system, user)).encode("utf-8"))
     return h.hexdigest()
 
@@ -49,16 +51,17 @@ class CompletionCache:
     def wrap(self, complete_fn: Callable[[str, str], str], model: str = "") -> Callable:
         def complete(system: str, user: str) -> str:
             key = _key(model, system, user)
-            hit, value = self.store.lookup(key)
-            if hit:
-                return value
-            text = complete_fn(system, user)
-            # Only cache a real completion. An empty string means the provider failed
-            # or filtered the request, and caching that would make one bad call
-            # permanent.
-            if text:
-                self.store.set(key, text)
-            return text
+
+            def compute():
+                text = complete_fn(system, user)
+                if not isinstance(text, str):
+                    raise ValueError("completion provider must return a string")
+                return text
+
+            value = self.store.get_or_compute(key, compute, cache_if=bool)
+            if not isinstance(value, str):
+                raise ValueError("cached completion must be a string; provider was not retried")
+            return value
 
         return complete
 
@@ -68,5 +71,9 @@ class CompletionCache:
 
 def cached_complete_fn(complete_fn: Callable[[str, str], str], path: Optional[str],
                        model: str = "") -> Callable[[str, str], str]:
-    """Convenience wrapper returning a cached ``complete`` callable."""
-    return CompletionCache(path).wrap(complete_fn, model=model)
+    """Return a callable that persists each successful nonempty completion.
+
+    Use CompletionCache directly for batched flushes, and explicitly flush that
+    object before ending a run. A cache remains a local replay, not new evidence.
+    """
+    return CompletionCache(path, flush_every=1).wrap(complete_fn, model=model)

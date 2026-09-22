@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
+from ..probability import DetectorAbstainedError, validate_score, validate_threshold
 from .base import Attack
 
 _PARAPHRASE_SYS = (
@@ -37,13 +38,10 @@ def provider_complete_fn(engine: str, model: Optional[str] = None, max_tokens: i
     Uses the same provider presets as generation (``deepseek``, ``glm``, ``mistral``,
     ``openai-compat``, ...). Requires that provider's key in the environment.
 
-    Temperature defaults to 0 here, unlike generation. Generating a corpus wants
-    variety across a batch, so that path samples; an attack is a *measurement*, and
-    a sampled rewrite makes the resulting robustness number irreproducible — rerun
-    the same experiment and the attacker writes something else, so the score moves
-    and every cached detector score misses. Pinning it means an attack result can be
-    reproduced exactly and rerun for free. Pass ``temperature > 0`` deliberately if
-    you want to sample several distinct rewrites per lure.
+    Temperature defaults to 0 to reduce sampling variability, not to guarantee
+    provider determinism. Exact replay requires preserving the original response
+    in a completion cache. Separate uncached draws or separate cache namespaces
+    are needed for independent replicates; cached replay is not new evidence.
     """
     from ..generate import get_generator
 
@@ -137,13 +135,22 @@ class AdaptiveParaphraseAttack(Attack):
     ) -> None:
         self._complete = complete_fn
         self._score = score_fn
-        self.threshold = threshold
+        self.threshold = validate_threshold(threshold)
+        if type(max_rounds) is not int or not 1 <= max_rounds <= 1000:
+            raise ValueError("adaptive max_rounds must be an integer between 1 and 1000")
         self.max_rounds = max_rounds
+
+    def _observed_score(self, text: str) -> float:
+        score = validate_score(self._score(text))
+        if score is None:
+            raise DetectorAbstainedError(
+                "adaptive experiment stopped on abstention; no evasion/resistance result"
+            )
+        return score
 
     def run(self, text: str) -> AdaptiveResult:
         """Iterate rewrites against the detector, stopping at the first evasion."""
-        clean = self._score(text)
-        clean = 1.0 if clean is None else float(clean)
+        clean = self._observed_score(text)
         scores = [clean]
         best_text, best_score, current = text, clean, text
 
@@ -153,11 +160,12 @@ class AdaptiveParaphraseAttack(Attack):
 
         for rnd in range(1, self.max_rounds + 1):
             out = self._complete(_ADAPTIVE_SYS_TEMPLATE.format(round=rnd), current)
-            candidate = (out or "").strip()
+            if not isinstance(out, str):
+                raise ValueError("adaptive generator must return a string")
+            candidate = out.strip()
             if not candidate:
-                break  # generation failed; stop rather than spin on empty rewrites
-            score = self._score(candidate)
-            score = 1.0 if score is None else float(score)
+                raise ValueError("adaptive generation unavailable; no resistance result")
+            score = self._observed_score(candidate)
             scores.append(score)
             current = candidate
             if score < best_score:

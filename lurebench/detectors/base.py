@@ -11,6 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from ..probability import DetectorAbstainedError, validate_score, validate_threshold
 from ..schema import Lure
 
 
@@ -30,5 +31,9 @@ class Detector(ABC):
         raise NotImplementedError
 
     def predict(self, lure: Lure, threshold: float = 0.5) -> int:
-        score = self.score(lure)
-        return 0 if score is None else int(score >= threshold)
+        """Return a hard decision; raise DetectorAbstainedError on abstention."""
+        threshold = validate_threshold(threshold)
+        score = validate_score(self.score(lure))
+        if score is None:
+            raise DetectorAbstainedError("detector abstained; no hard prediction is available")
+        return int(score >= threshold)

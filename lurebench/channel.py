@@ -724,13 +724,9 @@ def validate_channel_evaluation(value: Any) -> Dict[str, Any]:
 
 
 def _read(path: Path, label: str) -> bytes:
-    source = Path(path)
-    if not source.is_file() or source.is_symlink() or source.parent.is_symlink():
-        raise ValueError(f"{label} must be a regular non-symlink file")
-    payload = source.read_bytes()
-    if not 1 <= len(payload) <= MAX_DOCUMENT_BYTES:
-        raise ValueError(f"{label} must be non-empty and at most 8 MiB")
-    return payload
+    from .local_io import read_regular_file
+
+    return read_regular_file(path, maximum=MAX_DOCUMENT_BYTES, label=label)
 
 
 def _load(path: Path, label: str) -> Any:

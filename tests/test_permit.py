@@ -218,7 +218,7 @@ def test_external_permit_refuses_symlink_and_duplicate_json_keys(tmp_path: Path)
     source.write_text(json.dumps(default_permit()), encoding="utf-8")
     linked = tmp_path / "linked.json"
     linked.symlink_to(source)
-    with pytest.raises(ValueError, match="regular local JSON"):
+    with pytest.raises(ValueError, match="regular non-symlink local file"):
         load_permit(linked)
 
     duplicate = tmp_path / "duplicate.json"

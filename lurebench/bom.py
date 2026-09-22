@@ -878,13 +878,9 @@ def validate_bom_evaluation(value: Any) -> Dict[str, Any]:
 
 
 def _read_bytes(path: Path, label: str) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file() or target.parent.is_symlink():
-        raise ValueError(f"{label} must be a non-symlink regular local file")
-    size = target.stat().st_size
-    if not 1 <= size <= MAX_DOCUMENT_BYTES:
-        raise ValueError(f"{label} must be non-empty and at most 8 MiB")
-    return target.read_bytes()
+    from .local_io import read_regular_file
+
+    return read_regular_file(path, maximum=MAX_DOCUMENT_BYTES, label=label)
 
 
 def read_bom_json(path: Path, label: str) -> Any:

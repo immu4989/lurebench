@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/checkpoint-preflight/v1",
+  "title": "Bounded checkpoint preflight report",
+  "description": "Structural claims and byte hashes, not model safety or publisher authentication. Runtime validators additionally enforce exact integer types, portable filenames, aggregate accounting, and profile semantics.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "profile", "index", "shards", "summary", "limits", "limitations"],
+  "properties": {
+    "schema": {"const": "https://github.com/immu4989/lurebench/spec/checkpoint-preflight/v1"},
+    "schema_version": {"const": 1, "type": "integer"},
+    "profile": {"const": "sharded-safetensors-byte-aligned-v1"},
+    "index": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "file_sha256"],
+      "properties": {
+        "name": {"const": "model.safetensors.index.json"},
+        "file_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "shards": {
+      "type": "array", "minItems": 1, "maxItems": 1024,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["name", "file_bytes", "file_sha256", "header_bytes", "header_sha256", "tensor_count", "tensor_bytes"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,180}\\.safetensors$", "maxLength": 193},
+          "file_bytes": {"type": "integer", "minimum": 10, "maximum": 1099511627776},
+          "file_sha256": {"$ref": "#/$defs/digest"},
+          "header_bytes": {"type": "integer", "minimum": 2, "maximum": 8388608},
+          "header_sha256": {"$ref": "#/$defs/digest"},
+          "tensor_count": {"type": "integer", "minimum": 1, "maximum": 100000},
+          "tensor_bytes": {"type": "integer", "minimum": 0, "maximum": 1099511627776}
+        }
+      }
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "shard_count", "tensor_count", "file_bytes", "tensor_bytes"],
+      "properties": {
+        "status": {"const": "pass"},
+        "shard_count": {"type": "integer", "minimum": 1, "maximum": 1024},
+        "tensor_count": {"type": "integer", "minimum": 1, "maximum": 100000},
+        "file_bytes": {"type": "integer", "minimum": 10, "maximum": 1099511627776},
+        "tensor_bytes": {"type": "integer", "minimum": 0, "maximum": 1099511627776}
+      }
+    },
+    "limits": {
+      "type": "object", "additionalProperties": false,
+      "required": ["maximum_total_shard_bytes", "maximum_header_bytes", "maximum_shards"],
+      "properties": {
+        "maximum_total_shard_bytes": {"type": "integer", "minimum": 1, "maximum": 1099511627776},
+        "maximum_header_bytes": {"const": 8388608, "type": "integer"},
+        "maximum_shards": {"const": 1024, "type": "integer"}
+      }
+    },
+    "limitations": {
+      "const": [
+        "bounded_sharded_safetensors_profile_not_all_valid_safetensors_encodings",
+        "tensor_bytes_hashed_not_interpreted_or_checked_for_model_behavior",
+        "config_tokenizer_code_provenance_and_unreferenced_files_not_inspected",
+        "inspection_does_not_authenticate_a_publisher_or_patch_model_loading_libraries",
+        "mutable_directories_and_later_loaders_require_separate_integrity_controls",
+        "passing_is_not_model_safety_compliance_or_deployment_authorization"
+      ]
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$", "minLength": 64, "maxLength": 64}
+  }
+}

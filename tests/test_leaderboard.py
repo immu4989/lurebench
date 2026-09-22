@@ -144,6 +144,32 @@ def test_slice_recall_excludes_abstentions_so_it_agrees_with_tpr(monkeypatch):
         assert value in (None, 1.0)
 
 
+def test_slices_reuse_exact_scoring_snapshot_without_extra_provider_calls(monkeypatch):
+    from lurebench import leaderboard as lb
+
+    data = load_jsonl(SAMPLES)
+    seen = []
+
+    class Once:
+        name = "once"
+        task = "fraud"
+
+        def score(self, lure):
+            if lure.id in seen:
+                raise AssertionError("slice computation must not requery a detector")
+            seen.append(lure.id)
+            return 0.9 if lure.label else 0.1
+
+    monkeypatch.setattr(lb, "get_detector", lambda *args, **kwargs: Once())
+    result = lb.evaluate_detectors(data, ["once"])[0]
+    assert "error" not in result
+    assert len(seen) == len(data)
+    assert result["metrics"]["recall"] == 1.0
+    assert all(value in (1.0, None) for value in result["slices"].values())
+    assert result["coverage"]["answer_coverage"] == 1.0
+    assert "logical bounds" in lb.render_markdown([result], "synthetic", len(data))
+
+
 def test_extra_params_are_merged_into_the_request_payload(monkeypatch):
     # The knob that stops a reasoning model from spending its budget on hidden
     # reasoning and returning an empty answer.

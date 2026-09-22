@@ -71,7 +71,7 @@ def run_defender(name, kwargs, lures, attacker_model, rounds, threshold, workers
     det = get_detector(name, **kwargs)
     det.name = label
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label)
-    det = CachedDetector(det, os.path.join(CACHE_ROOT, f"{safe}.json"))
+    det = CachedDetector(det, os.path.join(CACHE_ROOT, f"{safe}.json"), flush_every=1)
 
     def score_text(text: str):
         return det.score(Lure(id="adaptive", text=text, label=1,
@@ -83,7 +83,7 @@ def run_defender(name, kwargs, lures, attacker_model, rounds, threshold, workers
     # hiding exactly the run-to-run variance they exist to measure.
     raw_complete = provider_complete_fn("openrouter", attacker_model, max_tokens=700)
     gen_cache = CompletionCache(
-        os.path.join(CACHE_ROOT, f"generations_r{replicate}.json")
+        os.path.join(CACHE_ROOT, f"generations_r{replicate}.json"), flush_every=1,
     )
     complete = gen_cache.wrap(raw_complete, model=attacker_model)
     results = []
@@ -93,10 +93,13 @@ def run_defender(name, kwargs, lures, attacker_model, rounds, threshold, workers
                                        threshold=threshold, max_rounds=rounds)
         return atk.run(lure.text)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-        results = list(ex.map(one, lures))
-    det.flush()
-    gen_cache.flush()
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(one, lures))
+    finally:
+        # Preserve completed paid work even when another observation is unavailable.
+        det.flush()
+        gen_cache.flush()
     print(f"    generations: {gen_cache.hits} cached, {gen_cache.misses} new")
 
     caught = [r for r in results if r.scores and r.scores[0] >= threshold]
@@ -132,24 +135,28 @@ def aggregate(replicate_rows) -> list:
     out = []
     for detector, runs in by_detector.items():
         rates = [r["evasion_rate"] for r in runs if r["evasion_rate"] is not None]
+        complete = len(rates) == len(runs)
         caught = [r["n_caught_clean"] for r in runs]
         agg = {
             "detector": detector,
             "n_replicates": len(runs),
+            "n_replicates_with_rates": len(rates),
             "n_lures": runs[0]["n_lures"],
             "n_caught_clean_mean": statistics.mean(caught),
-            "evasion_mean": statistics.mean(rates) if rates else None,
-            "evasion_min": min(rates) if rates else None,
-            "evasion_max": max(rates) if rates else None,
+            "evasion_mean": statistics.mean(rates) if complete else None,
+            "evasion_min": min(rates) if complete else None,
+            "evasion_max": max(rates) if complete else None,
             "by_round_mean": {},
         }
         # Normalise round keys to str: they are ints in memory but strings once a
         # replicate has been round-tripped through JSON, and the renderer must not
         # care which path the data took.
-        for k in runs[0]["evaded_by_round"]:
-            vals = [r["evaded_by_round"][k] for r in runs
-                    if r["evaded_by_round"].get(k) is not None]
-            agg["by_round_mean"][str(k)] = statistics.mean(vals) if vals else None
+        rounds = [{str(k): v for k, v in r["evaded_by_round"].items()} for r in runs]
+        for k in rounds[0]:
+            vals = [r.get(k) for r in rounds]
+            agg["by_round_mean"][k] = (
+                statistics.mean(vals) if all(v is not None for v in vals) else None
+            )
         out.append(agg)
     return out
 
@@ -159,9 +166,9 @@ def to_markdown_agg(rows, rounds, attacker, label, threshold, replicates) -> str
            "A real attacker does not stop after one rewrite. Each row attacks only the "
            "lures that detector caught on clean text, paraphrasing repeatedly until the "
            f"score falls below the threshold or the {rounds}-round budget runs out. The "
-           "rewrite is instructed to preserve the message's intent, so an 'evasion' that "
-           "simply dropped the fraudulent ask does not count.\n",
-           f"**Every rate is the mean of {replicates} independent replicates, with the "
+           "rewrite is instructed to preserve intent, but this script does not verify "
+           "that condition. Reported evasions are score drops pending intent review.\n",
+           f"**Every rate is the mean of {replicates} configured replicates, with the "
            "observed range in brackets.** One run is not enough: hosted providers are not "
            "bit-deterministic even at temperature 0, so re-running the same setup "
            "produces a different attack chain and a materially different rate. An earlier "
@@ -190,18 +197,15 @@ def to_markdown_agg(rows, rounds, attacker, label, threshold, replicates) -> str
         "keeps trying. A detector whose ≤1 column is low but whose ≤5 column is high is "
         "not resisting the attack, only delaying it.",
         "",
-        "This inverts the character-attack result. Against homoglyphs and zero-width "
-        "padding the token baselines collapse and the LLM judges are essentially immune, "
-        "because those attacks change spelling and the judges read meaning. Against an "
-        "attacker that rewrites *meaning* the ordering reverses: the trained TF-IDF model "
-        "is the hardest to get past. The two families fail in complementary directions, "
-        "which is an argument for running both rather than picking a winner. Read the "
-        "ranges before leaning on any single gap — some are wider than the differences "
-        "between detectors.",
+        "Observed replicate ranges are descriptive, not confidence intervals. Separate "
+        "cache namespaces prevent replay across replicates but do not establish their "
+        "statistical independence. Missing replicate rates make the aggregate unavailable; "
+        "they are not dropped from the mean.",
         "",
-        f"Caveat: the attacker (`{attacker}`) is also one of the defenders, so some of "
-        "that row's evasion is likely self-coupling. Each row's denominator is only the "
-        "lures that detector caught clean, so rows are not scored on identical sets.",
+        f"Check whether attacker `{attacker}` is also a defender before interpreting "
+        "cross-model differences. Each row includes only the lures its detector caught "
+        "clean; rows may have different populations. No universal ranking or deployment "
+        "guarantee follows from this experiment.",
         "",
     ]
     return "\n".join(out)
@@ -213,12 +217,12 @@ def to_markdown(rows, rounds, attacker, label, threshold) -> str:
            "lures that detector caught on clean text (there is nothing to evade "
            "otherwise), paraphrasing repeatedly until the score falls below the "
            f"threshold or the {rounds}-round budget runs out. The rewrite is instructed "
-           "to preserve the message's intent, so an 'evasion' that simply dropped the "
-           "fraudulent ask does not count.\n",
+           "to preserve the message's intent, but intent preservation is not verified "
+           "by this script. Reported evasions are score drops pending that review.\n",
            f"_Attacker `{attacker}` · {label} · threshold {threshold:.2f}._\n",
            "| Detector | caught clean | evaded within budget | median attempts | "
            + " | ".join(f"≤{r}" for r in range(1, rounds + 1)) + " |",
-           "|---" * (5 + rounds) + "|"]
+           "|---" * (4 + rounds) + "|"]
     for r in rows:
         cum = " | ".join(
             "  -  " if r["evaded_by_round"][k] is None else f"{r['evaded_by_round'][k]:.0%}"
@@ -233,31 +237,18 @@ def to_markdown(rows, rounds, attacker, label, threshold) -> str:
             "gives way as the attacker keeps trying. A detector whose ≤1 column is low "
             "but whose ≤5 column is high is not resisting the attack, only delaying it.",
             "",
-            "This table inverts the character-attack result. Against homoglyphs and "
-            "zero-width padding the token baselines collapse and the LLM judges are "
-            "essentially immune, because those attacks change spelling and the judges "
-            "read meaning. Against an attacker that rewrites *meaning* the ordering "
-            "reverses: the trained TF-IDF model is the hardest to get past, while the "
-            "judges give way — and keep giving way as the budget grows, which is the "
-            "signature of delay rather than resistance. The two detector families fail "
-            "in complementary directions, which is an argument for running both rather "
-            "than picking a winner.",
+            "Interpret score drops only after reviewing whether the rewritten message "
+            "retained the original fraudulent intent. This script has no independent "
+            "intent validator and does not establish a universal detector ranking.",
             "",
-            f"Caveat: the attacker (`{attacker}`) is also one of the defenders, and that "
-            "row is the most evadable. Some of that gap is likely self-coupling — a model "
-            "rewriting text to get past itself — so read the cross-vendor rows as the "
-            "cleaner measurement. Each row's denominator is only the lures that detector "
-            "caught clean, so rows are not scored on identical sets.",
+            f"Check whether attacker `{attacker}` is also a defender. Each row includes "
+            "only the lures that detector caught clean, so rows may describe different "
+            "populations rather than a paired comparison.",
             "",
-            "These numbers are a **lower bound**. The attacker runs at temperature 0 so "
-            "the experiment reproduces exactly, but a deterministic rewriter can converge: "
-            "once it settles into a phrasing, further rounds rewrite that same phrasing "
-            "the same way and stop finding new ground. Where a row's cumulative columns "
-            "go flat, that is what happened — the budget was not exhausted, the attacker "
-            "was. A sampling attacker (`temperature > 0`) explores more and evades more; "
-            "an earlier temperature-1.0 run of this same setup put the judges a few points "
-            "higher. Reproducibility was worth that trade here, but do not read these "
-            "rates as the ceiling.",
+            "Temperature zero does not guarantee provider determinism; only cached "
+            "responses replay exactly. A flat cumulative curve does not identify its "
+            "cause, and a different sampling configuration may change results in either "
+            "direction. These rates are not a certified lower bound on effective attacks.",
             ""]
     return "\n".join(out)
 
@@ -273,7 +264,7 @@ def main(argv=None) -> int:
     ap.add_argument("--threshold", type=float, default=0.5)
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--replicates", type=int, default=3,
-                    help="independent repeats; one run is a noisy sample, so rates "
+                    help="separate cache namespaces; one run is a noisy sample, so rates "
                          "are reported as a mean with the observed range")
     ap.add_argument("--attacker", default=DEFAULT_ATTACKER)
     ap.add_argument("--out", default=None)

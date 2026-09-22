@@ -312,7 +312,7 @@ def compile_mandate_challenge(
 ) -> Dict[str, Any]:
     plan = validate_mandate_plan(plan_value)
     run = validate_mandate_run(template_run_value, plan)
-    created = generated_at or _now()
+    created = _now() if generated_at is None else generated_at
     if _instant(created, "generated_at") < _instant(run["completed_at"], "completed_at"):
         raise ValueError("conformance challenge cannot predate its template execution")
     challenge = {
@@ -426,7 +426,7 @@ def reference_mandate_submission(
         "schema": SUBMISSION_SCHEMA,
         "schema_version": 1,
         "submission_id": submission_id,
-        "submitted_at": submitted_at or _now(),
+        "submitted_at": _now() if submitted_at is None else submitted_at,
         "challenge_id": challenge["challenge_id"],
         "challenge_sha256": _sha256(_canonical(challenge)),
         "engine": engine,
@@ -535,7 +535,7 @@ def evaluate_mandate_conformance(
     return _score_value(
         challenge_value,
         submission_value,
-        evaluated_at=evaluated_at or _now(),
+        evaluated_at=_now() if evaluated_at is None else evaluated_at,
     )
 
 

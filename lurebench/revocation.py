@@ -770,12 +770,9 @@ def validate_revocation_evaluation(value: Any) -> Dict[str, Any]:
 
 
 def _read(path: Path, label: str) -> Any:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file() or target.parent.is_symlink():
-        raise ValueError(f"{label} must be a regular local JSON file")
-    if target.stat().st_size > MAX_BYTES:
-        raise ValueError(f"{label} exceeds the 4 MiB limit")
-    return loads_strict_json(target.read_bytes())
+    from .local_io import read_regular_file
+
+    return loads_strict_json(read_regular_file(path, maximum=MAX_BYTES, label=label))
 
 
 def _write(path: Path, value: Mapping[str, Any]) -> None:

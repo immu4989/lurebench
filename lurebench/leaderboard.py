@@ -20,13 +20,15 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from .detectors import get_detector
 from .detectors.cache import CachedDetector, prewarm
 from .harness import TASK_TARGET, run
+from .probability import validate_score
 from .schema import Lure
 
 FRAUD_TYPOLOGIES = ["phishing", "bec", "romance", "pig_butchering"]
 
 
 def _recall_on_subset(
-    detector, subset: Sequence[Lure], target: Callable[[Lure], int], threshold: float
+    subset: Sequence[Tuple[Lure, Optional[float]]],
+    target: Callable[[Lure], int], threshold: float,
 ) -> Optional[float]:
     """Recall on one slice, over the records the detector actually scored.
 
@@ -38,12 +40,12 @@ def _recall_on_subset(
     is reported alongside, so a high-recall number over a small denominator is
     visible rather than flattering.
     """
-    positives = [r for r in subset if target(r) == 1]
+    positives = [(r, score) for r, score in subset if target(r) == 1]
     if not positives:
         return None
     hits = scored = 0
-    for rec in positives:
-        score = detector.score(rec)
+    for _, raw_score in positives:
+        score = validate_score(raw_score)
         if score is None:
             continue
         scored += 1
@@ -119,20 +121,23 @@ def evaluate_detectors(
                 prewarm(detector, dataset, workers=workers)
             t = task or getattr(detector, "task", "fraud")
             report = run(detector, dataset, threshold=threshold, task=t)
+            if report.record_scores is None:
+                raise ValueError("leaderboard requires the original per-record score snapshot")
+            scored_records = list(zip(dataset, report.record_scores, strict=True))
             target = TASK_TARGET[t]
             slices: Dict[str, Optional[float]] = {}
 
             if t == "fraud":
                 for typ in FRAUD_TYPOLOGIES:
-                    subset = [r for r in dataset if r.typology == typ]
-                    slices[typ] = _recall_on_subset(detector, subset, target, threshold)
+                    subset = [(r, score) for r, score in scored_records if r.typology == typ]
+                    slices[typ] = _recall_on_subset(subset, target, threshold)
             else:  # provenance
                 generators = sorted(
                     {r.generator for r in dataset if r.source == "ai" and r.generator}
                 )
                 for gen in generators:
-                    subset = [r for r in dataset if r.generator == gen]
-                    slices[gen] = _recall_on_subset(detector, subset, target, threshold)
+                    subset = [(r, score) for r, score in scored_records if r.generator == gen]
+                    slices[gen] = _recall_on_subset(subset, target, threshold)
 
             results.append(
                 {
@@ -145,6 +150,7 @@ def evaluate_detectors(
                     # computed only over records the detector was willing to score.
                     "n_records": len(dataset),
                     "n_skipped": report.n_skipped,
+                    "coverage": report.coverage_summary(),
                 }
             )
         except Exception as exc:  # noqa: BLE001 - deliberately resilient
@@ -215,6 +221,30 @@ def render_markdown(results: Sequence[dict], dataset_label: str, n_records: int)
             lines.append(
                 f"| `{r['detector']}` | {_fmt(m['auc'])} | {_fmt(m.get('balanced_accuracy'))} | "
                 f"{_fmt(m['mcc'])} | {_fmt(m['recall'])} | {_fmt(m['fpr'])} | {_scored(r)} |"
+            )
+        lines.append("")
+
+    covered = [r for r in ok if "coverage" in r]
+    if covered:
+        lines.append("## Answer coverage and missing-outcome bounds\n")
+        lines.append(
+            "Headline metrics exclude abstentions. The ranges below cover arbitrary "
+            "binary resolutions of missing predictions over the full task population; "
+            "they are logical bounds, not confidence intervals or a deployment policy.\n"
+        )
+        lines.append("| Detector | positive coverage | negative coverage | recall bounds | FPR bounds |")
+        lines.append("|---|---|---|---|---|")
+        for r in covered:
+            coverage = r["coverage"]
+            bounds = coverage["binary_completion_bounds"]
+
+            def interval(value):
+                return "n/a" if value is None else f"[{value['lower']:.3f}, {value['upper']:.3f}]"
+
+            lines.append(
+                f"| `{r['detector']}` | {_fmt(coverage['by_class']['positive']['answer_coverage'])} | "
+                f"{_fmt(coverage['by_class']['negative']['answer_coverage'])} | "
+                f"{interval(bounds['recall'])} | {interval(bounds['fpr'])} |"
             )
         lines.append("")
 

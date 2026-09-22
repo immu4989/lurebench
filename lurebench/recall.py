@@ -1391,13 +1391,9 @@ def validate_recall_evaluation(value: Any) -> Dict[str, Any]:
 
 
 def _read(path: Path, label: str) -> Dict[str, Any]:
-    if path.is_symlink():
-        raise ValueError(f"refusing symbolic-link {label}: {path}")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    if path.stat().st_size > MAX_BYTES:
-        raise ValueError(f"{label} exceeds {MAX_BYTES} bytes")
-    value = loads_strict_json(path.read_bytes())
+    from .local_io import read_regular_file
+
+    value = loads_strict_json(read_regular_file(path, maximum=MAX_BYTES, label=label))
     if not isinstance(value, dict):
         raise ValueError(f"{label} must be a JSON object")
     return value

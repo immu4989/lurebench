@@ -21,6 +21,8 @@ output). Mistral is the fast, cheap default; any provider works.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from typing import Callable, Optional
 
@@ -40,7 +42,17 @@ _SYSTEM = (
     "lure). No words, no punctuation, no explanation."
 )
 
-_INT = re.compile(r"\d{1,3}")
+_INTEGER_RESPONSE = re.compile(r"(?:0|[1-9][0-9]?|100)", flags=re.ASCII)
+PARSER_VERSION = "ascii-integer-probability-v1"
+
+
+def _parse_integer_response(out: str) -> Optional[float]:
+    if not isinstance(out, str) or len(out) > 64:
+        return None
+    token = out.strip(" \t\r\n")
+    if _INTEGER_RESPONSE.fullmatch(token) is None:
+        return None
+    return int(token) / 100.0
 
 
 class LLMJudgeDetector(Detector):
@@ -58,7 +70,14 @@ class LLMJudgeDetector(Detector):
         complete_fn: Optional[Callable[[str, str], str]] = None,
         max_tokens: int = 512,
         extra_params: Optional[dict] = None,
+        cache_context: Optional[str] = None,
     ) -> None:
+        if cache_context is not None and (
+            not isinstance(cache_context, str) or not 1 <= len(cache_context) <= 256
+        ):
+            raise ValueError("cache_context must be a nonempty bounded string")
+        resolved_model = model
+        endpoint = None
         if complete_fn is not None:
             self._complete = complete_fn
         else:
@@ -72,24 +91,32 @@ class LLMJudgeDetector(Detector):
             # Pass e.g. extra_params={"reasoning": {"effort": "minimal"}}.
             if extra_params:
                 kwargs["extra_params"] = extra_params
-            self._complete = get_generator(engine, **kwargs).complete
+            generator = get_generator(engine, **kwargs)
+            self._complete = generator.complete
+            resolved_model = getattr(generator, "model", model)
+            endpoint = getattr(generator, "endpoint", None)
         self.engine = engine
         # Distinguish providers in the leaderboard (e.g. "llm-judge (mistral)").
         self.name = f"llm-judge ({engine})"
+        # Bind score replay to parser/prompt/provider settings. Credentials and
+        # message text are never part of this configuration identity. Custom
+        # completion functions need caller-provided identity for disk replay.
+        identity = {
+            "parser": PARSER_VERSION, "task": self.task,
+            "system_prompt_sha256": hashlib.sha256(self.system_prompt.encode()).hexdigest(),
+            "engine": engine, "model": resolved_model, "endpoint": endpoint,
+            "max_tokens": max_tokens, "temperature": 0.0,
+            "extra_params": extra_params or {}, "cache_context": cache_context,
+            "custom_completion": complete_fn is not None,
+        }
+        self.cache_namespace = (
+            hashlib.sha256(json.dumps(identity, sort_keys=True, allow_nan=False).encode()).hexdigest()
+            if complete_fn is None or cache_context is not None else None
+        )
 
     @staticmethod
     def _parse(out: str) -> Optional[float]:
-        if not out:
-            return None
-        m = _INT.search(out)
-        if m:
-            return max(0.0, min(1.0, int(m.group()) / 100.0))
-        low = out.lower()
-        if any(w in low for w in ("fraud", "scam", "phish", "malicious", "suspicious")):
-            return 0.9
-        if any(w in low for w in ("benign", "legitimate", "safe", "not a", "no ")):
-            return 0.1
-        return None  # unparseable -> abstain
+        return _parse_integer_response(out)
 
     def score(self, lure: Lure) -> Optional[float]:
         try:
@@ -151,15 +178,5 @@ class LLMProvenanceJudgeDetector(LLMJudgeDetector):
 
     @staticmethod
     def _parse(out: str) -> Optional[float]:
-        """Parse a 0-100 AI-likelihood. Falls back to authorship words, not fraud words."""
-        if not out:
-            return None
-        m = _INT.search(out)
-        if m:
-            return max(0.0, min(1.0, int(m.group()) / 100.0))
-        low = out.lower()
-        if any(w in low for w in ("ai", "machine", "generated", "model", "synthetic")):
-            return 0.9
-        if any(w in low for w in ("human", "person", "handwritten", "authentic")):
-            return 0.1
-        return None  # unparseable -> abstain
+        """Apply the same exact integer contract to the authorship question."""
+        return _parse_integer_response(out)

@@ -37,6 +37,11 @@ classifiers = [
 ]
 dependencies = []   # the core harness and heuristic baseline run dependency-free
 
+[tool.uv]
+# HTTPX2 <2.12.0 is affected by GHSA-8xx6-hgc6-gc2m; this constrains
+# optional dependency resolution without adding HTTP clients to the core.
+constraint-dependencies = ["httpx2>=2.12.0"]
+
 [project.optional-dependencies]
 binoculars = ["torch>=2.0", "transformers>=4.38"]
 llamaguard = ["torch>=2.0", "transformers>=4.38", "accelerate>=0.26"]
@@ -60,6 +65,7 @@ Issues = "https://github.com/immu4989/lurebench/issues"
 packages = ["lurebench"]
 
 [tool.hatch.build.targets.wheel.force-include]
+"spec/checkpoint-preflight-v1.schema.json" = "lurebench/spec/checkpoint-preflight-v1.schema.json"
 "spec/lureeval-receipt-v1.schema.json" = "lurebench/spec/lureeval-receipt-v1.schema.json"
 "spec/lureeval-aggregate-v1.schema.json" = "lurebench/spec/lureeval-aggregate-v1.schema.json"
 "spec/lureeval-dsse-v1.schema.json" = "lurebench/spec/lureeval-dsse-v1.schema.json"

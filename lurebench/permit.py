@@ -1063,12 +1063,9 @@ def run_range_evaluation(
 
 
 def _read_json(path: Path, label: str) -> Any:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file() or target.parent.is_symlink():
-        raise ValueError(f"{label} must be a regular local JSON file")
-    if target.stat().st_size > MAX_ARTIFACT_BYTES:
-        raise ValueError(f"{label} exceeds the 2 MiB limit")
-    return loads_strict_json(target.read_bytes())
+    from .local_io import read_regular_file
+
+    return loads_strict_json(read_regular_file(path, maximum=MAX_ARTIFACT_BYTES, label=label))
 
 
 def load_permit(path: Optional[Path] = None) -> Dict[str, Any]:

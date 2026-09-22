@@ -9,7 +9,27 @@ from __future__ import annotations
 
 import math
 from dataclasses import asdict, dataclass
+from numbers import Integral, Real
 from typing import Optional, Sequence, Tuple
+
+
+def validate_binary_labels(values: Sequence[int]) -> None:
+    if any(isinstance(value, bool) or not isinstance(value, Integral)
+           or value not in (0, 1) for value in values):
+        raise ValueError("labels must be binary integers, not booleans or coerced values")
+
+
+def validate_rank_scores(values: Sequence[float]) -> None:
+    # Ranking accepts arbitrary finite real margins, not just probabilities.
+    for value in values:
+        if isinstance(value, bool) or not isinstance(value, Real):
+            raise ValueError("ranking scores must be finite real numbers")
+        try:
+            finite = math.isfinite(value)
+        except (OverflowError, TypeError, ValueError) as exc:
+            raise ValueError("ranking score cannot be represented") from exc
+        if not finite:
+            raise ValueError("ranking scores must be finite real numbers")
 
 
 @dataclass
@@ -41,6 +61,10 @@ def _safe_div(a: float, b: float) -> float:
 
 
 def confusion(y_true: Sequence[int], y_pred: Sequence[int]) -> Tuple[int, int, int, int]:
+    if len(y_true) != len(y_pred):
+        raise ValueError("y_true and y_pred length mismatch")
+    validate_binary_labels(y_true)
+    validate_binary_labels(y_pred)
     tp = fp = tn = fn = 0
     for t, p in zip(y_true, y_pred, strict=True):
         if p == 1 and t == 1:
@@ -55,6 +79,11 @@ def confusion(y_true: Sequence[int], y_pred: Sequence[int]) -> Tuple[int, int, i
 
 
 def mcc_from_confusion(tp: int, fp: int, tn: int, fn: int) -> float:
+    if any(isinstance(value, bool) or not isinstance(value, Integral) or value < 0
+           for value in (tp, fp, tn, fn)):
+        raise ValueError("confusion counts must be nonnegative integers")
+    # NumPy integral scalars otherwise overflow during products before sqrt.
+    tp, fp, tn, fn = (int(value) for value in (tp, fp, tn, fn))
     num = (tp * tn) - (fp * fn)
     den = math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
     return num / den if den else 0.0
@@ -67,6 +96,8 @@ def roc_auc(y_true: Sequence[int], scores: Sequence[float]) -> Optional[float]:
     """
     if len(y_true) != len(scores):
         raise ValueError("y_true and scores length mismatch")
+    validate_binary_labels(y_true)
+    validate_rank_scores(scores)
     paired = sorted(zip(scores, y_true, strict=True), key=lambda x: x[0])
     n = len(paired)
     ranks = [0.0] * n
@@ -96,6 +127,11 @@ def recall_at_fpr(
     """
     if len(y_true) != len(scores):
         raise ValueError("y_true and scores length mismatch")
+    validate_binary_labels(y_true)
+    validate_rank_scores(scores)
+    validate_rank_scores([max_fpr])
+    if not 0 <= max_fpr <= 1:
+        raise ValueError("max_fpr must be in [0, 1]")
     n_pos = sum(1 for t in y_true if t == 1)
     n_neg = len(y_true) - n_pos
     if n_pos == 0 or n_neg == 0:

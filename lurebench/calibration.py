@@ -11,9 +11,17 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from typing import Callable, List, Optional, Sequence, Tuple
 
-from .metrics import Metrics, evaluate
+from .metrics import Metrics, evaluate, mcc_from_confusion, validate_binary_labels
+from .probability import validate_threshold
 
 RISK_CONTROL_METHOD = "learn_then_test_fixed_sequence_exact_binomial_v1"
+
+
+def _validate_observations(y_true, scores):
+    if len(y_true) != len(scores):
+        raise ValueError("y_true and scores length mismatch")
+    validate_binary_labels(y_true)
+    return [validate_threshold(score) for score in scores]
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,9 @@ class ConfidenceInterval:
     upper: float
     confidence: float
     replicates: int
+    requested_replicates: int = 0
+    undefined_replicates: int = 0
+    conditional_on_defined: bool = False
 
 
 @dataclass(frozen=True)
@@ -107,8 +118,11 @@ def binomial_cdf(events: int, trials: int, probability: float) -> float:
     the mode avoids underflow; normalization avoids cancellation in log-gamma
     formulas for large samples while keeping LureBench's core dependency-free.
     """
+    if type(trials) is not int or type(events) is not int:
+        raise ValueError("binomial counts must be integers")
     if trials < 0 or events < -1 or events > trials:
         raise ValueError("invalid binomial event count")
+    probability = validate_threshold(probability)
     if not 0 <= probability <= 1:
         raise ValueError("binomial probability must be in [0, 1]")
     if events < 0:
@@ -144,8 +158,11 @@ def clopper_pearson_upper(
     events: int, trials: int, confidence: float = 0.95
 ) -> float:
     """Exact one-sided Clopper-Pearson upper confidence bound."""
+    if type(trials) is not int or type(events) is not int:
+        raise ValueError("binomial counts must be integers")
     if trials < 1 or events < 0 or events > trials:
         raise ValueError("events must be between zero and a positive trial count")
+    confidence = validate_threshold(confidence)
     if not 0 < confidence < 1:
         raise ValueError("confidence must be in (0, 1)")
     if events == trials:
@@ -163,6 +180,8 @@ def clopper_pearson_upper(
 
 def minimum_zero_event_sample(target_fpr: float, confidence: float = 0.95) -> int:
     """Minimum negatives needed to control ``target_fpr`` after zero errors."""
+    target_fpr = validate_threshold(target_fpr)
+    confidence = validate_threshold(confidence)
     if not 0 < target_fpr < 1:
         raise ValueError("target_fpr must be in (0, 1)")
     if not 0 < confidence < 1:
@@ -192,15 +211,14 @@ def select_risk_controlled_threshold(
     """
     if len(y_true) != len(scores) or not y_true:
         raise ValueError("non-empty y_true and scores of equal length required")
-    if any(truth not in (0, 1) for truth in y_true):
-        raise ValueError("risk control requires binary labels")
-    if any(score < 0.0 or score > 1.0 for score in scores):
-        raise ValueError("scores must be probabilities in [0, 1]")
+    scores = _validate_observations(y_true, scores)
+    target_fpr = validate_threshold(target_fpr)
+    confidence = validate_threshold(confidence)
     if not 0 < target_fpr < 1:
         raise ValueError("risk-controlled FPR requires target_fpr in (0, 1)")
     if not 0 < confidence < 1:
         raise ValueError("confidence must be in (0, 1)")
-    if not 2 <= threshold_grid_size <= 100_001:
+    if type(threshold_grid_size) is not int or not 2 <= threshold_grid_size <= 100_001:
         raise ValueError("threshold_grid_size must be between 2 and 100001")
 
     negative_scores = sorted(
@@ -264,14 +282,11 @@ def select_risk_controlled_threshold(
 def calibration_metrics(
     y_true: Sequence[int], scores: Sequence[float], n_bins: int = 10
 ) -> CalibrationMetrics:
-    if len(y_true) != len(scores):
-        raise ValueError("y_true and scores length mismatch")
+    scores = _validate_observations(y_true, scores)
     if not y_true:
         raise ValueError("calibration requires at least one record")
-    if n_bins < 1:
-        raise ValueError("n_bins must be positive")
-    if any(score < 0.0 or score > 1.0 for score in scores):
-        raise ValueError("scores must be probabilities in [0, 1]")
+    if type(n_bins) is not int or not 1 <= n_bins <= 10_000:
+        raise ValueError("n_bins must be an integer between 1 and 10000")
     brier = sum(
         (score - truth) ** 2 for truth, score in zip(y_true, scores, strict=True)
     ) / len(y_true)
@@ -310,21 +325,46 @@ def select_threshold(
     """
     if len(y_true) != len(scores) or not y_true:
         raise ValueError("non-empty y_true and scores of equal length required")
+    scores = _validate_observations(y_true, scores)
     if objective not in {"max_mcc", "target_fpr"}:
         raise ValueError("objective must be 'max_mcc' or 'target_fpr'")
-    if objective == "target_fpr" and (target_fpr is None or not 0 <= target_fpr <= 1):
-        raise ValueError("target_fpr objective requires target_fpr in [0, 1]")
-    candidates = sorted({float(score) for score in scores}, reverse=True)
-    candidates.insert(0, math.nextafter(candidates[0], math.inf))
-    feasible: List[Tuple[float, Metrics]] = []
-    for threshold in candidates:
-        predictions = [int(score >= threshold) for score in scores]
-        metrics = evaluate(y_true, predictions, scores)
-        if objective == "max_mcc" or metrics.fpr <= float(target_fpr):
-            feasible.append((threshold, metrics))
-    if objective == "max_mcc":
-        return max(feasible, key=lambda item: (item[1].mcc, item[1].recall, item[0]))
-    return max(feasible, key=lambda item: (item[1].recall, item[1].mcc, item[0]))
+    if objective == "target_fpr":
+        target_fpr = validate_threshold(target_fpr)
+    ranked = sorted(zip(scores, y_true, strict=True), key=lambda item: -item[0])
+    positives = sum(y_true)
+    negatives = len(y_true) - positives
+    tp = fp = 0
+    best = None
+
+    def consider(threshold):
+        nonlocal best
+        fpr = fp / negatives if negatives else 0.0
+        if objective == "target_fpr" and fpr > target_fpr:
+            return
+        recall = tp / positives if positives else 0.0
+        mcc = mcc_from_confusion(tp, fp, negatives - fp, positives - tp)
+        key = ((mcc, recall, threshold) if objective == "max_mcc"
+               else (recall, mcc, threshold))
+        if best is None or key > best[0]:
+            best = (key, threshold)
+
+    if ranked[0][0] < 1:
+        consider(math.nextafter(float(ranked[0][0]), math.inf))
+    index = 0
+    while index < len(ranked):
+        threshold = ranked[index][0]
+        # Tied observations move together: no intermediate state is realizable.
+        while index < len(ranked) and ranked[index][0] == threshold:
+            truth = ranked[index][1]
+            tp += truth
+            fp += 1 - truth
+            index += 1
+        consider(float(threshold))
+    if best is None:
+        raise ValueError("no threshold in [0, 1] satisfies the requested FPR budget")
+    threshold = best[1]
+    predictions = [int(score >= threshold) for score in scores]
+    return threshold, evaluate(y_true, predictions, scores)
 
 
 def bootstrap_ci(
@@ -334,14 +374,23 @@ def bootstrap_ci(
     confidence: float = 0.95,
     seed: int = 4989,
 ) -> ConfidenceInterval:
-    """Paired percentile bootstrap over ``(truth, score)`` observations."""
+    """Paired percentile bootstrap over ``(truth, score)`` observations.
+
+    Undefined resamples are disclosed; resulting quantiles are conditional on
+    defined statistics, not an unconditional coverage guarantee.
+    """
     if not values:
         raise ValueError("bootstrap requires observations")
-    if replicates < 1 or not 0 < confidence < 1:
+    confidence = validate_threshold(confidence)
+    if type(replicates) is not int or replicates < 1 or not 0 < confidence < 1:
         raise ValueError("invalid bootstrap configuration")
     truths = [item[0] for item in values]
     scores = [item[1] for item in values]
+    scores = _validate_observations(truths, scores)
+    values = list(zip(truths, scores, strict=True))
     estimate = statistic(truths, scores)
+    if not math.isfinite(estimate):
+        raise ValueError("statistic is undefined on the observed sample")
     rng = random.Random(seed)
     draws: List[float] = []
     for _ in range(replicates):
@@ -355,7 +404,10 @@ def bootstrap_ci(
     alpha = (1.0 - confidence) / 2.0
     low = draws[max(0, int(alpha * len(draws)))]
     high = draws[min(len(draws) - 1, math.ceil((1 - alpha) * len(draws)) - 1)]
-    return ConfidenceInterval(estimate, low, high, confidence, len(draws))
+    undefined = replicates - len(draws)
+    return ConfidenceInterval(
+        estimate, low, high, confidence, len(draws), replicates, undefined, bool(undefined),
+    )
 
 
 def build_policy(
@@ -371,6 +423,19 @@ def build_policy(
 ) -> Tuple[DecisionPolicy, Metrics]:
     if not (len(record_ids) == len(y_true) == len(scores)) or not record_ids:
         raise ValueError("record_ids, y_true and scores must have the same non-zero length")
+    if (
+        any(not isinstance(value, str) or not 1 <= len(value) <= 1024
+            or any(ord(char) < 32 or ord(char) == 127 for char in value)
+            for value in record_ids)
+        or len(set(record_ids)) != len(record_ids)
+    ):
+        raise ValueError("policy record IDs must be unique bounded strings without controls")
+    if (
+        not isinstance(detector, str) or not 1 <= len(detector) <= 256
+        or any(ord(char) < 32 or ord(char) == 127 for char in detector)
+        or task not in ("fraud", "provenance")
+    ):
+        raise ValueError("policy detector identity or task is invalid")
     risk_control = None
     if objective == "risk_controlled_fpr":
         if target_fpr is None:

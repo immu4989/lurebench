@@ -52,6 +52,10 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 
 ---
 
+**Unreleased hardening:** [migration and offline verification](docs/HARDENING_MIGRATION.md)
+cover checkpoint intake, honest missing-score reporting, safer paid-call caches,
+and faster calibration. These source-branch changes are not in PyPI 0.11.0.
+
 Fraud detectors that score well on classic spam corpora fall apart on lures written by modern language models. LureBench measures that gap on a common footing: one schema, one harness, one leaderboard, across fraud typologies and generator families. It runs out of the box with no model downloads or API keys, and it ships baseline detectors from a keyword heuristic up to a trained classifier.
 
 More than a corpus, it is a **method for building the corpus honestly**. Getting a credible answer to "can you detect AI-generated fraud?" turned out to require finding, and removing, a dataset confound that makes the problem look far easier than it is. That story is below.
@@ -194,6 +198,16 @@ Then [connect a disposable test gateway](docs/MANDATE_GATEWAY_ADAPTER.md).
 The [41-case shared-state campaign](docs/LUREMANDATE.md#shared-state-transitions)
 tests replay persistence, budget scope, and rolling-window transitions. None
 of these reference checks demonstrate that a production gateway is secure.
+
+Before loading a local sharded checkpoint, use the unreleased
+[`checkpoint-inspect` preflight](docs/CHECKPOINT_PREFLIGHT.md) to check bounded
+Safetensors structure, shard paths, and hashes without importing a model
+framework. A structural pass is not model safety or publisher authentication.
+
+Source-branch evaluation also makes [missing detector outcomes explicit](docs/DETECTOR_OUTCOMES.md):
+class-specific answer coverage, logical completion bounds, and inconclusive ASR
+when attacked scores are unavailable. Leaderboard slices reuse the original
+score snapshot rather than making additional detector calls.
 
 > **New — test invariants that cross the model, tools, network, identity, and
 > lifecycle boundary.** [LureInvariant](docs/LUREINVARIANT.md) evaluates typed

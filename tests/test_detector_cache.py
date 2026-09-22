@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from lurebench.detectors.base import Detector
 from lurebench.detectors.cache import CachedDetector, prewarm
 from lurebench.schema import Lure
@@ -74,11 +76,14 @@ def test_cache_persists_and_a_new_instance_resumes(tmp_path):
     assert second.hits == 3
 
 
-def test_corrupt_cache_file_starts_empty_rather_than_raising(tmp_path):
+def test_corrupt_cache_file_stops_before_spending_again(tmp_path):
     path = tmp_path / "c.json"
     path.write_text("{not valid json", encoding="utf-8")
-    det = CachedDetector(CountingDetector(), str(path))
-    assert det.score(_lure(9)) is not None   # did not raise
+    inner = CountingDetector()
+    with pytest.raises(ValueError, match="existing cache"):
+        CachedDetector(inner, str(path))
+    assert inner.calls == 0
+    assert path.read_text() == "{not valid json"
 
 
 def test_cached_detector_is_transparent_to_the_harness(tmp_path):

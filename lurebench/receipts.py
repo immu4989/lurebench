@@ -150,14 +150,11 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def sha256_file(path: Path, max_bytes: int = MAX_ARTIFACT_BYTES) -> str:
-    path = Path(path)
-    if path.is_symlink():
-        raise ValueError(f"refusing symbolic-link artifact: {path}")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    if path.stat().st_size > max_bytes:
-        raise ValueError(f"{path.name} exceeds the {max_bytes} byte safety limit")
-    return sha256_bytes(path.read_bytes())
+    from .local_io import read_regular_file
+
+    return sha256_bytes(read_regular_file(
+        path, maximum=max_bytes, label="artifact", allow_empty=True,
+    ))
 
 
 def _timestamp() -> str:
@@ -780,14 +777,11 @@ def load_verified_artifact(
 ) -> VerifiedReceipt:
     """Load a bounded receipt/aggregate, validate it, and optionally authenticate it."""
 
-    path = Path(path)
-    if path.is_symlink():
-        raise ValueError(f"refusing symbolic-link LureEval artifact: {path}")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    if path.stat().st_size > MAX_ARTIFACT_BYTES:
-        raise ValueError("LureEval artifact exceeds the 8 MiB safety limit")
-    artifact = loads_strict_json(path.read_bytes())
+    from .local_io import read_regular_file
+
+    artifact = loads_strict_json(read_regular_file(
+        path, maximum=MAX_ARTIFACT_BYTES, label="LureEval artifact",
+    ))
     if not isinstance(artifact, dict):
         raise ValueError("LureEval artifact must contain a JSON object")
 

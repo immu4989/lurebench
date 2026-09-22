@@ -3,8 +3,11 @@ provenance LLM judge. All offline: the provider and detector are stubs."""
 
 from __future__ import annotations
 
+import pytest
+
 from lurebench.attacks.llm import AdaptiveParaphraseAttack
 from lurebench.detectors.llm import LLMProvenanceJudgeDetector
+from lurebench.probability import DetectorAbstainedError
 
 LURE = "Verify your account within 24 hours or it will be suspended."
 
@@ -60,18 +63,37 @@ def test_empty_generation_stops_the_loop():
     atk = AdaptiveParaphraseAttack(
         _complete_returning(""), lambda t: 0.9, threshold=0.5, max_rounds=5
     )
-    r = atk.run(LURE)
-    assert r.evaded is False
-    assert r.rounds == 0                 # bailed instead of spinning on empty rewrites
+    with pytest.raises(ValueError, match="generation unavailable"):
+        atk.run(LURE)
 
 
-def test_abstention_counts_as_still_flagged():
-    # A detector that abstains must not be read as "evaded".
+def test_clean_abstention_stops_before_any_generation():
     atk = AdaptiveParaphraseAttack(
-        _complete_returning("x", "y"), lambda t: None, threshold=0.5, max_rounds=2
+        lambda *a: pytest.fail("paid generation attempted"), lambda t: None,
+        threshold=0.5, max_rounds=2,
     )
-    r = atk.run(LURE)
-    assert r.evaded is False
+    with pytest.raises(DetectorAbstainedError):
+        atk.run(LURE)
+
+
+@pytest.mark.parametrize("bad", [None, True, "0.2", float("nan"), float("inf"), -1, 2])
+def test_attacked_invalid_score_never_becomes_resistance_or_evasion(bad):
+    calls = []
+
+    def complete(*args):
+        calls.append(1)
+        return "candidate"
+
+    atk = AdaptiveParaphraseAttack(complete, lambda t: .9 if t == LURE else bad)
+    with pytest.raises(ValueError):
+        atk.run(LURE)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize("budget", [0, -1, True, 2.0, 1001])
+def test_invalid_round_budget_rejected_before_work(budget):
+    with pytest.raises(ValueError, match="max_rounds"):
+        AdaptiveParaphraseAttack(lambda *a: "", lambda t: .9, max_rounds=budget)
 
 
 def test_apply_returns_the_best_text_for_the_attack_interface():
@@ -93,18 +115,16 @@ def test_provenance_judge_asks_about_authorship_not_fraud():
     assert "<<link>>" in prompt
 
 
-def test_provenance_parse_uses_authorship_words_not_fraud_words():
+def test_provenance_parse_requires_the_requested_integer_contract():
     p = LLMProvenanceJudgeDetector._parse
     assert p("87") == 0.87
-    assert p("clearly written by an AI model") == 0.9
-    assert p("this reads like a human wrote it") == 0.1
+    assert p("clearly written by an AI model") is None
+    assert p("this reads like a human wrote it") is None
     assert p("") is None
 
 
-def test_attack_provider_is_deterministic_by_default(monkeypatch):
-    # An attack is a measurement: a sampled rewrite makes the robustness number
-    # irreproducible and busts every cached detector score on rerun. Generation
-    # still samples (it wants variety); the attack path must not.
+def test_attack_provider_uses_zero_temperature_by_default(monkeypatch):
+    # This reduces variability; it does not prove provider determinism.
     from lurebench.attacks.llm import provider_complete_fn
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
