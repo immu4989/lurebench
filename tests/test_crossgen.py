@@ -31,7 +31,7 @@ def test_cross_generator_returns_fold_per_generator():
     pytest.importorskip("sklearn")
     from lurebench.crossgen import cross_generator_provenance
 
-    res = cross_generator_provenance(_matched_corpus())
+    res = cross_generator_provenance(_matched_corpus(), split_mode="legacy_index")
     assert {r.held_out for r in res} == {"gen-A", "gen-B"}
     for r in res:
         assert 0.0 <= r.auc <= 1.0

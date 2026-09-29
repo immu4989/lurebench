@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/immu4989/lurebench/spec/decision-counts/v1",
+  "title": "Aggregate decision counts including abstentions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task", "detector", "threshold", "counts"],
+  "properties": {
+    "schema_version": {"const": 1, "type": "integer"},
+    "task": {"enum": ["fraud", "provenance"]},
+    "detector": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000-\\u001f\\u007f]+$"},
+    "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tp", "fp", "tn", "fn", "abstained_positive", "abstained_negative"],
+      "properties": {
+        "tp": {"$ref": "#/$defs/count"}, "fp": {"$ref": "#/$defs/count"},
+        "tn": {"$ref": "#/$defs/count"}, "fn": {"$ref": "#/$defs/count"},
+        "abstained_positive": {"$ref": "#/$defs/count"},
+        "abstained_negative": {"$ref": "#/$defs/count"}
+      }
+    }
+  },
+  "$defs": {"count": {"type": "integer", "minimum": 0, "maximum": 10000000}}
+}

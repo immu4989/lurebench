@@ -57,6 +57,24 @@ class Report:
     n_abstained_negative: int = 0
     record_scores: Optional[List[Optional[float]]] = None
 
+    def decision_counts(self) -> dict:
+        """Export all six outcomes without silently dropping abstentions."""
+        self.coverage_summary()  # reject inconsistent manually constructed reports
+        if self.task not in TASK_TARGET or not isinstance(self.detector, str) or not (
+            1 <= len(self.detector) <= 256
+        ) or any(ord(c) < 32 or ord(c) == 127 for c in self.detector):
+            raise ValueError("decision-count detector identity or task is invalid")
+        counts = {"tp": self.metrics.tp, "fp": self.metrics.fp,
+                  "tn": self.metrics.tn, "fn": self.metrics.fn,
+                  "abstained_positive": self.n_abstained_positive,
+                  "abstained_negative": self.n_abstained_negative}
+        if any(type(n) is not int or not 0 <= n <= 10_000_000 for n in counts.values()):
+            raise ValueError("decision counts exceed the export contract")
+        return {
+            "schema_version": 1, "task": self.task, "detector": self.detector,
+            "threshold": validate_threshold(self.threshold), "counts": counts,
+        }
+
     def coverage_summary(self) -> dict:
         """Disclose class-specific missingness and binary-completion bounds.
 

@@ -37,8 +37,10 @@ def _key(model: str, system: str, user: str) -> str:
 class CompletionCache:
     """Wrap a ``complete(system, user) -> text`` callable with an on-disk cache."""
 
-    def __init__(self, path: Optional[str] = None, flush_every: int = 25) -> None:
-        self.store = JsonDiskCache(path, flush_every=flush_every)
+    def __init__(self, path: Optional[str] = None, flush_every: int = 25, *,
+                 cache_only: bool = False, max_new_calls: Optional[int] = None) -> None:
+        self.store = JsonDiskCache(path, flush_every=flush_every,
+                                   read_only=cache_only, max_computations=max_new_calls)
 
     @property
     def hits(self) -> int:
@@ -70,10 +72,12 @@ class CompletionCache:
 
 
 def cached_complete_fn(complete_fn: Callable[[str, str], str], path: Optional[str],
-                       model: str = "") -> Callable[[str, str], str]:
+                       model: str = "", *, cache_only: bool = False,
+                       max_new_calls: Optional[int] = None) -> Callable[[str, str], str]:
     """Return a callable that persists each successful nonempty completion.
 
     Use CompletionCache directly for batched flushes, and explicitly flush that
     object before ending a run. A cache remains a local replay, not new evidence.
     """
-    return CompletionCache(path, flush_every=1).wrap(complete_fn, model=model)
+    return CompletionCache(path, flush_every=1, cache_only=cache_only,
+                           max_new_calls=max_new_calls).wrap(complete_fn, model=model)

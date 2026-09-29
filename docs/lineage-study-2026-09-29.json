@@ -1,0 +1,134 @@
+{
+  "analysis": "local_cross_generator_split_comparison",
+  "dataset_records": 1072,
+  "detector": "tfidf-logreg",
+  "human_holdout_k": 5,
+  "limitations": [
+    "protocols_use_different_training_and_test_records_not_a_paired_model_improvement_test",
+    "small_shared_test_cohorts_no_population_confidence_or_equivalence_claim",
+    "declared_lineage_only_not_semantic_or_pretraining_leakage_detection",
+    "folds_are_not_independent_model_replicates",
+    "source_hashes_are_observed_files_not_authenticated_loaded_code_attestation",
+    "no_new_generation_provider_calls_or_model_downloads"
+  ],
+  "observed_file_sha256": {
+    "data/full/paired/deepseek-v4-pro.jsonl": "ab013001a09dcdaef0b7174c8aebebae336d5cc88fe9d9a069aa4c1ad9edbfff",
+    "data/full/paired/glm-4.6.jsonl": "c1d4d01d9390a1718f37786a1c45ccd38c4f3231efe8a17f634e58551daa38f9",
+    "data/full/paired/human.jsonl": "f196dacbf62c65c54943081fe690b600478bc05d5f8bea20f0dcb6c1f31bf3a1",
+    "data/full/paired/mistral-large-latest.jsonl": "be8e8a6d2ea092b4d799f44588b6c31dc5902165b5e78d096137755dfbd8c3c4",
+    "lurebench/crossgen.py": "53d5dcd8f13179e1542b91ebdbf98814bf7079307038235aba781d3aa53a1eba",
+    "lurebench/detectors/tfidf.py": "4b98959e15ee54ee919d172df11d8fe9297a1577d49f85248202a4981ebbf13e",
+    "lurebench/harness.py": "3f41debe48e787a749be54ee6bfcb0562c7b4d45e11bf3bfb7896dd15ad86e05",
+    "lurebench/lineage.py": "06372b0bbe522b0d14b6ce44ba9c43fb7f94c3e1851e0fe0f0f1401fa79d9b63",
+    "lurebench/metrics.py": "7e0e9e5eb833b4c60574a012f61dc9f76defbac8ed9aa996191022d1a9777dae",
+    "lurebench/probability.py": "c2b16be8f947487fd2a785d35d472d1921e4802d63a54522e5035f651448c0a2",
+    "lurebench/schema.py": "9662ee2461d1ed4564bb4d89a88c50e65c2f5ffad4549675f91f22d9899b034a",
+    "scripts/eval_lineage_provenance.py": "199bed38fefe43eab104f45b5b1bcf30d683f6a2b012e7f1d3920f93cbfcfc7d"
+  },
+  "parsed_records_sha256": "364ea328a21ba0e1cf642ffb15e8e0233a741ce3e18f1e63fbfc2c1cba78372e",
+  "results": {
+    "legacy_index": [
+      {
+        "auc": 0.5828828828828829,
+        "balanced_accuracy": 0.5331081081081082,
+        "fpr": 0.48333333333333334,
+        "held_out": "deepseek-v4-pro",
+        "n_test_ai": 222,
+        "n_test_human": 60,
+        "n_train_ai": 550,
+        "n_train_human": 240,
+        "overlapping_lineage_components": 245,
+        "recall": 0.5495495495495496,
+        "split_mode": "legacy_index",
+        "test_lineage_components": 245,
+        "train_lineage_components": 300
+      },
+      {
+        "auc": 0.5738666666666666,
+        "balanced_accuracy": 0.552,
+        "fpr": 0.4,
+        "held_out": "glm-4.6",
+        "n_test_ai": 250,
+        "n_test_human": 60,
+        "n_train_ai": 522,
+        "n_train_human": 240,
+        "overlapping_lineage_components": 260,
+        "recall": 0.504,
+        "split_mode": "legacy_index",
+        "test_lineage_components": 260,
+        "train_lineage_components": 300
+      },
+      {
+        "auc": 0.8352222222222222,
+        "balanced_accuracy": 0.6266666666666667,
+        "fpr": 0.7333333333333333,
+        "held_out": "mistral-large-latest",
+        "n_test_ai": 300,
+        "n_test_human": 60,
+        "n_train_ai": 472,
+        "n_train_human": 240,
+        "overlapping_lineage_components": 294,
+        "recall": 0.9866666666666667,
+        "split_mode": "legacy_index",
+        "test_lineage_components": 300,
+        "train_lineage_components": 294
+      }
+    ],
+    "lineage_disjoint": [
+      {
+        "auc": 0.7868181818181819,
+        "balanced_accuracy": 0.740909090909091,
+        "fpr": 0.21818181818181817,
+        "held_out": "deepseek-v4-pro",
+        "n_test_ai": 40,
+        "n_test_human": 55,
+        "n_train_ai": 454,
+        "n_train_human": 245,
+        "overlapping_lineage_components": 0,
+        "recall": 0.7,
+        "split_mode": "lineage_disjoint",
+        "test_lineage_components": 55,
+        "train_lineage_components": 245
+      },
+      {
+        "auc": 0.775609756097561,
+        "balanced_accuracy": 0.6713968957871397,
+        "fpr": 0.21818181818181817,
+        "held_out": "glm-4.6",
+        "n_test_ai": 41,
+        "n_test_human": 55,
+        "n_train_ai": 427,
+        "n_train_human": 245,
+        "overlapping_lineage_components": 0,
+        "recall": 0.5609756097560976,
+        "split_mode": "lineage_disjoint",
+        "test_lineage_components": 55,
+        "train_lineage_components": 245
+      },
+      {
+        "auc": 0.9256198347107438,
+        "balanced_accuracy": 0.8363636363636364,
+        "fpr": 0.32727272727272727,
+        "held_out": "mistral-large-latest",
+        "n_test_ai": 55,
+        "n_test_human": 55,
+        "n_train_ai": 391,
+        "n_train_human": 245,
+        "overlapping_lineage_components": 0,
+        "recall": 1.0,
+        "split_mode": "lineage_disjoint",
+        "test_lineage_components": 55,
+        "train_lineage_components": 245
+      }
+    ]
+  },
+  "runtime": {
+    "numpy": "2.5.2",
+    "python": "3.13.15",
+    "scikit-learn": "1.6.1",
+    "scipy": "1.18.0"
+  },
+  "schema_version": 1,
+  "task": "provenance",
+  "threshold": 0.5
+}

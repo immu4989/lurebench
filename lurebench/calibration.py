@@ -5,16 +5,24 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import random
+import re
+import stat
+import tempfile
 from bisect import bisect_left
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
 
+from .local_io import read_regular_file
 from .metrics import Metrics, evaluate, mcc_from_confusion, validate_binary_labels
 from .probability import validate_threshold
 
 RISK_CONTROL_METHOD = "learn_then_test_fixed_sequence_exact_binomial_v1"
+MAX_POLICY_BYTES = 64 * 1024
+MAX_POLICY_RECORDS = 10_000_000
 
 
 def _validate_observations(y_true, scores):
@@ -97,17 +105,136 @@ class DecisionPolicy:
         return payload
 
     def save(self, path: str) -> None:
-        with open(path, "w", encoding="utf-8") as handle:
-            json.dump(self.as_dict(), handle, indent=2, sort_keys=True)
-            handle.write("\n")
+        """Validate before atomic replacement; retain the previous file on failure."""
+        _validate_policy(self)
+        payload = (json.dumps(self.as_dict(), indent=2, sort_keys=True,
+                              allow_nan=False) + "\n").encode("utf-8")
+        if len(payload) > MAX_POLICY_BYTES:
+            raise ValueError("decision policy exceeds its bounded size")
+        target = Path(path)
+        if target.parent.is_symlink() or target.is_symlink() or (
+            target.exists() and not stat.S_ISREG(target.lstat().st_mode)
+        ):
+            raise ValueError("policy output must be a regular non-symlink file")
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(mode="wb", dir=target.parent, delete=False,
+                                             prefix=f".{target.name}.", suffix=".tmp") as handle:
+                temporary = Path(handle.name)
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, target)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
     @classmethod
-    def load(cls, path: str) -> "DecisionPolicy":
-        with open(path, encoding="utf-8") as handle:
-            payload = json.load(handle)
-        if payload.get("risk_control") is not None:
-            payload["risk_control"] = RiskControl(**payload["risk_control"])
-        return cls(**payload)
+    def load(cls, path: str, *, expected_sha256: str | None = None) -> "DecisionPolicy":
+        from .receipts import loads_strict_json
+
+        if expected_sha256 is not None and (
+            not isinstance(expected_sha256, str)
+            or not re.fullmatch(r"[a-f0-9]{64}", expected_sha256)
+        ):
+            raise ValueError("policy pin must be a lowercase SHA-256 digest")
+        raw = read_regular_file(
+            Path(path), maximum=MAX_POLICY_BYTES, label="decision policy",
+        )
+        if expected_sha256 is not None and hashlib.sha256(raw).hexdigest() != expected_sha256:
+            raise ValueError("decision policy digest mismatch")
+        payload = loads_strict_json(raw)
+        if not isinstance(payload, dict):
+            raise ValueError("decision policy must be a JSON object")
+        try:
+            if payload.get("risk_control") is not None:
+                if not isinstance(payload["risk_control"], dict):
+                    raise ValueError("risk_control must be an object")
+                payload["risk_control"] = RiskControl(**payload["risk_control"])
+            policy = cls(**payload)
+        except TypeError:
+            raise ValueError("policy has missing or unsupported fields") from None
+        _validate_policy(policy)
+        return policy
+
+
+def _validate_policy(policy: DecisionPolicy) -> None:
+    """Check exported policy structure and count arithmetic, not its authenticity."""
+    if type(policy.schema_version) is not int or policy.schema_version not in (1, 2):
+        raise ValueError("unsupported policy schema")
+    for value in (policy.policy_id, policy.detector, policy.objective):
+        if not isinstance(value, str) or not 1 <= len(value) <= 256 or any(
+            ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value
+        ):
+            raise ValueError("policy identities must be bounded strings without controls")
+    if policy.task not in ("fraud", "provenance"):
+        raise ValueError("unsupported policy task")
+    validate_threshold(policy.threshold)
+    if type(policy.validation_records) is not int or not 1 <= policy.validation_records <= MAX_POLICY_RECORDS:
+        raise ValueError("policy validation count is invalid")
+    if not isinstance(policy.validation_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", policy.validation_sha256):
+        raise ValueError("policy validation digest is invalid")
+    if not isinstance(policy.created_at, str):
+        raise ValueError("policy timestamp must be a string")
+    if policy.created_at:
+        try:
+            timestamp = datetime.fromisoformat(policy.created_at.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError("policy timestamp is invalid") from None
+        if timestamp.tzinfo is None:
+            raise ValueError("policy timestamp requires a timezone")
+    elif policy.schema_version == 2:
+        raise ValueError("schema v2 requires a timestamp")
+    if policy.target_fpr is not None:
+        validate_threshold(policy.target_fpr)
+    if policy.schema_version == 1:
+        if policy.objective not in ("max_mcc", "target_fpr"):
+            raise ValueError("unsupported empirical objective")
+        if policy.objective == "target_fpr" and policy.target_fpr is None:
+            raise ValueError("empirical target policy requires target_fpr")
+        if any(value is not None for value in (
+            policy.risk_control, policy.evaluation_sha256, policy.validation_true_positives,
+            policy.validation_recall,
+        )):
+            raise ValueError("schema v1 cannot carry v2 risk-control evidence")
+        return
+    if policy.objective != "risk_controlled_fpr" or policy.target_fpr is None or not 0 < policy.target_fpr < 1:
+        raise ValueError("schema v2 requires a risk-controlled objective and open-interval target")
+    if not isinstance(policy.evaluation_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", policy.evaluation_sha256):
+        raise ValueError("policy evaluation digest is invalid")
+    control = policy.risk_control
+    if not isinstance(control, RiskControl) or control.method != RISK_CONTROL_METHOD or control.risk != "false_positive_rate":
+        raise ValueError("unsupported risk-control evidence")
+    confidence = validate_threshold(control.confidence)
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be strictly between zero and one")
+    for value in (control.empirical_fpr, control.upper_confidence_bound, control.hypothesis_p_value):
+        validate_threshold(value)
+    if type(control.threshold_grid_size) is not int or not 2 <= control.threshold_grid_size <= 100_001:
+        raise ValueError("invalid threshold grid size")
+    position = policy.threshold * (control.threshold_grid_size - 1)
+    if not math.isclose(position, round(position), rel_tol=0., abs_tol=1e-10):
+        raise ValueError("threshold is not on the declared grid")
+    if type(control.validation_negatives) is not int or not 1 <= control.validation_negatives < policy.validation_records:
+        raise ValueError("risk-controlled policy requires both validation classes")
+    if type(control.false_positives) is not int or not 0 <= control.false_positives <= control.validation_negatives:
+        raise ValueError("invalid false-positive count")
+    positives = policy.validation_records - control.validation_negatives
+    if type(policy.validation_true_positives) is not int or not 0 <= policy.validation_true_positives <= positives:
+        raise ValueError("invalid true-positive count")
+    validate_threshold(policy.validation_recall)
+    expected_p = binomial_cdf(control.false_positives, control.validation_negatives, policy.target_fpr)
+    expected_upper = clopper_pearson_upper(control.false_positives, control.validation_negatives, confidence)
+    for actual, expected in (
+        (control.empirical_fpr, control.false_positives / control.validation_negatives),
+        (policy.validation_recall, policy.validation_true_positives / positives),
+        (control.hypothesis_p_value, expected_p),
+        (control.upper_confidence_bound, expected_upper),
+    ):
+        if not math.isclose(actual, expected, rel_tol=0., abs_tol=1e-12):
+            raise ValueError("risk-control evidence is inconsistent with declared counts")
+    if expected_p > 1 - confidence + 1e-12 or expected_upper > policy.target_fpr + 1e-12:
+        raise ValueError("declared counts do not establish the target FPR bound")
 
 
 def binomial_cdf(events: int, trials: int, probability: float) -> float:
@@ -423,16 +550,20 @@ def build_policy(
 ) -> Tuple[DecisionPolicy, Metrics]:
     if not (len(record_ids) == len(y_true) == len(scores)) or not record_ids:
         raise ValueError("record_ids, y_true and scores must have the same non-zero length")
+    if len(record_ids) > MAX_POLICY_RECORDS:
+        raise ValueError("policy validation record limit exceeded")
     if (
         any(not isinstance(value, str) or not 1 <= len(value) <= 1024
-            or any(ord(char) < 32 or ord(char) == 127 for char in value)
+            or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF
+                   for char in value)
             for value in record_ids)
         or len(set(record_ids)) != len(record_ids)
     ):
         raise ValueError("policy record IDs must be unique bounded strings without controls")
     if (
         not isinstance(detector, str) or not 1 <= len(detector) <= 256
-        or any(ord(char) < 32 or ord(char) == 127 for char in detector)
+        or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF
+               for char in detector)
         or task not in ("fraud", "provenance")
     ):
         raise ValueError("policy detector identity or task is invalid")
@@ -470,7 +601,7 @@ def build_policy(
     identity = hashlib.sha256(identity_material.encode("utf-8")).hexdigest()[:12]
     policy = DecisionPolicy(
         schema_version=2 if risk_control is not None else 1,
-        policy_id=f"{detector}-{identity}",
+        policy_id=f"{detector[:243]}-{identity}",
         detector=detector,
         task=task,
         threshold=threshold,
@@ -484,4 +615,5 @@ def build_policy(
         validation_recall=metrics.recall if risk_control is not None else None,
         risk_control=risk_control,
     )
+    _validate_policy(policy)
     return policy, metrics

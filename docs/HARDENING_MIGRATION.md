@@ -8,6 +8,9 @@ Do not silently replace historical results with measurements from this new contr
 
 | Area | New behavior | Operator action |
 | --- | --- | --- |
+| Dataset intake | Strict JSON/field types, bounded regular-file reads, atomic validated writes | Review [dataset compatibility and limits](DATASET_INTAKE.md); finish validation before paid work |
+| Replay and comparison | No provider construction for explicit cache-only CLI workflows | Use [cache replay](CACHE_SAFETY.md) and [paired comparisons](PAIRED_COMPARISON.md) with trusted original identities |
+| Leakage audit | Complete candidates at zero threshold and for empty shingle sets | Review [the audit's exact meaning](LEAKAGE_AUDIT.md); old frozen corpora are not regenerated |
 | Missing detector scores | Abstention is not a benign prediction, evasion, or confident detection | Handle `DetectorAbstainedError`; inspect answer coverage and missing-outcome bounds |
 | LLM judges | Only canonical ASCII integers 0–100 are accepted | Preserve old results; explicitly budget any experiment under the new parser |
 | Cached LLM scores | Parser, prompt, provider configuration, and model identity are bound | A legacy/mismatched cache stops before provider work; choose a new path deliberately |
@@ -65,3 +68,25 @@ synthetic checkpoint, verifies byte equality, and rejects two substitution cases
 
 Further details: [outcome contract](DETECTOR_OUTCOMES.md),
 [cache safety](CACHE_SAFETY.md), and [provider boundaries](PROVIDER_BOUNDARIES.md).
+# Producer policy files (unreleased)
+
+`DecisionPolicy.load` now checks regular non-symlink files up to 64 KiB using
+strict JSON. It rejects duplicate keys, nonfinite numbers, coerced controls,
+unsupported fields, invalid timestamps, excessive counts, off-grid risk-control
+thresholds, and inconsistent declared risk arithmetic. Optional
+`expected_sha256=` binds the exact bytes to a separately reviewed lowercase
+SHA-256 digest. Without an external pin, validation establishes structure and
+count consistency, not provenance, honest sampling, or deployment safety.
+
+`DecisionPolicy.save` validates before writing a private temporary file and
+atomically replacing the target. Failed validation or replacement preserves the
+old file. Output symlinks/special files are rejected. Parent directories must be
+trusted, and concurrent writers or power-loss durability are not guaranteed.
+
+Legacy schema-1 policy IDs remain unchanged for detector names of at most 243
+characters. Longer names now use a truncated ID prefix to fit the published
+256-character contract; the full detector name still contributes to the ID hash
+and remains in `detector`. Do not treat a policy ID as a content digest: empirical
+schema-1 identity historically excludes score/threshold bytes. Pin the full
+artifact when exact approval matters. Historical schema-1 files are not upgraded
+to risk-controlled policies simply by reading them.

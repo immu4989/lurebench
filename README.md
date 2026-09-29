@@ -56,6 +56,21 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 cover checkpoint intake, honest missing-score reporting, safer paid-call caches,
 and faster calibration. These source-branch changes are not in PyPI 0.11.0.
 
+**Stricter provenance evaluation:** [unseen-lineage cross-generator protocol](docs/CROSS_GENERATOR_PROTOCOL.md)
+holds out declared seed/rewrite families as well as generators. Historical
+provenance figures used the legacy split and are not unseen-family estimates.
+
+**Replay without paid calls:** [read-only cache replay and call admission limits](docs/CACHE_SAFETY.md)
+reconstruct benchmark metrics without constructing a model/provider, report
+missing cache coverage before evaluation, and bound new scoring callbacks.
+
+[Leakage-audit guarantees and limits](docs/LEAKAGE_AUDIT.md) explain exactly what
+a clean split audit establishes, including empty-text and zero-threshold behavior.
+
+**Comparing model upgrades?** [Paired cached comparison](docs/PAIRED_COMPARISON.md)
+measures differences on the same messages, with abstention coverage and an exact
+paired test—without another model call.
+
 Fraud detectors that score well on classic spam corpora fall apart on lures written by modern language models. LureBench measures that gap on a common footing: one schema, one harness, one leaderboard, across fraud typologies and generator families. It runs out of the box with no model downloads or API keys, and it ships baseline detectors from a keyword heuristic up to a trained classifier.
 
 More than a corpus, it is a **method for building the corpus honestly**. Getting a credible answer to "can you detect AI-generated fraud?" turned out to require finding, and removing, a dataset confound that makes the problem look far easier than it is. That story is below.
@@ -269,6 +284,13 @@ score snapshot rather than making additional detector calls.
 Everything runs out of the box with no model downloads or API keys; provider keys are only needed to *generate* new lures or run LLM-based attacks, and never touch api.openai.com or api.anthropic.com.
 
 ## The finding
+
+> **Protocol correction (unreleased):** the chart and 0.58/0.57/0.83 figures below
+> are historical, using a split that can share seed families across train/test.
+> A [new reproducible lineage-disjoint study](docs/CROSS_GENERATOR_PROTOCOL.md)
+> uses different, smaller cohorts and reports AUC 0.787/0.776/0.926. These are not
+> paired estimates of model improvement; neither protocol proves population
+> equivalence to chance. Read the limitations before citing either result.
 
 Train a classifier to tell AI-written fraud from human-written fraud on a naively assembled corpus, and it looks almost perfect: near-100% recall, a 0.1% false-alarm rate, and it even generalizes to generators it never trained on. That result is a trap.
 

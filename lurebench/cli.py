@@ -86,7 +86,10 @@ def _cmd_cross_generator(args: argparse.Namespace) -> int:
     for path in args.dataset:
         records.extend(load_jsonl(path))
     try:
-        results = cross_generator_provenance(records, threshold=args.threshold)
+        results = cross_generator_provenance(
+            records, threshold=args.threshold, split_mode=args.split_mode,
+            human_holdout_k=args.human_holdout_k,
+        )
     except (ValueError, ImportError) as exc:
         print(f"! {exc}", file=sys.stderr)
         return 1
@@ -99,6 +102,71 @@ def _cmd_cross_generator(args: argparse.Namespace) -> int:
     else:
         print(md)
     return 0
+
+
+def _cmd_compare_cached(args: argparse.Namespace) -> int:
+    from .comparison import compare_paired
+    from .detectors.cache import ReplayDetector
+    from .harness import TASK_TARGET
+
+    try:
+        records = load_jsonl(args.dataset)
+        ids = [record.id for record in records]
+        if len(ids) != len(set(ids)):
+            raise ValueError("paired comparison requires unique record IDs")
+        baseline = ReplayDetector(args.baseline_cache, name=args.baseline_name, task=args.task,
+                                  cache_namespace=args.baseline_namespace)
+        candidate = ReplayDetector(args.candidate_cache, name=args.candidate_name, task=args.task,
+                                   cache_namespace=args.candidate_namespace)
+        plans = {"baseline": baseline.plan(records), "candidate": candidate.plan(records)}
+        if not all(plan["replay_complete"] for plan in plans.values()):
+            print("! paired comparison cache is incomplete; no model/provider was constructed",
+                  file=sys.stderr)
+            return 2
+        result = compare_paired(
+            {r.id: TASK_TARGET[args.task](r) for r in records},
+            {r.id: baseline.score(r) for r in records},
+            {r.id: candidate.score(r) for r in records},
+            baseline_threshold=args.baseline_threshold,
+            candidate_threshold=args.candidate_threshold,
+        )
+        result.update(task=args.task, baseline=baseline.name, candidate=candidate.name,
+                      cache_coverage=plans)
+        print(json.dumps(result, indent=2, allow_nan=False))
+    except (OSError, ValueError, RuntimeError, TypeError) as exc:
+        print(f"! cached paired comparison failed ({type(exc).__name__}); no live fallback",
+              file=sys.stderr)
+        return 2
+    return 0
+
+
+def _cmd_cache_replay(args: argparse.Namespace) -> int:
+    from .detectors.cache import ReplayDetector
+
+    try:
+        records = load_jsonl(args.dataset)
+        detector = ReplayDetector(args.cache, name=args.detector_name, task=args.task,
+                                  cache_namespace=args.cache_namespace)
+        plan = detector.plan(records)
+        if args.plan:
+            print(json.dumps(plan, indent=2))
+            return 0
+        if not plan["replay_complete"]:
+            print("! cache-only replay is incomplete; no model/provider was constructed",
+                  file=sys.stderr)
+            return 2
+        report = run(detector, records, threshold=args.threshold, task=args.task)
+        if args.decision_counts:
+            print(json.dumps(report.decision_counts(), indent=2, allow_nan=False))
+            return 0
+        print(json.dumps({"detector": report.detector, "task": report.task,
+                          "threshold": report.threshold, "replay": plan,
+                          "metrics": report.metrics.as_dict(),
+                          "coverage": report.coverage_summary()}, indent=2))
+        return 0
+    except (OSError, ValueError, RuntimeError) as exc:
+        print(f"! cache replay rejected ({type(exc).__name__}); no live fallback", file=sys.stderr)
+        return 2
 
 
 def _cmd_leaderboard(args: argparse.Namespace) -> int:
@@ -138,14 +206,14 @@ def _cmd_manifest(args: argparse.Namespace) -> int:
 def _cmd_audit_splits(args: argparse.Namespace) -> int:
     try:
         split_paths = _parse_splits(args.split)
+        audit = audit_splits(
+            {name: load_jsonl(path) for name, path in split_paths.items()},
+            threshold=args.threshold,
+            shingle_size=args.shingle_size,
+        )
     except ValueError as exc:
         print(f"! {exc}", file=sys.stderr)
         return 1
-    audit = audit_splits(
-        {name: load_jsonl(path) for name, path in split_paths.items()},
-        threshold=args.threshold,
-        shingle_size=args.shingle_size,
-    )
     payload = json.dumps(audit.as_dict(), indent=2)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as handle:
@@ -211,7 +279,12 @@ def _parse_splits(pairs: List[str]) -> dict:
         if "=" not in pair:
             raise ValueError(f"--split expects name=path, got {pair!r}")
         name, path = pair.split("=", 1)
-        splits[name.strip()] = path.strip()
+        name, path = name.strip(), path.strip()
+        if not name or not path:
+            raise ValueError("--split requires a nonempty name and path")
+        if name in splits:
+            raise ValueError("--split names must be unique")
+        splits[name] = path
     return splits
 
 
@@ -2561,6 +2634,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_lb.add_argument("--json", default=None, help="also write results JSON here")
     p_lb.set_defaults(func=_cmd_leaderboard)
 
+    p_replay = sub.add_parser("cache-replay", help="inspect/replay scores without a live detector")
+    p_replay.add_argument("--dataset", "-d", required=True)
+    p_replay.add_argument("--cache", required=True, help="existing JSON score cache")
+    p_replay.add_argument("--detector-name", required=True, help="exact original display name")
+    p_replay.add_argument("--task", required=True, choices=["fraud", "provenance"])
+    p_replay.add_argument("--cache-namespace", help="original configured LLM cache identity")
+    p_replay.add_argument("--threshold", type=float, default=0.5)
+    replay_output = p_replay.add_mutually_exclusive_group()
+    replay_output.add_argument("--plan", action="store_true", help="only report aggregate cache coverage")
+    replay_output.add_argument("--decision-counts", action="store_true",
+                               help="export all six outcomes for offline capacity planning")
+    p_replay.set_defaults(func=_cmd_cache_replay)
+
+    p_compare = sub.add_parser("compare-cached", help="paired detector comparison without live calls")
+    p_compare.add_argument("--dataset", "-d", required=True)
+    p_compare.add_argument("--task", choices=["fraud", "provenance"], required=True)
+    for side in ("baseline", "candidate"):
+        p_compare.add_argument(f"--{side}-cache", required=True)
+        p_compare.add_argument(f"--{side}-name", required=True, help="exact cached detector display name")
+        p_compare.add_argument(f"--{side}-namespace", help="original context-bound cache identity")
+        p_compare.add_argument(f"--{side}-threshold", type=float, default=.5)
+    p_compare.set_defaults(func=_cmd_compare_cached)
+
     p_cg = sub.add_parser(
         "cross-generator", help="leave-one-generator-out provenance (the headline finding)"
     )
@@ -2572,6 +2668,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSONL with human + multi-generator AI records (repeatable)",
     )
     p_cg.add_argument("--threshold", type=float, default=0.5)
+    p_cg.add_argument("--split-mode", choices=["lineage_disjoint", "legacy_index"],
+                      default="lineage_disjoint", help="legacy_index is for historical reproduction")
+    p_cg.add_argument("--human-holdout-k", type=int, default=5,
+                      help="hold out approximately 1/k of declared lineage components (default 5)")
     p_cg.add_argument("--out", "-o", default=None, help="write Markdown here (else stdout)")
     p_cg.set_defaults(func=_cmd_cross_generator)
 

@@ -34,17 +34,38 @@ class CacheReadError(ValueError):
     """An existing cache cannot safely be resumed; no fresh paid run is implied."""
 
 
+class CacheOnlyMissError(RuntimeError):
+    """Replay requested an absent entry; its computation was not invoked."""
+
+
+class ComputationBudgetExceeded(RuntimeError):
+    """The per-instance computation budget was exhausted before new work."""
+
+
 class JsonDiskCache:
     """Dict-like cache persisted to a JSON file.
 
     Args:
         path: file to persist to. ``None`` keeps the cache in memory only.
         flush_every: write after this many new entries (0 disables autoflush).
+        read_only: never write or invoke computations; missing entries raise.
+        max_computations: optional per-instance callback admission budget;
+            failures consume units and cache hits do not. Not a billing cap.
     """
 
-    def __init__(self, path: str | None = None, flush_every: int = 100) -> None:
+    def __init__(self, path: str | None = None, flush_every: int = 100, *,
+                 read_only: bool = False, max_computations: int | None = None) -> None:
         if type(flush_every) is not int or flush_every < 0:
             raise ValueError("cache flush interval must be a nonnegative integer")
+        if type(read_only) is not bool:
+            raise ValueError("cache read_only must be boolean")
+        if max_computations is not None and (
+            type(max_computations) is not int or max_computations < 0
+        ):
+            raise ValueError("max_computations must be a nonnegative integer or None")
+        self.read_only = read_only
+        self.max_computations = max_computations
+        self.computations_started = 0
         self.path = path
         self.flush_every = flush_every
         self.hits = 0
@@ -61,6 +82,8 @@ class JsonDiskCache:
         try:
             Path(self.path).lstat()
         except FileNotFoundError:
+            if self.read_only:
+                raise CacheReadError("read-only cache file does not exist") from None
             return {}
         try:
             value = loads_strict_json(read_regular_file(
@@ -83,6 +106,11 @@ class JsonDiskCache:
         with self._lock:
             return len(self._data)
 
+    def snapshot(self) -> dict:
+        """Copy current entries without changing counters or invoking computation."""
+        with self._lock:
+            return dict(self._data)
+
     def get(self, key: str, default: Any = None) -> Any:
         with self._lock:
             value = self._data.get(key, _MISS)
@@ -103,6 +131,8 @@ class JsonDiskCache:
             return True, value
 
     def set(self, key: str, value: Any) -> None:
+        if self.read_only:
+            raise ValueError("read-only cache cannot be modified")
         if not isinstance(key, str):
             raise ValueError("cache keys must be strings")
         with self._lock:
@@ -131,6 +161,12 @@ class JsonDiskCache:
             future = self._inflight.get(key)
             leader = future is None
             if leader:
+                if self.read_only:
+                    raise CacheOnlyMissError("cache-only replay is missing an entry; no work started")
+                if (self.max_computations is not None
+                        and self.computations_started >= self.max_computations):
+                    raise ComputationBudgetExceeded("cache computation budget exhausted")
+                self.computations_started += 1
                 future = Future()
                 self._inflight[key] = future
                 self.misses += 1
@@ -153,7 +189,7 @@ class JsonDiskCache:
 
     def flush(self) -> None:
         """Persist atomically. No-op without a path."""
-        if not self.path:
+        if self.read_only or not self.path:
             return
         # Serialize snapshot capture AND replacement. A unique temp file alone
         # does not stop an older snapshot from replacing a newer one last.

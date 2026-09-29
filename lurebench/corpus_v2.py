@@ -13,18 +13,19 @@ import json
 import math
 import os
 from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 
 from .audit import LeakageAudit, audit_splits, jaccard, shingles
 from .corpus import gate
 from .ingest.base import norm_key
+from .lineage import lineage_components
+from .probability import validate_threshold
 from .schema import Lure, load_jsonl
 
 SCHEMA = "https://github.com/immu4989/lurebench/spec/core-v2-build/v1"
 DEFAULT_WEIGHTS = {"train": 0.7, "validation": 0.1, "test": 0.1, "heldout": 0.1}
-_FAMILY_FIELDS = ("family_id", "scenario_id", "parent_id", "seed_id")
 _PROFILE_FIELDS = ("label", "source", "typology", "language", "channel")
 
 
@@ -180,24 +181,44 @@ def _exact_deduplicate(records: Iterable[Lure]) -> Tuple[List[Lure], int]:
         kept.append(candidates[0])
         duplicates += len(by_text[text_hash]) - 1
     kept.sort(key=lambda record: record.id)
+    if duplicates:
+        # Removing duplicate text must not erase the removed record's ancestry:
+        # it may bridge otherwise different seed families or be a parent of a
+        # retained variant. Merge text equivalence with ALL original lineage
+        # components before annotating affected retained records.
+        unique = {record.id: record for candidates in by_text.values() for record in candidates}
+        ordered = [unique[key] for key in sorted(unique)]
+        components = lineage_components(ordered)
+        dsu = _DisjointSet(len(ordered))
+        positions = {record.id: index for index, record in enumerate(ordered)}
+        owners = {}
+        for record in ordered:
+            position = positions[record.id]
+            owner = owners.setdefault(components[record.id], position)
+            dsu.union(owner, position)
+        for candidates in by_text.values():
+            owner = positions[candidates[0].id]
+            for record in candidates[1:]:
+                dsu.union(owner, positions[record.id])
+        kept_ids = {record.id for record in kept}
+        affected = {dsu.find(positions[key]) for key in unique if key not in kept_ids}
+        labels = {}
+        for record in ordered:
+            root = dsu.find(positions[record.id])
+            labels[root] = min(labels.get(root, components[record.id]), components[record.id])
+        kept = [replace(record, meta={**record.meta, "family_id": labels[dsu.find(positions[record.id])]})
+                if dsu.find(positions[record.id]) in affected else record for record in kept]
     return kept, duplicates
-
-
-def _declared_family(record: Lure) -> str | None:
-    for key in _FAMILY_FIELDS:
-        value = record.meta.get(key)
-        if value is not None and str(value).strip():
-            return str(value)
-    return None
 
 
 def cluster_records(
     records: Sequence[Lure], *, threshold: float = 0.8, shingle_size: int = 5
 ) -> Tuple[List[Cluster], dict]:
     """Form transitive clusters from explicit lineage and shingle similarity."""
-    if not 0 < threshold <= 1:
+    threshold = validate_threshold(threshold)
+    if threshold == 0:
         raise ValueError("similarity threshold must be greater than zero and at most one")
-    if not isinstance(shingle_size, int) or not 1 <= shingle_size <= 20:
+    if type(shingle_size) is not int or not 1 <= shingle_size <= 20:
         raise ValueError("shingle size must be an integer between 1 and 20")
     if not records:
         raise ValueError("cannot cluster an empty corpus")
@@ -205,18 +226,19 @@ def cluster_records(
     dsu = _DisjointSet(len(records))
     family_owner: Dict[str, int] = {}
     family_unions = 0
+    components = lineage_components(records)
     for index, record in enumerate(records):
-        family = _declared_family(record)
-        if family is not None:
-            owner = family_owner.setdefault(family, index)
-            family_unions += int(dsu.union(owner, index))
+        family = components[record.id]
+        owner = family_owner.setdefault(family, index)
+        family_unions += int(dsu.union(owner, index))
 
     prepared = [shingles(record.text, shingle_size) for record in records]
     inverted: Dict[str, Set[int]] = defaultdict(set)
     candidate_pairs = 0
     similarity_unions = 0
+    empty: Set[int] = set()
     for right_index, right_tokens in enumerate(prepared):
-        candidates: Set[int] = set()
+        candidates: Set[int] = set(empty) if not right_tokens else set()
         for token in right_tokens:
             candidates.update(inverted[token])
         for left_index in sorted(candidates):
@@ -225,6 +247,8 @@ def cluster_records(
                 similarity_unions += int(dsu.union(left_index, right_index))
         for token in right_tokens:
             inverted[token].add(right_index)
+        if not right_tokens:
+            empty.add(right_index)
 
     members: Dict[int, List[Lure]] = defaultdict(list)
     for index, record in enumerate(records):

@@ -1,5 +1,12 @@
 # Provenance results: the confound, and its removal
 
+> Historical results: the tables below used the legacy index-based human holdout,
+> not a seed-lineage-disjoint split. Sibling rewrites can cross train/test in that
+> protocol. They are retained as historical measurements, not estimates of
+> unseen-family generalization. The source branch now defaults to a stricter
+> [lineage-disjoint protocol](CROSS_GENERATOR_PROTOCOL.md); its results must be
+> reported separately. Balanced accuracy depends on the chosen threshold.
+
 The question: **can a detector tell AI-authored fraud from human-authored fraud,
 and does it generalize across generators?** Getting a *credible* answer required
 removing a dataset confound first.
@@ -29,7 +36,8 @@ the source. A perfect AUC on a hard problem is the signature of that artifact.
    (`detokenize`), bounded so legit words like "net income" survive.
 2. **Strengthen defang** to strip HTML and bare domains (`Mail.com`), placeholder-safe.
 3. **Paired rewriting**: have each LLM rewrite the *same* human lure — matched
-   scenario, typology, and length — so the only remaining signal is authorship.
+   scenario, typology, and length — reducing these confounds without proving that
+   authorship is the only remaining signal.
 
 After this, human and AI lengths match (98 vs 96 words) and defang usage is
 consistent.
@@ -47,7 +55,7 @@ GLM 250, Mistral 300; 772 AI total). Leave-one-generator-out:
 
 Chance is 0.50. Top features are now genuine authorship style (AI: `just`, `hey`,
 `fast`, `secure`, `opt out`; human: `information`, `would`, `software`, `made`),
-not defang, length, or era artifacts.
+which is descriptive feature inspection, not proof that all artifacts were removed.
 
 ## What this means
 
@@ -59,7 +67,7 @@ not defang, length, or era artifacts.
   barely beats chance on Mistral's calibration, and vice versa.
 - The high false-positive rates at a 0.5 threshold (0.40–0.73) show the detector is
   not cleanly separating; it leans toward calling text AI once trained on several
-  generators. AUC and balanced accuracy are the honest, threshold-independent read.
+  generators. AUC is a ranking measure; balanced accuracy is threshold-dependent.
 
 This is the confound-controlled evidence for the benchmark's thesis: detecting
 AI-generated fraud, and generalizing across the models that produce it, is an open

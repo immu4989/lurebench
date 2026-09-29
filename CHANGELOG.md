@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- Cross-generator evaluation now defaults to deterministic declared-lineage-
+  disjoint folds as well as generator holdout. Audits connect transitive seed and
+  rewrite ancestry. The explicit legacy mode retains historical reproduction and
+  exposes overlaps; reports correct the claim that balanced accuracy is
+  threshold-independent. Invalid controls and incomplete folds fail before training.
+
+- Producer-side decision-policy loading now uses bounded strict JSON, validates
+  schema/count/risk-control consistency, and supports an external exact-byte
+  SHA-256 pin. Policy saves validate first and atomically replace private files.
+  Long detector names retain their full identity while the display prefix of new
+  policy IDs is truncated to fit the published 256-character contract.
+
+- Added `Report.decision_counts()` and `cache-replay --decision-counts` to export
+  all six outcomes, including class-specific abstentions, for LureScope's offline
+  prevalence/capacity scenarios. Added a shared schema and synthetic interop check.
+
+- Dataset loaders now share bounded strict JSONL parsing, reject ambiguous JSON
+  and coerced labels, validate core field types, and check opened-file changes.
+  Symlinked regular Hub cache files remain supported. Atomic validated writes
+  preserve existing datasets on late-record or iterator failures. Defaults retain
+  compatibility with large historical corpus records; see dataset intake notes.
+
+- Added `compare-cached`: provider-free paired detector comparison with exact
+  record alignment, class-specific co-answer coverage, correctness discordances,
+  exact conditional McNemar p-values, and logical all-record missing-score bounds.
+  Independent enumeration tests check probabilities and every two-record binary
+  completion. Reports make no automatic superiority or deployment-safety claim.
+
+- Corrected leakage-audit candidate completeness for empty shingle sets and
+  threshold zero; three-way families now report every affected split boundary.
+  Core-v2 clustering follows the same empty-set convention. Strict controls and
+  unique split names prevent silent input replacement or one-split audits.
+  Indexed results are checked against exhaustive all-pairs reference results.
+
+- Added provider-free `cache-replay` CLI with aggregate coverage planning,
+  explicit detector identity, read-only score/completion replay, and atomic
+  per-instance callback admission budgets. Completed prewarm work is flushed on
+  failure. These limits are not token, billing, or cross-process spending caps.
+
 - Bootstrap reports disclose requested, defined, and undefined resamples and
   flag intervals conditional on defined statistics, including console output.
 

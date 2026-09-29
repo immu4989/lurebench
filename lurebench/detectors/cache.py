@@ -28,10 +28,11 @@ from __future__ import annotations
 
 import concurrent.futures
 import hashlib
+import re
 import threading
 from typing import Iterable, List, Optional
 
-from ..diskcache import CacheReadError, JsonDiskCache
+from ..diskcache import CacheOnlyMissError, CacheReadError, JsonDiskCache
 from ..probability import validate_score
 from ..schema import Lure
 from .base import Detector
@@ -51,10 +52,15 @@ class CachedDetector(Detector):
             starts empty. Invalid existing caches fail before provider work.
         flush_every: write to disk after this many new scores (0 disables
             autoflush, in which case call :meth:`flush` yourself).
+        cache_only: prohibit writes and scoring callbacks on misses. Does not
+            constrain side effects from constructing ``inner`` beforehand.
+        max_new_calls: per-instance callback admission limit, including failed
+            calls; not a provider request, token, or monetary limit.
     """
 
     def __init__(self, inner: Detector, path: Optional[str] = None,
-                 flush_every: int = 100) -> None:
+                 flush_every: int = 100, *, cache_only: bool = False,
+                 max_new_calls: Optional[int] = None) -> None:
         self.inner = inner
         self.path = path
         self.name = getattr(inner, "name", "detector")
@@ -63,7 +69,8 @@ class CachedDetector(Detector):
         if path and hasattr(inner, "cache_namespace") and namespace is None:
             raise ValueError("persistent custom LLM score caching requires an explicit cache_context")
         self.cache_name = self.name if namespace is None else f"{self.name}\ncontext={namespace}"
-        self.store = JsonDiskCache(path, flush_every=flush_every)
+        self.store = JsonDiskCache(path, flush_every=flush_every,
+                                   read_only=cache_only, max_computations=max_new_calls)
         if namespace is not None and any(
             key.startswith(self.name + "\n") and not key.startswith(self.cache_name + "\n")
             for key in self.store._data
@@ -97,6 +104,55 @@ class CachedDetector(Detector):
             key, lambda: validate_score(self.inner.score(lure)),
         ))
 
+    def plan(self, dataset: Iterable[Lure]) -> dict:
+        """Aggregate replay coverage without detector calls, writes, or counter changes."""
+        snapshot = self.store.snapshot()
+        keys = [_key(self.cache_name, record.text) for record in dataset]
+        unique = set(keys)
+        cached = unique.intersection(snapshot)
+        abstained = {key for key in cached if validate_score(snapshot[key]) is None}
+        return {
+            "records": len(keys), "unique_score_keys": len(unique),
+            "cached_records": sum(key in cached for key in keys),
+            "cached_unique_keys": len(cached), "missing_unique_keys": len(unique - cached),
+            "cached_abstained_records": sum(key in abstained for key in keys),
+            "replay_complete": unique == cached,
+            "limitations": ["cached_scores_are_not_new_independent_observations",
+                            "unique_misses_are_not_a_token_or_provider_billing_estimate"],
+        }
+
+
+class _ReplaySource:
+    def __init__(self, name, task, namespace):
+        self.name, self.task = name, task
+        if namespace is not None:
+            self.cache_namespace = namespace
+
+    def score(self, lure):
+        raise CacheOnlyMissError("replay has no live detector")
+
+
+class ReplayDetector(CachedDetector):
+    """Replay explicit cache identity without constructing any model/provider.
+
+    Identity parameters must come from trusted experiment configuration; a cache
+    does not authenticate its producer or prove that the chosen task is correct.
+    """
+
+    def __init__(self, path: str, *, name: str, task: str,
+                 cache_namespace: Optional[str] = None):
+        if (not isinstance(name, str) or not 1 <= len(name) <= 256
+                or any(ord(c) < 32 or ord(c) == 127 for c in name)):
+            raise ValueError("replay detector name must be a bounded string without controls")
+        if task not in ("fraud", "provenance"):
+            raise ValueError("replay task must be fraud or provenance")
+        if cache_namespace is not None and (
+            not isinstance(cache_namespace, str)
+            or re.fullmatch(r"[0-9a-f]{64}", cache_namespace) is None
+        ):
+            raise ValueError("replay cache namespace must be a lowercase SHA-256 identity")
+        super().__init__(_ReplaySource(name, task, cache_namespace), path, cache_only=True)
+
 
 def prewarm(detector: CachedDetector, dataset: Iterable[Lure], workers: int = 8,
             progress_every: int = 200) -> int:
@@ -123,7 +179,9 @@ def prewarm(detector: CachedDetector, dataset: Iterable[Lure], workers: int = 8,
             if progress_every and done[0] % progress_every == 0:
                 print(f"  {detector.name}: {done[0]}/{len(todo)}")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-        list(ex.map(_one, todo))
-    detector.flush()
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
+            list(ex.map(_one, todo))
+    finally:
+        detector.flush()
     return len(todo)

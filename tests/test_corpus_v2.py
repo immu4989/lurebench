@@ -13,6 +13,30 @@ from lurebench.corpus_v2 import build_core_v2, cluster_records, write_core_v2
 from lurebench.schema import Lure
 
 
+def test_exact_deduplication_preserves_removed_parent_lineage_without_mutating_input():
+    from lurebench.corpus_v2 import _exact_deduplicate
+
+    records = [
+        Lure(id="a", text="identical text", label=1, source="human", typology="phishing"),
+        Lure(id="b", text="identical text", label=1, source="human", typology="phishing",
+             meta={"family_id": "family-b"}),
+        Lure(id="c", text="wholly different vocabulary", label=1, source="human",
+             typology="phishing", meta={"rewrite_of": "b"}),
+        Lure(id="d", text="separate seed sibling", label=1, source="human",
+             typology="phishing", meta={"family_id": "family-b"}),
+    ]
+    original = json.dumps([record.to_dict() for record in records], sort_keys=True)
+    kept, duplicates = _exact_deduplicate(records)
+    assert duplicates == 1
+    assert [record.id for record in kept] == ["a", "c", "d"]
+    clusters, stats = cluster_records(kept, threshold=1)
+    assert len(clusters) == 1
+    assert stats["explicit_family_unions"] == 2
+    assert json.dumps([record.to_dict() for record in records], sort_keys=True) == original
+    reversed_kept, _ = _exact_deduplicate(reversed(records))
+    assert [record.to_dict() for record in reversed_kept] == [record.to_dict() for record in kept]
+
+
 def _write(path: Path, records: list[Lure]) -> None:
     path.write_text(
         "".join(json.dumps(record.to_dict()) + "\n" for record in records),

@@ -75,6 +75,24 @@ def test_registry_lists_heuristic():
     assert isinstance(get_detector("heuristic-v0"), HeuristicDetector)
 
 
+def test_decision_count_export_preserves_abstentions_and_matches_schema():
+    import json
+    from types import SimpleNamespace
+
+    from jsonschema import Draft202012Validator
+
+    records = [Lure(id=str(i), text=f"synthetic {i}", label=i % 2,
+                    typology="phishing" if i % 2 else "benign", source="human")
+               for i in range(4)]
+    detector = SimpleNamespace(name="synthetic", task="fraud", score=lambda r: None)
+    result = run(detector, records).decision_counts()
+    assert result["counts"] == dict(tp=0, fp=0, tn=0, fn=0,
+                                    abstained_positive=2, abstained_negative=2)
+    schema = json.loads((SAMPLES.parents[2] / "spec/decision-counts.schema.json").read_text())
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(result)
+
+
 def test_lazy_detector_missing_dep_raises_cleanly(monkeypatch):
     # Without the extras installed *or* a key configured, constructing these must
     # raise a helpful error, never an AttributeError / silent success.
