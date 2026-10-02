@@ -51,6 +51,21 @@ def test_exact_code_schema_and_corpus_are_required(tmp_path, source_and_members)
     assert contract.verify(wheel, root, package) == 3
 
 
+def test_nested_python_modules_must_ship_exactly(tmp_path, source_and_members):
+    package, root, members = source_and_members
+    relative = f"{package}/detectors/nested.py"
+    source = root / relative
+    source.parent.mkdir()
+    source.write_bytes(b"# nested detector\n")
+    with pytest.raises(ValueError, match="missing"):
+        contract.verify(wheel_at(tmp_path / "missing.whl", members), root, package)
+    members[relative] = b"# old nested detector\n"
+    with pytest.raises(ValueError, match="stale"):
+        contract.verify(wheel_at(tmp_path / "stale.whl", members), root, package)
+    members[relative] = source.read_bytes()
+    assert contract.verify(wheel_at(tmp_path / "complete.whl", members), root, package) == 4
+
+
 @pytest.mark.parametrize("kind", ["code", "schema", "corpus"])
 def test_missing_artifact_is_rejected(tmp_path, source_and_members, kind):
     package, root, members = source_and_members

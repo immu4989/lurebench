@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 from . import __version__
+from .local_io import read_regular_file
 from .receipts import loads_strict_json
 
 SUITE_SCHEMA = "https://github.com/immu4989/lurebench/spec/agent-boundary-suite/v1"
@@ -381,7 +382,7 @@ def _read_suite(path: Optional[Path]) -> bytes:
             target = target / "suite.json"
         if target.is_symlink() or not target.is_file():
             raise ValueError("boundary suite must be a regular local JSON file")
-        payload = target.read_bytes()
+        payload = read_regular_file(target, maximum=MAX_SUITE_BYTES, label="boundary suite")
     if len(payload) > MAX_SUITE_BYTES:
         raise ValueError("boundary suite exceeds the 2 MiB limit")
     return payload

@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence
 
+from .local_io import read_regular_file
 from .receipts import loads_strict_json
 
 TASKS_SCHEMA = "https://github.com/immu4989/lurebench/spec/lureir-tasks/v1"
@@ -258,12 +259,7 @@ def reference_ir_responses() -> Dict[str, Any]:
 
 
 def _read(path: Path) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file():
-        raise ValueError("LureIR responses must be a regular local JSON file")
-    if target.stat().st_size > MAX_ARTIFACT_BYTES:
-        raise ValueError("LureIR responses exceed the 2 MiB limit")
-    return target.read_bytes()
+    return read_regular_file(path, maximum=MAX_ARTIFACT_BYTES, label="LureIR responses")
 
 
 def _validate_responses(value: Any, case_ids: set[str]) -> Dict[str, Any]:

@@ -68,6 +68,14 @@ synthetic checkpoint, verifies byte equality, and rejects two substitution cases
 
 Further details: [outcome contract](DETECTOR_OUTCOMES.md),
 [cache safety](CACHE_SAFETY.md), and [provider boundaries](PROVIDER_BOUNDARIES.md).
+
+External invariant, coverage, incident-response, boundary, and conformance files
+now use bounded opened-file reads with observed-change checks. Their published
+size limits remain unchanged. Receipt CLI key intake uses the same mechanism,
+with a 64 KiB bound and owner-only POSIX permissions for private keys. Supplied
+empty key paths fail instead of silently choosing an unsigned operation. Public
+verification keys need not be private. Trusted parent directories remain required;
+these checks do not establish an atomic filesystem snapshot or key ownership.
 # Producer policy files (unreleased)
 
 `DecisionPolicy.load` now checks regular non-symlink files up to 64 KiB using

@@ -41,3 +41,18 @@ low-privilege environment without unrelated secrets, and externally enforced
 resource limits. Keep the alert open; no exception or advisory dismissal was
 created. Model downloads and large-model loading were not performed in this
 review, so compatibility has not been established through a real gated-model run.
+
+## Adapter safeguards reviewed on 2026 10 02
+
+The upstream advisory still lists no patched version as of this review. The
+Llama Guard adapter now passes `trust_remote_code=False` to both loaders and
+`use_safetensors=True` to the model loader. An optional `revision` accepts only a
+40-character lowercase commit hash, and `local_files_only=True` requests offline
+loading. These are explicit loader controls, **not a patch** for shard traversal,
+not an atomic directory-integrity guarantee, and not authentication of a publisher.
+The separate checkpoint preflight remains inspection rather than safe execution.
+
+Configuration and inference contracts are tested using in-process stubs only.
+No gated model was downloaded or loaded. Do not infer that all allowed versions,
+devices, or model variants were tested. A real optional-stack compatibility run
+still needs reviewed artifacts, isolation, resources, and separate authorization.

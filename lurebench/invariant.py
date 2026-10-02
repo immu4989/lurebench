@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence
 
+from .local_io import read_regular_file
 from .receipts import loads_strict_json
 
 PLAN_SCHEMA = "https://github.com/immu4989/lurebench/spec/agent-invariant-plan/v1"
@@ -169,14 +170,7 @@ def _unique_ids(values: Any, field: str, *, maximum: int, allow_empty: bool) -> 
 
 
 def _read(path: Path, *, private: bool = False) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file():
-        raise ValueError(f"{target} must be a regular local JSON file")
-    if target.stat().st_size > MAX_ARTIFACT_BYTES:
-        raise ValueError(f"{target.name} exceeds the 4 MiB limit")
-    if private and os.name == "posix" and target.stat().st_mode & 0o077:
-        raise ValueError(f"{target.name} must not grant group or world access")
-    return target.read_bytes()
+    return read_regular_file(path, maximum=MAX_ARTIFACT_BYTES, label="invariant", private=private)
 
 
 def _canonical(value: Mapping[str, Any]) -> bytes:

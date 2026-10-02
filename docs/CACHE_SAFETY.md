@@ -50,8 +50,15 @@ Admission is atomic across threads within one cache instance: hits and concurren
 same-key followers consume no additional units. Failed computations and empty
 uncached completions consume their admitted unit; budgets are not refunded.
 Zero permits existing hits only. Exhaustion raises `ComputationBudgetExceeded`
-before invoking another callback. `prewarm` flushes completed work even when a
-worker fails, but it does not cancel all work already submitted to the pool.
+before invoking another callback. `prewarm` checks existing selected cache values
+before new work, permits at most `workers` outstanding tasks, and stops further
+admission after a worker failure. It cancels queued tasks where possible, waits
+for already-running callbacks, and then flushes completed work before propagating
+the failure. Running callbacks cannot be cancelled or refunded by this scheduler;
+see [Python executor shutdown semantics](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor.shutdown).
+Provider timeouts must bound callbacks that could otherwise hang. Controls are
+strict integers: 1–128 workers and a nonnegative progress interval; zero disables
+progress output. The complete dataset is still materialized before scheduling.
 
 This is a **callback count, not a provider request, token, or dollar cap**.
 Internal retries may issue multiple requests. Limits reset with a new instance,

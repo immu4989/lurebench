@@ -59,6 +59,9 @@ jobs:
           "$GITHUB_WORKSPACE/.venv/bin/python" \
             "$GITHUB_WORKSPACE/scripts/check_installed_mandate.py" \
             --package lurebench --installed-root "$mandate_smoke_root/installed"
+          "$GITHUB_WORKSPACE/.venv/bin/python" -I -S \
+            "$GITHUB_WORKSPACE/scripts/check_installed_panel.py" \
+            --installed-root "$mandate_smoke_root/installed"
 
   container-contract:
     runs-on: ubuntu-latest

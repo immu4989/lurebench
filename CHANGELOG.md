@@ -2,6 +2,56 @@
 
 ## Unreleased
 
+- Installed-wheel CI exercises panel replay and alteration rejection with optional
+  model/provider imports blocked. Wheel checks now include nested Python modules,
+  so stale or omitted detector code fails the package check.
+
+- Cache warming validates selected existing scores before new callbacks and keeps
+  at most one worker-window of tasks outstanding. Worker failures stop admission,
+  cancel queued work where possible, await running callbacks, and flush completed
+  cache entries. Strict worker/progress controls fail before consuming the dataset.
+  Already-running provider requests cannot be cancelled or refunded by this change.
+
+- Cached panels fingerprint their already-loaded effective dataset, score matrix,
+  lineage, thresholds, task, and detector identities without emitting raw record
+  IDs or text. Changed probabilities are detectable even when decisions do not
+  change. This semantic fingerprint is neither file authentication nor anonymization.
+  New `verify-panel` reproduces every saved report field from local inputs only,
+  with distinct match, mismatch, and input-error exits. It is not an independent
+  implementation audit and does not silently ignore added report annotations.
+
+- External invariant, coverage, incident-response, boundary, and conformance
+  inputs use bounded opened-file checks instead of a separate stat/unbounded read.
+  Receipt CLI keys share that boundary; private keys require owner-only POSIX
+  permissions and explicit empty key paths no longer select unsigned output.
+
+- Risk-controlled calibration rejects repeated negative-class declared lineage
+  before loading a detector. Transitive links and provenance-task labels are
+  respected; empirical objectives remain available without a population guarantee.
+  Python policy construction accepts an explicit group mapping for the same check.
+  Passing this check does not prove independent or representative validation data.
+
+- Added read-only `compare-panel` with a strict bounded local plan, declared
+  baseline/candidate identities, exact cache coverage, and Holm family adjustment.
+  Unavailable tests retain their planned multiplicity slot and remain null;
+  missing cache entries stop the panel without dropping comparisons or live calls.
+  Independent closed-testing enumeration verifies the adjustment arithmetic.
+  A descriptive all-model co-answered subset exposes accuracy on common messages,
+  coverage loss, and class composition without adding unplanned significance tests.
+
+- Llama Guard now accepts only complete documented safety verdicts; malformed,
+  empty, ambiguous, and unsupported-category responses abstain instead of becoming
+  benign. Bounded input is never silently truncated. Loading explicitly disallows
+  remote code and requires Safetensors, with optional pinned revision/offline mode.
+  Persistent caches require pinned or externally identified artifacts and bind the
+  new parser/settings. This does not resolve the upstream Accelerate advisory.
+
+- Cached comparisons now default to swapping model outcomes by transitive declared
+  lineage, using an exact bounded integer sign-flip calculation. Record-level
+  McNemar remains explicit with `--pairing-unit record`. Reports disclose the
+  stronger exchangeability null, record weighting, and unavailable exact results
+  when the computation limit is exceeded; no randomized fallback is used.
+
 - Cross-generator evaluation now defaults to deterministic declared-lineage-
   disjoint folds as well as generator holdout. Audits connect transitive seed and
   rewrite ancestry. The explicit legacy mode retains historical reproduction and

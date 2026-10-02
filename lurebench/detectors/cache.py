@@ -163,17 +163,33 @@ def prewarm(detector: CachedDetector, dataset: Iterable[Lure], workers: int = 8,
     retries only what genuinely failed.
     Identical keys in concurrent records share one computation, so scheduled
     records are not necessarily the number of underlying provider requests.
+    At most ``workers`` tasks are outstanding. Failures stop further admission;
+    already-running callbacks are awaited, not cancelled or refunded.
     """
+    if type(workers) is not int or not 1 <= workers <= 128:
+        raise ValueError("prewarm workers must be an integer from 1 through 128")
+    if type(progress_every) is not int or progress_every < 0:
+        raise ValueError("prewarm progress interval must be a nonnegative integer")
     records: List[Lure] = list(dataset)
-    todo = [r for r in records if _key(detector.cache_name, r.text) not in detector._cache]
+    # Reject invalid existing values before any new, potentially metered work.
+    detector.plan(records)
+    snapshot = detector.store.snapshot()
+    todo = [r for r in records if _key(detector.cache_name, r.text) not in snapshot]
     if not todo:
         return 0
 
     done = [0]
     lock = threading.Lock()
+    stopped = threading.Event()
 
     def _one(rec: Lure) -> None:
-        detector.score(rec)
+        if stopped.is_set():
+            return
+        try:
+            detector.score(rec)
+        except BaseException:
+            stopped.set()
+            raise
         with lock:
             done[0] += 1
             if progress_every and done[0] % progress_every == 0:
@@ -181,7 +197,30 @@ def prewarm(detector: CachedDetector, dataset: Iterable[Lure], workers: int = 8,
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as ex:
-            list(ex.map(_one, todo))
+            pending = set()
+            remaining = iter(todo)
+            exhausted = False
+            try:
+                while pending or not exhausted:
+                    while not exhausted and not stopped.is_set() and len(pending) < workers:
+                        try:
+                            record = next(remaining)
+                        except StopIteration:
+                            exhausted = True
+                        else:
+                            pending.add(ex.submit(_one, record))
+                    if not pending:
+                        break
+                    completed, pending = concurrent.futures.wait(
+                        pending, return_when=concurrent.futures.FIRST_COMPLETED,
+                    )
+                    # Check all completed tasks before admitting replacements.
+                    for future in completed:
+                        future.result()
+            finally:
+                stopped.set()
+                for future in pending:
+                    future.cancel()
     finally:
         detector.flush()
     return len(todo)

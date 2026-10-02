@@ -50,6 +50,92 @@ def test_second_score_is_served_from_cache(tmp_path):
     assert det.hits == 1 and det.misses == 1
 
 
+@pytest.mark.parametrize("options", [{"workers": True}, {"workers": 0}, {"workers": 129},
+    {"workers": 1.5}, {"progress_every": False}, {"progress_every": -1}, {"progress_every": "2"}])
+def test_prewarm_controls_fail_before_consuming_records(options):
+    def records():
+        pytest.fail("invalid controls consumed dataset")
+        yield _lure(0)
+
+    with pytest.raises(ValueError):
+        prewarm(CachedDetector(CountingDetector()), records(), **options)
+
+
+def test_prewarm_stops_after_failure_and_keeps_successful_cache_entries(tmp_path):
+    class FailingDetector(CountingDetector):
+        def score(self, lure):
+            self.calls += 1
+            if lure.id == "c2":
+                raise RuntimeError("synthetic failure")
+            return .25
+
+    inner = FailingDetector()
+    path = tmp_path / "cache.json"
+    cached = CachedDetector(inner, str(path), flush_every=0)
+    with pytest.raises(RuntimeError, match="synthetic failure"):
+        prewarm(cached, [_lure(i) for i in range(100)], workers=1, progress_every=0)
+    assert inner.calls == 3
+    assert len(json.loads(path.read_text())) == 2
+    restored = CachedDetector(CountingDetector(), str(path))
+    assert restored.score(_lure(0)) == restored.score(_lure(1)) == .25
+    assert restored.inner.calls == 0
+
+
+def test_prewarm_validates_existing_scores_before_new_work(tmp_path):
+    from lurebench.detectors.cache import _key
+
+    path = tmp_path / "cache.json"
+    path.write_text(json.dumps({_key("counting", _lure(0).text): "not-a-probability"}))
+    inner = CountingDetector()
+    cached = CachedDetector(inner, str(path))
+    before = path.read_bytes()
+    with pytest.raises(ValueError):
+        prewarm(cached, [_lure(1), _lure(0)], workers=2)
+    assert inner.calls == 0
+    assert path.read_bytes() == before
+
+
+def test_prewarm_never_submits_more_than_the_worker_window(monkeypatch):
+    import concurrent.futures
+
+    from lurebench.detectors import cache
+
+    outstanding = {}
+    submitted = []
+
+    class ControlledExecutor:
+        def __init__(self, max_workers):
+            assert max_workers == 3
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            assert not outstanding
+
+        def submit(self, fn, record):
+            future = concurrent.futures.Future()
+            outstanding[future] = (fn, record)
+            submitted.append(record.id)
+            assert len(outstanding) <= 3
+            return future
+
+    def complete_one(pending, return_when):
+        assert return_when == concurrent.futures.FIRST_COMPLETED
+        assert set(pending) == set(outstanding)
+        future = next(iter(outstanding))
+        fn, record = outstanding.pop(future)
+        future.set_result(fn(record))
+        return {future}, set(pending) - {future}
+
+    monkeypatch.setattr(cache.concurrent.futures, "ThreadPoolExecutor", ControlledExecutor)
+    monkeypatch.setattr(cache.concurrent.futures, "wait", complete_one)
+    detector = CachedDetector(CountingDetector())
+    assert prewarm(detector, [_lure(i) for i in range(25)], workers=3, progress_every=0) == 25
+    assert submitted == [f"c{i}" for i in range(25)]
+    assert detector.inner.calls == 25
+
+
 def test_abstention_is_cached_and_not_retried(tmp_path):
     # None is a real result (the detector abstained), not a cache miss to retry.
     inner = CountingDetector(returns=None)

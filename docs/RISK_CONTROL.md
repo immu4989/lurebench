@@ -110,13 +110,41 @@ through your organization's release system if issuer authenticity matters.
 
 The guarantee applies only when all of these conditions hold:
 
-1. Validation negatives are independent, representative draws from the benign
-   deployment population, or satisfy an equivalent exchangeability assumption.
+1. Validation negatives are independent, identically distributed draws from the
+   target negative-class population. Exchangeability alone is insufficient for
+   the exact binomial calculation when observations are dependent.
 2. Detector weights, prompt, provider model, preprocessing, score semantics,
    target, confidence, and threshold grid were fixed before this validation run.
 3. Labels are sufficiently accurate for the stated false-positive population.
 4. The validation set was not repeatedly reused to select the model or redesign
    the grid. If it was, use a fresh holdout.
+
+This independence requirement matches the calibration setup in
+[Learn then Test, Section 1.1](https://arxiv.org/html/2110.01052v5).
+For fraud, negatives are benign messages; for provenance, they are human-origin
+messages, including human-written fraud.
+
+### Rejecting known related negatives
+
+The unreleased `calibrate --objective risk_controlled_fpr` command resolves
+transitive declared family, scenario, parent, seed, and rewrite relationships
+before constructing the detector. More than one negative in a component stops
+the run. Connections through positive records or absent parents still count.
+This is a conservative rejection guard, not a cluster-adjusted confidence bound.
+It neither selects representatives nor silently drops records. Repeated positives
+alone do not inflate the FPR denominator; their recall remains descriptive.
+
+Design a fresh validation sample appropriate to the intended population, or use
+an empirical objective with no population-risk guarantee. Do not delete ancestry
+annotations to make a run pass. The check cannot find undeclared relationships,
+training overlap, repeated users, label error, or distribution shift. One declared
+negative per component therefore does not establish independence.
+
+Python `build_policy(..., groups={record_id: component_id, ...})` applies the same
+guard for the risk-controlled objective. The mapping must cover all records.
+If omitted, the low-level API has no ancestry information and the caller remains
+responsible for sampling assumptions. Existing policy schemas and historical
+verification remain unchanged; a policy hash is not evidence of an ancestry audit.
 
 It does **not** guarantee recall, precision, subgroup performance, adversarial
 robustness, or future FPR after population shift. Monitor deployed score and

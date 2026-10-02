@@ -26,6 +26,34 @@ that a provider has kept its backend unchanged.
 `DetectorAbstainedError` when the detector abstains. Previously it returned zero.
 Callers must explicitly decide how to handle an unavailable prediction.
 
+## Llama Guard safety verdicts
+
+The optional Llama Guard 3 adapter follows the
+[documented verdict format](https://dev.meta.ai/llama/docs/model-cards-and-prompt-formats/llama-guard-3):
+`safe`, or `unsafe` followed by a newline and distinct comma-separated categories
+`S1` through `S14`. Surrounding ASCII whitespace is allowed; partial verdicts,
+explanations, contradictory output, unknown categories, and empty output abstain.
+The old prefix parser treated every non-`unsafe` response as benign. Historical
+results and caches are not retroactively corrected by changing the parser.
+
+Input over 100,000 characters or the configured token budget abstains without
+silently dropping part of the message. Default token budget is 8,192. Generation
+uses a 128-token cap; reaching that cap abstains even if the prefix looks valid.
+Runtime/loading failures still raise rather than becoming a benign result.
+
+The Python constructor accepts `revision=` as an immutable 40-character lowercase
+Hub commit and `local_files_only=True` to request offline loading. Persistent
+score caching requires that revision or an external `cache_context=` SHA-256
+identity for reviewed local/unpinned artifacts. The namespace also binds parser,
+model identifier, device, input/output limits, and tokenizer chat template.
+Use a new cache path; older prefix-parser scores are not compatible. Pins identify
+configuration and do not prove safety, immutable local files, or publisher trust.
+
+The hard 0/1 output is a **safety-taxonomy proxy**, not a calibrated fraud
+probability. An accepted `safe` answer does not establish that a message is not
+fraud. See [dependency security](DEPENDENCY_SECURITY.md) for the still-unresolved
+optional Accelerate advisory and the limits of explicit loader flags.
+
 ## Ordinary evaluation
 
 Headline metrics remain conditional on answered records. `n_skipped` reports

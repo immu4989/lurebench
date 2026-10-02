@@ -11,6 +11,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from . import __version__
+from .local_io import read_regular_file
 from .receipts import (
     loads_strict_json,
     validate_aggregate_statement,
@@ -162,11 +163,7 @@ def _read_external(root: Path, relative: str, maximum: int) -> bytes:
         target = target / component
         if target.is_symlink():
             raise ValueError(f"conformance suite path contains a symbolic link: {relative}")
-    if target.is_symlink() or not target.is_file():
-        raise ValueError(f"conformance suite artifact must be a regular file: {relative}")
-    if target.stat().st_size > maximum:
-        raise ValueError(f"conformance suite artifact exceeds its size limit: {relative}")
-    return target.read_bytes()
+    return read_regular_file(target, maximum=maximum, label="conformance suite artifact")
 
 
 def _read_packaged(relative: str, maximum: int) -> bytes:

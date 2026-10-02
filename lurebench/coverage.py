@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Sequence
 
 from .boundary import _ACTIONS, _RESOURCES
+from .local_io import read_regular_file
 from .receipts import loads_strict_json
 
 MANIFEST_SCHEMA = "https://github.com/immu4989/lurebench/spec/agent-coverage-manifest/v1"
@@ -95,12 +96,7 @@ def _canonical(value: Mapping[str, Any]) -> bytes:
 
 
 def _read(path: Path) -> bytes:
-    target = Path(path)
-    if target.is_symlink() or not target.is_file():
-        raise ValueError(f"{target} must be a regular local JSON file")
-    if target.stat().st_size > MAX_ARTIFACT_BYTES:
-        raise ValueError(f"{target.name} exceeds the 2 MiB limit")
-    return target.read_bytes()
+    return read_regular_file(path, maximum=MAX_ARTIFACT_BYTES, label="coverage artifact")
 
 
 def _write_new(path: Path, value: Mapping[str, Any]) -> None:

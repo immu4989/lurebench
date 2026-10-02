@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from lurebench.cli import main
-from lurebench.comparison import compare_paired
+from lurebench.comparison import _blocked_sign_flip, compare_paired
 from lurebench.detectors.cache import CachedDetector
 from lurebench.schema import Lure, save_jsonl
 
@@ -115,6 +115,8 @@ def test_cli_reuses_exact_cached_records_without_model_construction(tmp_path, mo
     result = json.loads(capsys.readouterr().out)
     assert result["overall"]["coanswered_accuracy_delta"] == 1
     assert result["paired_test"]["p_value"] == 1  # one pair is not persuasive evidence
+    assert result["pairing_unit"] == "lineage"
+    assert result["paired_test"]["method"] == "exact_two_sided_block_sign_flip"
     save_jsonl(records + records, dataset)
     assert main(args) == 2
     assert "no live fallback" in capsys.readouterr().err
@@ -122,3 +124,101 @@ def test_cli_reuses_exact_cached_records_without_model_construction(tmp_path, mo
     save_jsonl(records, dataset)
     assert main(args) == 2
     assert "incomplete" in capsys.readouterr().err
+
+
+def test_block_test_matches_exhaustive_sign_assignments():
+    for differences in itertools.product(range(-2, 3), repeat=4):
+        absolute = abs(sum(differences))
+        expected = sum(abs(sum(a * b for a, b in zip(differences, signs, strict=True))) >= absolute
+                       for signs in itertools.product((-1, 1), repeat=4)) / 16
+        result = _blocked_sign_flip(list(differences))
+        assert result["status"] == "exact"
+        assert result["p_value"] == expected
+        assert _blocked_sign_flip(list(reversed(differences)))["p_value"] == expected
+        assert _blocked_sign_flip([-v for v in differences])["p_value"] == expected
+
+
+def test_related_rewrites_do_not_multiply_independent_evidence():
+    truths = {str(i): 1 for i in range(100)}
+    baseline = dict.fromkeys(truths, .1)
+    candidate = dict.fromkeys(truths, .9)
+    independent = compare_paired(truths, baseline, candidate)
+    grouped = compare_paired(truths, baseline, candidate, groups=dict.fromkeys(truths, "one-family"))
+    assert independent["paired_test"]["p_value"] < 1e-20
+    assert grouped["paired_test"]["p_value"] == 1
+    assert grouped["paired_test"]["nonzero_blocks"] == 1
+    assert grouped["overall"] == independent["overall"]
+
+
+def test_singleton_blocks_agree_with_exact_mcnemar():
+    for left_only in range(8):
+        for right_only in range(8):
+            n = left_only + right_only + 1
+            truths = dict.fromkeys(map(str, range(n)), 1)
+            baseline = {str(i): float(i < left_only or i == n - 1) for i in range(n)}
+            candidate = {str(i): float(i >= left_only) for i in range(n)}
+            plain = compare_paired(truths, baseline, candidate)
+            grouped = compare_paired(truths, baseline, candidate, groups={k: k for k in truths})
+            assert grouped["paired_test"]["p_value"] == pytest.approx(plain["paired_test"]["p_value"])
+
+
+def test_block_abstentions_and_cancellation_are_explicit():
+    truths = dict.fromkeys("abcd", 1)
+    baseline = dict(zip("abcd", (.9, .1, None, None), strict=True))
+    candidate = dict(zip("abcd", (.1, .9, .9, None), strict=True))
+    result = compare_paired(truths, baseline, candidate, groups={"a": "x", "b": "x", "c": "y", "d": "z"})
+    paired = result["paired_test"]
+    assert paired["p_value"] == 1
+    assert paired["declared_blocks"] == 3
+    assert paired["blocks_with_coanswered_records"] == 1
+    assert paired["nonzero_blocks"] == 0
+    assert paired["conditional_on_coanswered"]
+    empty = compare_paired({"a": 1}, {"a": None}, {"a": .9}, groups={"a": "g"})
+    assert empty["paired_test"]["p_value"] is None
+    assert empty["paired_test"]["status"] == "no_coanswered_records"
+
+
+@pytest.mark.parametrize("groups", [{}, {"a": "g", "b": "g"}, {"a": ""}, {"a": 1}, {"a": "\ud800"}, {"a": "g\n"}, []])
+def test_invalid_groups_fail(groups):
+    with pytest.raises(ValueError):
+        compare_paired({"a": 1}, {"a": .1}, {"a": .9}, groups=groups)
+
+
+def test_exact_resource_limit_is_not_a_significance_result():
+    for differences in ([1] * 1001, [100_000] * 11):
+        result = _blocked_sign_flip(differences)
+        assert result["status"] == "exact_computation_limit"
+        assert result["p_value"] is None
+
+
+def test_block_result_matches_scipy_paired_permutation_reference():
+    stats = pytest.importorskip("scipy.stats")
+    values = [3, -2, 1, 0, 4, -1]
+    reference = stats.permutation_test((values,), sum, permutation_type="samples",
+                                      n_resamples=math.inf, vectorized=False)
+    assert _blocked_sign_flip(values)["p_value"] == reference.pvalue
+
+
+def test_cli_uses_transitive_lineage_and_preserves_record_opt_in(tmp_path, capsys):
+    records = [Lure(id=str(i), text=f"synthetic {i}", label=1, source="human",
+                    typology="phishing", meta={"parent_id": f"absent-{i // 3}"})
+               for i in range(6)]
+    # A present-parent link must carry that parent's absent-root relationship.
+    records[2].meta = {"rewrite_of": "1"}
+    path = tmp_path / "records.jsonl"
+    save_jsonl(records, path)
+    args = ["compare-cached", "-d", str(path), "--task", "fraud"]
+    for name, value in (("baseline", .1), ("candidate", .9)):
+        cache = tmp_path / f"{name}.json"
+        detector = CachedDetector(SimpleNamespace(name=name, task="fraud", score=lambda r, v=value: v),
+                                  str(cache), flush_every=1)
+        for record in records:
+            detector.score(record)
+        args.extend([f"--{name}-cache", str(cache), f"--{name}-name", name])
+    assert main(args) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["paired_test"]["declared_blocks"] == 2
+    assert result["paired_test"]["p_value"] == .5
+    assert main(args + ["--pairing-unit", "record"]) == 0
+    independent = json.loads(capsys.readouterr().out)
+    assert independent["paired_test"]["p_value"] == pytest.approx(.03125)

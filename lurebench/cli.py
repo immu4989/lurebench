@@ -15,7 +15,7 @@ from typing import List
 from .attacks import available as attacks_available
 from .attacks import get_attack
 from .audit import audit_splits
-from .calibration import build_policy, calibration_metrics
+from .calibration import build_policy, calibration_metrics, validate_risk_control_groups
 from .corpus import build_core, write_core
 from .corpus_v2 import build_core_v2, write_core_v2
 from .crossgen import cross_generator_provenance
@@ -104,10 +104,35 @@ def _cmd_cross_generator(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_compare_panel(args: argparse.Namespace) -> int:
+    from .panel import run_cached_panel
+
+    try:
+        report = run_cached_panel(Path(args.dataset), Path(args.plan))
+        print(json.dumps(report, indent=2, allow_nan=False))
+    except (OSError, ValueError, RuntimeError, TypeError) as exc:
+        print(f"! cached panel failed ({type(exc).__name__}); no live fallback", file=sys.stderr)
+        return 2
+    return 0
+
+
+def _cmd_verify_panel(args: argparse.Namespace) -> int:
+    from .panel import verify_cached_panel
+
+    try:
+        result = verify_cached_panel(Path(args.dataset), Path(args.plan), Path(args.report))
+        print(json.dumps(result, indent=2, allow_nan=False))
+    except (OSError, ValueError, RuntimeError, TypeError) as exc:
+        print(f"! panel verification failed ({type(exc).__name__}); no live fallback", file=sys.stderr)
+        return 2
+    return 0 if result["matches_replay"] else 1
+
+
 def _cmd_compare_cached(args: argparse.Namespace) -> int:
     from .comparison import compare_paired
     from .detectors.cache import ReplayDetector
     from .harness import TASK_TARGET
+    from .lineage import lineage_components
 
     try:
         records = load_jsonl(args.dataset)
@@ -129,9 +154,10 @@ def _cmd_compare_cached(args: argparse.Namespace) -> int:
             {r.id: candidate.score(r) for r in records},
             baseline_threshold=args.baseline_threshold,
             candidate_threshold=args.candidate_threshold,
+            groups=lineage_components(records) if args.pairing_unit == "lineage" else None,
         )
         result.update(task=args.task, baseline=baseline.name, candidate=candidate.name,
-                      cache_coverage=plans)
+                      cache_coverage=plans, pairing_unit=args.pairing_unit)
         print(json.dumps(result, indent=2, allow_nan=False))
     except (OSError, ValueError, RuntimeError, TypeError) as exc:
         print(f"! cached paired comparison failed ({type(exc).__name__}); no live fallback",
@@ -231,10 +257,20 @@ def _cmd_audit_splits(args: argparse.Namespace) -> int:
 
 
 def _cmd_calibrate(args: argparse.Namespace) -> int:
+    from .harness import TASK_TARGET
+    from .lineage import lineage_components
+
     kwargs = {"model_path": args.model_path} if args.model_path else {}
     try:
-        detector = get_detector(args.detector, **kwargs)
         records = load_jsonl(args.validation)
+        groups = None
+        if args.objective == "risk_controlled_fpr":
+            groups = lineage_components(records)
+            validate_risk_control_groups(
+                [record.id for record in records],
+                [TASK_TARGET[args.task](record) for record in records], groups,
+            )
+        detector = get_detector(args.detector, **kwargs)
         ids, truths, scores = collect_scores(detector, records, task=args.task)
         if len(ids) != len(records):
             raise ValueError(
@@ -251,6 +287,7 @@ def _cmd_calibrate(args: argparse.Namespace) -> int:
             target_fpr=args.target_fpr,
             confidence=args.confidence,
             threshold_grid_size=args.threshold_grid_size,
+            groups=groups,
         )
         diagnostics = calibration_metrics(truths, scores, n_bins=args.bins)
     except (ImportError, KeyError, RuntimeError, ValueError) as exc:
@@ -582,15 +619,12 @@ def _cmd_stix(args: argparse.Namespace) -> int:
     return 0
 
 
-def _read_bounded_key(path: str) -> bytes:
-    resolved = Path(path)
-    if resolved.is_symlink():
-        raise ValueError(f"refusing symbolic-link key: {resolved}")
-    if not resolved.is_file():
-        raise FileNotFoundError(resolved)
-    if resolved.stat().st_size > 64 * 1024:
-        raise ValueError(f"key file exceeds 64 KiB: {resolved}")
-    return resolved.read_bytes()
+def _read_bounded_key(path: str, *, private: bool = False) -> bytes:
+    from .local_io import read_regular_file
+
+    if not isinstance(path, str) or not path:
+        raise ValueError("supplied key path must be nonempty")
+    return read_regular_file(Path(path), maximum=64 * 1024, label="key", private=private)
 
 
 def _write_new_private(path: str, payload: str) -> None:
@@ -608,7 +642,7 @@ def _cmd_verify_receipt(args: argparse.Namespace) -> int:
     from .receipts import load_verified_artifact
 
     try:
-        public_key = _read_bounded_key(args.public_key) if args.public_key else None
+        public_key = _read_bounded_key(args.public_key) if args.public_key is not None else None
         verified = load_verified_artifact(
             Path(args.artifact),
             public_key_pem=public_key,
@@ -657,6 +691,10 @@ def _cmd_aggregate_receipts(args: argparse.Namespace) -> int:
     )
 
     try:
+        signing_key = (
+            _read_bounded_key(args.signing_key, private=True)
+            if args.signing_key is not None else None
+        )
         source_keys = _parse_source_keys(args.source_key or [])
         receipts = []
         for value in args.receipt:
@@ -676,8 +714,8 @@ def _cmd_aggregate_receipts(args: argparse.Namespace) -> int:
             require_authenticated_sources=args.require_source_signatures,
         )
         artifact = (
-            sign_statement(aggregate, _read_bounded_key(args.signing_key))
-            if args.signing_key
+            sign_statement(aggregate, signing_key)
+            if signing_key is not None
             else aggregate
         )
         _write_new_private(args.out, dumps_artifact(artifact))
@@ -2647,9 +2685,22 @@ def build_parser() -> argparse.ArgumentParser:
                                help="export all six outcomes for offline capacity planning")
     p_replay.set_defaults(func=_cmd_cache_replay)
 
+    p_panel = sub.add_parser("compare-panel", help="planned cached comparisons with Holm correction")
+    p_panel.add_argument("--dataset", "-d", required=True)
+    p_panel.add_argument("--plan", required=True, help="strict local JSON plan; cache paths relative to this file")
+    p_panel.set_defaults(func=_cmd_compare_panel)
+
+    p_verify_panel = sub.add_parser("verify-panel", help="reproduce a saved panel from local caches")
+    p_verify_panel.add_argument("--dataset", "-d", required=True)
+    p_verify_panel.add_argument("--plan", required=True)
+    p_verify_panel.add_argument("--report", required=True, help="unaltered compare-panel JSON output")
+    p_verify_panel.set_defaults(func=_cmd_verify_panel)
+
     p_compare = sub.add_parser("compare-cached", help="paired detector comparison without live calls")
     p_compare.add_argument("--dataset", "-d", required=True)
     p_compare.add_argument("--task", choices=["fraud", "provenance"], required=True)
+    p_compare.add_argument("--pairing-unit", choices=["lineage", "record"], default="lineage",
+                           help="swap model labels by declared lineage (default); record assumes independent pairs")
     for side in ("baseline", "candidate"):
         p_compare.add_argument(f"--{side}-cache", required=True)
         p_compare.add_argument(f"--{side}-name", required=True, help="exact cached detector display name")

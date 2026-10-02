@@ -11,6 +11,7 @@ import re
 import stat
 import tempfile
 from bisect import bisect_left
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -537,6 +538,33 @@ def bootstrap_ci(
     )
 
 
+def validate_risk_control_groups(
+    record_ids: Sequence[str], y_true: Sequence[int], groups: Mapping[str, str] | None,
+) -> None:
+    """Reject known negative-class clustering; passing does not prove i.i.d. data.
+
+    The exact binomial FPR procedure is record-level, not cluster-adjusted. This
+    guard does not sample representatives, relabel the estimand, or repair data.
+    """
+    if groups is None:
+        return
+    if len(record_ids) != len(y_true) or len(set(record_ids)) != len(record_ids):
+        raise ValueError("risk-control records must have unique IDs aligned with labels")
+    validate_binary_labels(y_true)
+    if not isinstance(groups, Mapping) or set(groups) != set(record_ids):
+        raise ValueError("risk-control groups must cover exactly the validation record IDs")
+    if any(not isinstance(value, str) or not 1 <= len(value) <= 1024 or any(
+        ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value
+    ) for value in groups.values()):
+        raise ValueError("risk-control group identifiers must be bounded strings without controls")
+    negative_groups = [groups[key] for key, label in zip(record_ids, y_true, strict=True) if label == 0]
+    if len(set(negative_groups)) != len(negative_groups):
+        raise ValueError(
+            "risk-controlled FPR cannot treat repeated negative-class lineage as independent; "
+            "supply an independently designed validation sample or use an empirical objective"
+        )
+
+
 def build_policy(
     detector: str,
     task: str,
@@ -547,6 +575,7 @@ def build_policy(
     target_fpr: Optional[float] = None,
     confidence: float = 0.95,
     threshold_grid_size: int = 1001,
+    *, groups: Mapping[str, str] | None = None,
 ) -> Tuple[DecisionPolicy, Metrics]:
     if not (len(record_ids) == len(y_true) == len(scores)) or not record_ids:
         raise ValueError("record_ids, y_true and scores must have the same non-zero length")
@@ -569,6 +598,7 @@ def build_policy(
         raise ValueError("policy detector identity or task is invalid")
     risk_control = None
     if objective == "risk_controlled_fpr":
+        validate_risk_control_groups(record_ids, y_true, groups)
         if target_fpr is None:
             raise ValueError("risk_controlled_fpr requires target_fpr")
         threshold, metrics, risk_control = select_risk_controlled_threshold(
