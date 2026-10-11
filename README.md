@@ -55,7 +55,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 **Unreleased hardening:** [migration and offline verification](docs/HARDENING_MIGRATION.md)
 cover checkpoint intake, honest missing-score reporting, safer paid-call caches,
 and faster calibration. These source-branch changes are not in PyPI 0.11.0.
-[Local verification on 2 October 2026](docs/VERIFICATION_2026_10_02.md) records
+[Local verification on 10 October 2026](docs/VERIFICATION_2026_10_10.md) records
 the current checks, skipped coverage, and release boundaries.
 
 **Stricter provenance evaluation:** [unseen-lineage cross-generator protocol](docs/CROSS_GENERATOR_PROTOCOL.md)

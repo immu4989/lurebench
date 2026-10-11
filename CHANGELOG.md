@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Updated the optional urllib3 lock to 2.8.0 and added a uv floor, addressing
+  GHSA-vxq7-64xx-v4gw and GHSA-gh4c-6fx4-qh6g in project resolution. Tests check
+  every locked entry. The core remains dependency-free; consumer environments
+  require their own updates, and the Accelerate advisory remains unresolved.
+
 - Installed-wheel CI exercises panel replay and alteration rejection with optional
   model/provider imports blocked. Wheel checks now include nested Python modules,
   so stale or omitted detector code fails the package check.

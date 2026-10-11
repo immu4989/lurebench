@@ -38,9 +38,10 @@ classifiers = [
 dependencies = []   # the core harness and heuristic baseline run dependency-free
 
 [tool.uv]
-# HTTPX2 <2.12.0 is affected by GHSA-8xx6-hgc6-gc2m; this constrains
-# optional dependency resolution without adding HTTP clients to the core.
-constraint-dependencies = ["httpx2>=2.12.0"]
+# Constrain optional HTTP dependencies without adding clients to the core.
+# urllib3 <2.8.0: GHSA-vxq7-64xx-v4gw / GHSA-gh4c-6fx4-qh6g.
+# HTTPX2 <2.12.0: GHSA-8xx6-hgc6-gc2m.
+constraint-dependencies = ["httpx2>=2.12.0", "urllib3>=2.8.0"]
 
 [project.optional-dependencies]
 binoculars = ["torch>=2.0", "transformers>=4.38"]

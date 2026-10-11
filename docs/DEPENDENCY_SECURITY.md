@@ -1,8 +1,24 @@
-# Dependency security review — 2026-09-21
+# Dependency security review
 
 These findings describe this source branch, not an already-published release.
 Dependency resolution is not runtime reachability analysis or a security
 certification. The core harness has no required third-party dependencies.
+
+## urllib3 update on 10 October 2026
+
+The optional lock selects urllib3 2.8.0, replacing 2.7.0, with a uv resolution
+floor of 2.8.0. This addresses the upstream
+[unbounded chunk-size line](https://github.com/advisories/GHSA-vxq7-64xx-v4gw) and
+[chunked Deflate loop](https://github.com/advisories/GHSA-gh4c-6fx4-qh6g)
+advisories in that lock. The Requests streaming API can expose these urllib3
+paths. Regression tests require every locked urllib3 entry to meet the floor;
+the core package still has no required HTTP dependency.
+
+These constraints apply to uv project resolution, not independently resolved
+consumer environments. Existing installations need an explicit dependency
+update. GitHub's default-branch alerts remain until reviewed changes reach the
+default branch and its dependency graph is refreshed; a local lock change does
+not dismiss them. The separate HTTPX2 and Accelerate assessments below still apply.
 
 ## HTTPX2
 
