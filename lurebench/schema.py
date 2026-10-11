@@ -7,6 +7,7 @@ is deliberately small and provenance-aware so the same corpus supports both the
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import stat
@@ -14,8 +15,9 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from numbers import Integral
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional
+from typing import Callable, Iterable, Iterator, List, Optional, Tuple
 
+from .local_io import _identity
 from .receipts import loads_strict_json
 
 MAX_DATASET_BYTES = 256 * 1024 * 1024
@@ -111,6 +113,24 @@ def load_jsonl(path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
     return list(iter_jsonl(path, max_bytes=max_bytes, max_record_bytes=max_record_bytes))
 
 
+def load_jsonl_with_digest(path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
+                          max_record_bytes: int = MAX_RECORD_BYTES) -> Tuple[List[Lure], str]:
+    """Load validated records and hash their source bytes in one bounded read.
+
+    Unlike Hub-compatible load_jsonl, this evidence boundary rejects symlinks
+    and observed file/path changes. The digest includes comments, blank lines,
+    unknown extension fields, and original line endings. Trusted parents are
+    required; metadata checks are not an atomic filesystem snapshot or source
+    authentication. Records remain mutable after this function returns.
+    """
+    digest = hashlib.sha256()
+    records = list(_iter_jsonl(
+        path, max_bytes=max_bytes, max_record_bytes=max_record_bytes,
+        on_bytes=digest.update, nonsymlink=True,
+    ))
+    return records, digest.hexdigest()
+
+
 def save_jsonl(records: Iterable[Lure], path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
                max_record_bytes: int = MAX_RECORD_BYTES) -> None:
     """Atomically replace a dataset only after every record passes strict intake.
@@ -156,13 +176,28 @@ def iter_jsonl(path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
     stronger non-symlink evidence-artifact trust boundary. Finish iteration to
     check the complete input before using it for expensive evaluation.
     """
+    yield from _iter_jsonl(path, max_bytes=max_bytes, max_record_bytes=max_record_bytes)
+
+
+def _iter_jsonl(path: str | Path, *, max_bytes: int, max_record_bytes: int,
+                on_bytes: Optional[Callable[[bytes], None]] = None,
+                nonsymlink: bool = False) -> Iterator[Lure]:
     if any(type(limit) is not int or limit < 1 for limit in (max_bytes, max_record_bytes)):
         raise ValueError("dataset and record byte limits must be positive integers")
-    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0))
+    source = Path(path)
+    before = source.lstat() if nonsymlink else None
+    if before is not None and (not stat.S_ISREG(before.st_mode) or source.parent.is_symlink()):
+        raise ValueError("committed dataset must be a regular non-symlink local file")
+    flags = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
+    if nonsymlink:
+        flags |= getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(source, flags)
     try:
         initial = os.fstat(fd)
         if not stat.S_ISREG(initial.st_mode) or initial.st_size > max_bytes:
             raise ValueError("dataset must be a regular file within the byte limit")
+        if before is not None and _identity(initial) != _identity(before):
+            raise ValueError("committed dataset changed before reading")
         with os.fdopen(fd, "rb") as fh:
             fd = -1
             total = lineno = 0
@@ -174,6 +209,8 @@ def iter_jsonl(path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
                 lineno += 1
                 if len(line) > max_record_bytes or total > max_bytes:
                     raise ValueError(f"dataset line {lineno} exceeds a byte limit")
+                if on_bytes is not None:
+                    on_bytes(line)
                 try:
                     stripped = line.decode("utf-8").strip()
                     if stripped and not stripped.startswith("//"):
@@ -186,6 +223,8 @@ def iter_jsonl(path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
                     or final.st_mtime_ns != initial.st_mtime_ns
                     or final.st_ctime_ns != initial.st_ctime_ns):
                 raise ValueError("dataset changed during iteration")
+        if nonsymlink and _identity(source.lstat()) != _identity(initial):
+            raise ValueError("committed dataset path changed during reading")
     finally:
         if fd >= 0:
             os.close(fd)

@@ -42,6 +42,32 @@ Unlike signed-evidence intake, dataset reads intentionally support symlinks to
 regular files because local Hub caches use them. This is not a confinement or
 path-ancestry security boundary. No downloads or provider calls occur in parsing.
 
+## Exact source commitments
+
+`load_jsonl_with_digest` returns validated records and a SHA-256 digest from the
+same bounded read. Container evaluation and core-v2 corpus construction use it
+instead of hashing a file and reopening it for parsing. Validation finishes
+before container startup or corpus gating.
+
+```python
+from lurebench.schema import load_jsonl_with_digest
+
+records, source_sha256 = load_jsonl_with_digest("reviewed-source.jsonl")
+```
+
+The digest includes every source byte: comments, blank lines, unknown extension
+fields, and original line endings. It is not a digest of normalized or
+reserialized records. Empty or comment-only files have a digest but no records;
+container evaluation rejects them before starting its runtime.
+
+Unlike the Hub-compatible loaders above, this loader rejects source symlinks and
+an immediate symlink parent. It checks the opened file's identity against the
+path before reading and again after closing, in addition to the shared byte and
+timestamp checks. Keep parent directories trusted: these checks detect observed
+changes, not every possible filesystem race, and do not authenticate provenance
+or provide an atomic snapshot across multiple corpus sources. Returned records
+remain mutable; their source digest does not commit later in-memory edits.
+
 ## Atomic writes
 
 `save_jsonl` validates even mutated dataclasses, writes strict finite JSON to a

@@ -34,6 +34,9 @@ class _Output:
     def __init__(self, source):
         self.source = source
 
+    def close(self):
+        pass
+
     def readline(self, size=-1):
         request = json.loads(self.source.lines[-1])
         response = {
@@ -187,3 +190,21 @@ def test_container_cli_emits_schema_valid_isolation_evidence(monkeypatch, tmp_pa
         "scenario_prose_transmitted": False,
         "acceptance_thresholds_transmitted": False,
     }
+
+
+def test_boundary_cli_publishes_neither_report_after_cleanup_failure(monkeypatch, tmp_path, capsys):
+    _fake_runtime(monkeypatch)
+    original = BoundaryContainerMonitor.close
+
+    def cleanup_failure(self):
+        original(self)
+        raise RuntimeError("synthetic incomplete cleanup")
+
+    monkeypatch.setattr(BoundaryContainerMonitor, "close", cleanup_failure)
+    report, wrapper = tmp_path / "report.json", tmp_path / "container.json"
+    assert main(["boundary-eval", "--image", PINNED, "--out", str(report),
+                 "--container-report", str(wrapper), "--json"]) == 2
+    assert not report.exists() and not wrapper.exists()
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "incomplete cleanup" in captured.err

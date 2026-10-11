@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import json
 import math
-import queue
 import re
 import shutil
 import subprocess
-import threading
 from typing import Any, Dict, Optional
 
+from ..container_io import JsonLineSession
+from ..receipts import loads_strict_json
 from ..schema import Lure
 from .base import Detector
 
@@ -71,6 +71,8 @@ class ContainerDetector(Detector):
         self.cpus = float(cpus)
         self.allow_mutable_image = allow_mutable_image
         self._process: Optional[subprocess.Popen[str]] = None
+        self._session: Optional[JsonLineSession] = None
+        self._failed = False
         self._counter = 0
         self.image_id = self._inspect_image()
         self.name = f"container:{self.image_id}"
@@ -132,39 +134,17 @@ class ContainerDetector(Detector):
         except OSError as exc:
             raise RuntimeError("failed to start the detector container") from exc
 
-    def _readline(self) -> str:
-        assert self._process is not None and self._process.stdout is not None
-        output: queue.Queue[object] = queue.Queue(maxsize=1)
-
-        def read() -> None:
-            try:
-                output.put(self._process.stdout.readline())
-            except Exception as exc:  # keep reader failures inside the bounded queue
-                output.put(exc)
-
-        thread = threading.Thread(target=read, daemon=True)
-        thread.start()
-        try:
-            value = output.get(timeout=self.timeout_seconds)
-        except queue.Empty as exc:
-            self.close()
-            raise TimeoutError(
-                "detector container exceeded its per-record response timeout"
-            ) from exc
-        if isinstance(value, Exception):
-            self.close()
-            raise RuntimeError("detector container produced invalid UTF-8 output") from value
-        return str(value)
-
     @staticmethod
     def _parse_response(raw: str, request_id: str) -> Optional[float]:
         encoded = raw.encode("utf-8")
         if not raw or len(encoded) > MAX_RESPONSE_BYTES:
             raise ValueError("detector container returned an empty or oversized response")
+        if not raw.endswith("\n") or raw.count("\n") != 1:
+            raise ValueError("detector container response must be one newline-terminated JSON record")
         try:
-            response = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise ValueError("detector container response is not one JSON object per line") from exc
+            response = loads_strict_json(encoded)
+        except ValueError as exc:
+            raise ValueError("detector container response is not strict JSON") from exc
         if not isinstance(response, dict):
             raise ValueError("detector container response must be a JSON object")
         if response.get("protocol") != PROTOCOL or response.get("request_id") != request_id:
@@ -173,10 +153,9 @@ class ContainerDetector(Detector):
             score = response["score"]
             if isinstance(score, bool) or not isinstance(score, (int, float)):
                 raise ValueError("detector score must be numeric")
-            result = float(score)
-            if not math.isfinite(result) or not 0 <= result <= 1:
+            if not 0 <= score <= 1:
                 raise ValueError("detector score must be finite and between zero and one")
-            return result
+            return float(score)
         if set(response) == {"protocol", "request_id", "score", "abstain"}:
             if response["score"] is not None or response["abstain"] is not True:
                 raise ValueError("abstention must use score=null and abstain=true")
@@ -184,14 +163,9 @@ class ContainerDetector(Detector):
         raise ValueError("detector container response violates the v1 allowlist")
 
     def score(self, lure: Lure) -> Optional[float]:
-        if self._process is None:
-            self._process = self._start()
-        if self._process.poll() is not None:
-            self.close()
-            raise RuntimeError("detector container exited before scoring completed")
-        assert self._process.stdin is not None
-        self._counter += 1
-        request_id = f"request-{self._counter:08d}"
+        if self._failed:
+            raise RuntimeError("detector container failed; create a new detector for a new run")
+        request_id = f"request-{self._counter + 1:08d}"
         request: Dict[str, Any] = {
             "protocol": PROTOCOL,
             "request_id": request_id,
@@ -200,38 +174,39 @@ class ContainerDetector(Detector):
             "language": lure.language,
             "channel": lure.channel,
         }
-        try:
-            self._process.stdin.write(
-                json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n"
-            )
-            self._process.stdin.flush()
-        except (BrokenPipeError, OSError) as exc:
+        encoded = json.dumps(request, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n"
+        if self._process is None:
+            self._process = self._start()
+        if self._process.poll() is not None:
+            self._failed = True
             self.close()
-            raise RuntimeError("detector container closed its input stream") from exc
+            raise RuntimeError("detector container exited before scoring completed")
+        self._counter += 1
+        if self._session is None:
+            self._session = JsonLineSession(self._process, label="detector container")
         try:
-            return self._parse_response(self._readline(), request_id)
-        except Exception:
+            raw = self._session.exchange(
+                encoded,
+                timeout=self.timeout_seconds, max_chars=MAX_RESPONSE_BYTES + 1,
+            )
+            return self._parse_response(raw, request_id)
+        except BaseException:
+            self._failed = True
             self.close()
             raise
 
     def close(self) -> None:
-        process, self._process = self._process, None
-        if process is None:
+        if self._process is None:
             return
-        if process.stdin is not None:
-            try:
-                process.stdin.close()
-            except OSError:
-                pass
+        if self._session is None:
+            self._session = JsonLineSession(self._process, label="detector container")
         try:
-            process.wait(timeout=1)
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=2)
+            self._session.close()
+        except BaseException:
+            self._failed = True
+            raise
+        self._process = None
+        self._session = None
 
     def __enter__(self) -> "ContainerDetector":
         return self

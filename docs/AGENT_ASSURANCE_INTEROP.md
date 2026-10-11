@@ -39,7 +39,7 @@ LureBench never pulls an image. It starts the locally available image with:
 - all Linux capabilities dropped;
 - `no-new-privileges`;
 - a forced numeric unprivileged UID/GID independent of image metadata;
-- bounded processes, CPU, memory, response size, and response time; and
+- bounded processes, CPU, memory, response size, and request/response I/O time; and
 - an isolated, `noexec` temporary filesystem.
 
 One strict JSON request is written per trajectory:
@@ -59,6 +59,14 @@ Duplicate JSON keys, extra prose, non-finite numbers, mismatched requests,
 invalid event bindings, unsupported categories, and oversized or delayed output
 fail closed. Scenario IDs, titles, descriptions, labels, expected categories,
 detection windows, and acceptance thresholds never cross the container boundary.
+
+`--timeout` covers writing, flushing, and reading together, including monitors
+that never read stdin. A failed exchange invalidates the monitor instance. CLI
+termination and pipe cleanup use separate bounded waits; incomplete cleanup is
+an error, not a successful evaluation. Runtime startup and daemon-managed
+container lifetimes still need external supervision. The shared transport uses
+the same [deadline and cleanup contract](CONTAINER_DETECTORS.md#runtime-isolation)
+as detector containers, with the boundary protocol's own 256 KiB response cap.
 
 The container report records the runtime image ID and evaluator-controlled
 isolation settings. Image identity alone does not authenticate a vendor; pair it

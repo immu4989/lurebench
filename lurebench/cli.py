@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import os
@@ -31,7 +30,7 @@ from .leaderboard import evaluate_detectors, render_markdown, write_json
 from .manifest import build_manifest, check_balance
 from .robustness import render_markdown as render_robustness
 from .robustness import run_robustness
-from .schema import load_jsonl, save_jsonl
+from .schema import load_jsonl, load_jsonl_with_digest, save_jsonl
 
 
 def _cmd_detectors(_: argparse.Namespace) -> int:
@@ -762,6 +761,7 @@ def _cmd_boundary_eval(args: argparse.Namespace) -> int:
     )
 
     monitor = None
+    runtime_closed = False
     try:
         if args.container_report and not args.image:
             raise ValueError("--container-report requires --image")
@@ -784,6 +784,9 @@ def _cmd_boundary_eval(args: argparse.Namespace) -> int:
                 "monitor_artifact_sha256": monitor.artifact_sha256,
             }
         report = run_boundary_evaluation(Path(args.suite) if args.suite else None, **kwargs)
+        if monitor is not None:
+            monitor.close()
+            runtime_closed = True
         if args.out:
             write_boundary_evaluation(Path(args.out), report)
         if args.container_report:
@@ -834,8 +837,11 @@ def _cmd_boundary_eval(args: argparse.Namespace) -> int:
         print(f"! {exc}", file=sys.stderr)
         return 2
     finally:
-        if monitor is not None:
-            monitor.close()
+        if monitor is not None and not runtime_closed:
+            try:
+                monitor.close()
+            except (OSError, RuntimeError) as exc:
+                print(f"! boundary monitor cleanup incomplete: {exc}", file=sys.stderr)
 
 
 def _cmd_coverage_canaries(args: argparse.Namespace) -> int:
@@ -2450,26 +2456,13 @@ def _cmd_permit_serve(args: argparse.Namespace) -> int:
         return 2
 
 
-def _sha256_regular_file(path: Path) -> str:
-    if path.is_symlink():
-        raise ValueError(f"refusing symbolic-link dataset: {path}")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _cmd_container_eval(args: argparse.Namespace) -> int:
     from .detectors.container import PROTOCOL, ContainerDetector
 
     detector = None
+    runtime_closed = False
     try:
-        dataset_path = Path(args.dataset)
-        dataset_digest = _sha256_regular_file(dataset_path)
-        dataset = load_jsonl(args.dataset)
+        dataset, dataset_digest = load_jsonl_with_digest(args.dataset)
         if not dataset:
             raise ValueError("dataset must contain at least one record")
         if not math.isfinite(args.threshold) or not 0 <= args.threshold <= 1:
@@ -2484,6 +2477,8 @@ def _cmd_container_eval(args: argparse.Namespace) -> int:
             allow_mutable_image=args.allow_mutable_image,
         )
         report = run(detector, dataset, threshold=args.threshold, task=args.task)
+        detector.close()
+        runtime_closed = True
         payload = {
             "schema": ("https://github.com/immu4989/lurebench/spec/container-evaluation/v1"),
             "schema_version": 1,
@@ -2534,8 +2529,11 @@ def _cmd_container_eval(args: argparse.Namespace) -> int:
         print(f"! {exc}", file=sys.stderr)
         return 1
     finally:
-        if detector is not None:
-            detector.close()
+        if detector is not None and not runtime_closed:
+            try:
+                detector.close()
+            except (OSError, RuntimeError) as exc:
+                print(f"! detector container cleanup incomplete: {exc}", file=sys.stderr)
     return 0
 
 

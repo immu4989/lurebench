@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import json
 import math
-import queue
 import re
 import shutil
 import subprocess
-import threading
 from typing import Any, Mapping, Optional, Sequence
 
+from .container_io import JsonLineSession
 from .receipts import loads_strict_json
 
 PROTOCOL = "lureboundary-monitor-v1"
@@ -66,6 +65,8 @@ class BoundaryContainerMonitor:
         self.allow_mutable_image = bool(allow_mutable_image)
         self.image_id = self._inspect_image()
         self._process: Optional[subprocess.Popen[str]] = None
+        self._session: Optional[JsonLineSession] = None
+        self._failed = False
         self._counter = 0
 
     @property
@@ -131,29 +132,6 @@ class BoundaryContainerMonitor:
         except OSError as exc:
             raise RuntimeError("failed to start the boundary monitor container") from exc
 
-    def _readline(self) -> str:
-        assert self._process is not None and self._process.stdout is not None
-        output: queue.Queue[object] = queue.Queue(maxsize=1)
-
-        def read() -> None:
-            try:
-                output.put(self._process.stdout.readline(MAX_RESPONSE_BYTES + 2))
-            except Exception as exc:  # reader failures stay inside the bounded queue
-                output.put(exc)
-
-        threading.Thread(target=read, daemon=True).start()
-        try:
-            value = output.get(timeout=self.timeout_seconds)
-        except queue.Empty as exc:
-            self.close()
-            raise TimeoutError(
-                "boundary monitor exceeded its per-trajectory response timeout"
-            ) from exc
-        if isinstance(value, Exception):
-            self.close()
-            raise RuntimeError("boundary monitor produced invalid UTF-8 output") from value
-        return str(value)
-
     @staticmethod
     def _parse_response(raw: str, request_id: str) -> Sequence[Mapping[str, Any]]:
         encoded = raw.encode("utf-8")
@@ -176,38 +154,35 @@ class BoundaryContainerMonitor:
     def __call__(
         self, trajectory: Mapping[str, Any], policy: Mapping[str, Any]
     ) -> Sequence[Mapping[str, Any]]:
-        if self._process is None:
-            self._process = self._start()
-        if self._process.poll() is not None:
-            self.close()
-            raise RuntimeError("boundary monitor exited before evaluation completed")
-        assert self._process.stdin is not None
-        self._counter += 1
-        request_id = f"request-{self._counter:08d}"
+        if self._failed:
+            raise RuntimeError("boundary monitor failed; create a new monitor for a new run")
+        request_id = f"request-{self._counter + 1:08d}"
         request = {
             "protocol": PROTOCOL,
             "request_id": request_id,
             "policy": policy,
             "events": trajectory["events"],
         }
-        try:
-            self._process.stdin.write(
-                json.dumps(
-                    request,
-                    ensure_ascii=False,
-                    sort_keys=True,
-                    separators=(",", ":"),
-                    allow_nan=False,
-                )
-                + "\n"
-            )
-            self._process.stdin.flush()
-        except (BrokenPipeError, OSError) as exc:
+        encoded = json.dumps(
+            request, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False,
+        ) + "\n"
+        if self._process is None:
+            self._process = self._start()
+        if self._process.poll() is not None:
+            self._failed = True
             self.close()
-            raise RuntimeError("boundary monitor closed its input stream") from exc
+            raise RuntimeError("boundary monitor exited before evaluation completed")
+        self._counter += 1
+        if self._session is None:
+            self._session = JsonLineSession(self._process, label="boundary monitor")
         try:
-            return self._parse_response(self._readline(), request_id)
-        except Exception:
+            raw = self._session.exchange(
+                encoded,
+                timeout=self.timeout_seconds, max_chars=MAX_RESPONSE_BYTES + 1,
+            )
+            return self._parse_response(raw, request_id)
+        except BaseException:
+            self._failed = True
             self.close()
             raise
 
@@ -228,23 +203,17 @@ class BoundaryContainerMonitor:
         }
 
     def close(self) -> None:
-        process, self._process = self._process, None
-        if process is None:
+        if self._process is None:
             return
-        if process.stdin is not None:
-            try:
-                process.stdin.close()
-            except OSError:
-                pass
+        if self._session is None:
+            self._session = JsonLineSession(self._process, label="boundary monitor")
         try:
-            process.wait(timeout=1)
-        except subprocess.TimeoutExpired:
-            process.terminate()
-            try:
-                process.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=2)
+            self._session.close()
+        except BaseException:
+            self._failed = True
+            raise
+        self._process = None
+        self._session = None
 
     def __enter__(self) -> "BoundaryContainerMonitor":
         return self

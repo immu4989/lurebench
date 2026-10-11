@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- Container evaluation and core-v2 source commitments now hash the exact bytes
+  parsed in one bounded read, eliminating the separate hash/load reopen gap.
+  The committed loader rejects symlinks and observed file or pathname changes;
+  ordinary dataset loading still supports Hub-cache symlinks. Digests include
+  comments, extension fields, and original line endings, not just parsed records.
+
+- Detector and boundary-monitor container adapters share a deadline for request
+  writes, flushes, and response reads. Cleanup stops the runtime CLI before
+  touching its pipe locks, uses bounded termination/reaping waits, and reports
+  incomplete cleanup. Failed sessions cannot restart implicitly. Request
+  serialization occurs before runtime startup; OCI daemon lifecycle and process
+  creation still require external supervision.
+  Both CLIs finish cleanup before printing or writing evaluation reports; failed
+  teardown cannot leave a newly published success-looking report.
+
+- Detector-container responses use a bounded line read before byte-size and JSON
+  validation. Duplicate keys, nonstandard/nonfinite JSON numbers, excessive
+  nesting, and unterminated records fail rather than producing scores. Tests
+  exercise a live local pipe that emits oversized output without closing, and
+  verify protocol errors cannot become abstentions or successful CLI reports.
+
 - Updated the optional urllib3 lock to 2.8.0 and added a uv floor, addressing
   GHSA-vxq7-64xx-v4gw and GHSA-gh4c-6fx4-qh6g in project resolution. Tests check
   every locked entry. The core remains dependency-free; consumer environments

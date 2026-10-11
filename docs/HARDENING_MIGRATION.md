@@ -19,6 +19,7 @@ Do not silently replace historical results with measurements from this new contr
 | Empirical thresholds | Tie-aware sweep, unit-interval thresholds only | An unattainable FPR budget raises rather than exporting an unusable policy |
 | Adaptive attacks | Missing scores/generation stop explicitly | Do not reinterpret a failed experiment as resistance; review intent preservation separately |
 | Provider transport | HTTPS by default, no redirects, bounded strict responses | Configure the canonical endpoint; plain HTTP needs explicit local-operator opt-in |
+| Container transport | One deadline includes writes, flushes, and reads; failed sessions cannot restart | Create a new adapter for a new run and supervise daemon cleanup; see [container limits](CONTAINER_DETECTORS.md#runtime-isolation) |
 
 Ordinary headline metrics remain conditional on answered records. New coverage
 and logical-completion bounds disclose what unanswered observations could change;

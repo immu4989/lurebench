@@ -22,7 +22,7 @@ from .corpus import gate
 from .ingest.base import norm_key
 from .lineage import lineage_components
 from .probability import validate_threshold
-from .schema import Lure, load_jsonl
+from .schema import Lure, load_jsonl_with_digest
 
 SCHEMA = "https://github.com/immu4989/lurebench/spec/core-v2-build/v1"
 DEFAULT_WEIGHTS = {"train": 0.7, "validation": 0.1, "test": 0.1, "heldout": 0.1}
@@ -96,18 +96,6 @@ class CoreV2Build:
         }
 
 
-def _sha256_file(path: Path) -> str:
-    if path.is_symlink():
-        raise ValueError(f"refusing symbolic-link source: {path}")
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _validate_weights(weights: Mapping[str, float]) -> Dict[str, float]:
     if set(weights) != set(DEFAULT_WEIGHTS):
         raise ValueError(f"split weights must contain exactly {sorted(DEFAULT_WEIGHTS)}")
@@ -128,11 +116,10 @@ def _load_and_gate(source_paths: Sequence[str]) -> Tuple[List[Lure], dict]:
     seen_source_digests: Set[str] = set()
     for index, raw_path in enumerate(source_paths, 1):
         path = Path(raw_path)
-        digest = _sha256_file(path)
+        source_records, digest = load_jsonl_with_digest(path)
         if digest in seen_source_digests:
             raise ValueError("the same source content was supplied more than once")
         seen_source_digests.add(digest)
-        source_records = load_jsonl(path)
         loaded += len(source_records)
         kept, source_pending, source_flagged = gate(source_records)
         pending += source_pending
