@@ -38,7 +38,28 @@ def check(root: Path) -> None:
     sys.path.insert(0, str(root))
     from lurebench.cli import main
     from lurebench.detectors.cache import CachedDetector
+    from lurebench.harness import collect_scores, run
     from lurebench.schema import Lure, save_jsonl
+
+    for operation in (run, collect_scores):
+        record = Lure("snapshot", "Synthetic input", 1, "human", "phishing",
+                      meta={"nested": ["unchanged"]})
+        before = record.to_dict()
+
+        def mutate(value):
+            value.label = 0
+            value.id = "modified"
+            value.meta["nested"].clear()
+            return 0.
+
+        result = operation(SimpleNamespace(task="fraud", score=mutate), [record])
+        if record.to_dict() != before:
+            raise ValueError("installed harness let a callback modify caller records")
+        if operation is run:
+            if result.metrics.fn != 1 or result.metrics.tn != 0:
+                raise ValueError("installed harness scored against callback-modified truth")
+        elif result != (["snapshot"], [1], [0.]):
+            raise ValueError("installed score collection lost captured IDs or targets")
 
     with tempfile.TemporaryDirectory(prefix="lure-panel-install-") as directory:
         work = Path(directory)
@@ -83,7 +104,7 @@ def check(root: Path) -> None:
             location = getattr(module, "__file__", None)
             if not location or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("producer import escaped installed root")
-    print("Verified installed panel replay and alteration rejection without optional imports")
+    print("Verified installed harness isolation and panel replay without optional imports")
 
 
 if __name__ == "__main__":

@@ -77,14 +77,18 @@ format is [decision-counts.schema.json](../spec/decision-counts.schema.json).
 - Concurrent same-key requests share one computation **within one cache
   instance**; distinct keys remain concurrent. A cached detector abstention is
   a real result. Empty completion strings are not persisted.
-- Failures are shared with current waiters but not cached; a later explicit
-  request can retry. Cache hit/miss counters include coalesced requests and do
-  not constitute a provider billing ledger.
+- Computation failures are shared with current waiters but not cached; a later
+  explicit request can retry. Persistence failures are different: a successfully
+  computed value remains in memory even if its automatic flush raises. Cache
+  hit/miss counters include coalesced requests and do not constitute a provider
+  billing ledger.
 - Flush snapshot capture and file replacement are serialized. An older flush
   cannot overwrite a later snapshot from the same instance.
 - Temporary files are uniquely created with owner-only permissions, flushed
-  and fsynced, then atomically replaced. Failed writes preserve the previous
-  destination and leave pending work available for a later flush.
+  and fsynced, then atomically replaced. Before replacement, the exact staged
+  bytes must pass the same strict JSON parser used at restart. Ambiguous keys
+  after JSON coercion and nesting beyond 128 containers cannot replace a valid
+  cache. Failed writes preserve the previous destination and pending work.
 - `cached_complete_fn` persists each nonempty successful response, including
   runs shorter than the former 25-response flush interval. Direct
   `CompletionCache` and `CachedDetector` users must still call `flush()` when
@@ -96,6 +100,23 @@ lock, complete path-ancestry protection, or guarantee of recovery after power
 loss. Multiple instances writing the same path can still overwrite each other.
 An API response received immediately before a process crash may still need
 another call if it was not persisted.
+
+## Recovering from a failed flush
+
+`CacheWriteError` (a `ValueError`) means the in-memory snapshot cannot be written
+as bounded, restart-readable JSON. Its message omits private nested keys. Keep
+the existing file and cache instance. Correct an invalid value deliberately or
+resolve the storage problem, then call `flush()` again; do not discard the cache
+and start an implicit paid rerun. A cache hit after a failed automatic flush does
+not itself retry persistence. The retained result must still be flushed before
+process exit, and callbacks already running for other keys are not cancelled.
+
+The writer reads at most 64 MiB plus one byte from its staged file and parses
+those bytes before replacement. This adds read/parse work and transient memory
+to each flush; it is not a 64 MiB bound on Python heap use. Valid JSON coercions
+remain compatible (for example tuples reload as lists and integer object keys
+as strings). Successful serialization does not promise Python type identity or
+an atomic snapshot of nested objects that callers mutate concurrently.
 
 ## Research interpretation
 

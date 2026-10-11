@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Evaluation and score collection copy and validate all Lure records before
+  detector callbacks, capturing IDs and task targets separately. Callback
+  mutations no longer relabel observations, change abstention class accounting,
+  or modify caller-owned nested metadata through the supplied record. Explicit
+  invalid task overrides fail instead of falling back to a detector default.
+  This is object isolation for trusted integrations, not an in-process sandbox.
+
+- Cache persistence validates the exact staged bytes with the restart parser
+  before replacing a previous file. Ambiguous nested keys and excessive nesting
+  can no longer create a cache that appears saved but fails to reopen. Invalid
+  snapshots raise a content-redacted `CacheWriteError`; pending work and completed
+  in-memory callbacks remain available for correction and persistence retry.
+  Installed-wheel CI checks preservation and callback-free replay after restart.
+
 - Container evaluation and core-v2 source commitments now hash the exact bytes
   parsed in one bounded read, eliminating the separate hash/load reopen gap.
   The committed loader rejects symlinks and observed file or pathname changes;

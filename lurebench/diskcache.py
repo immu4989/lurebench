@@ -34,6 +34,10 @@ class CacheReadError(ValueError):
     """An existing cache cannot safely be resumed; no fresh paid run is implied."""
 
 
+class CacheWriteError(ValueError):
+    """A snapshot cannot be persisted as restart-readable strict JSON."""
+
+
 class CacheOnlyMissError(RuntimeError):
     """Replay requested an absent entry; its computation was not invoked."""
 
@@ -148,8 +152,10 @@ class JsonDiskCache:
     ) -> Any:
         """Coalesce same-key work in this instance, including cached None.
 
-        A failed computation is shared with waiters but is not cached. Different
-        keys remain concurrent. This is not a cross-process lock or spend cap.
+        A failed computation is shared with waiters but is not cached. If only
+        persistence fails, the computed value remains in memory for a later
+        flush without another callback. Different keys remain concurrent.
+        This is not a cross-process lock or spend cap.
         """
         if not isinstance(key, str):
             raise ValueError("cache keys must be strings")
@@ -188,7 +194,11 @@ class JsonDiskCache:
                 self._inflight.pop(key, None)
 
     def flush(self) -> None:
-        """Persist atomically. No-op without a path."""
+        """Validate staged bytes with the restart reader, then replace atomically.
+
+        No-op without a path. JSON normalization (for example tuples to arrays)
+        remains supported; this promises readable bytes, not Python type identity.
+        """
         if self.read_only or not self.path:
             return
         # Serialize snapshot capture AND replacement. A unique temp file alone
@@ -205,16 +215,33 @@ class JsonDiskCache:
                 if destination.is_symlink() or destination.parent.is_symlink():
                     raise ValueError("cache destination must not be a symlink")
                 with tempfile.NamedTemporaryFile(
-                    mode="w", encoding="utf-8", dir=destination.parent,
+                    mode="w+b", dir=destination.parent,
                     prefix=".lurecache-", suffix=".tmp", delete=False,
                 ) as stream:
                     temporary = Path(stream.name)
                     size = 0
-                    for chunk in json.JSONEncoder(allow_nan=False).iterencode(snapshot):
-                        size += len(chunk.encode("utf-8"))
-                        if size > MAX_CACHE_BYTES:
-                            raise ValueError("cache exceeds its bounded size")
-                        stream.write(chunk)
+                    try:
+                        for chunk in json.JSONEncoder(allow_nan=False).iterencode(snapshot):
+                            raw = chunk.encode("utf-8")
+                            size += len(raw)
+                            if size > MAX_CACHE_BYTES:
+                                raise ValueError("cache exceeds its bounded size")
+                            stream.write(raw)
+                        # Validate the exact staged bytes, not a second encoding
+                        # of a snapshot whose nested values may be mutable.
+                        stream.seek(0)
+                        payload = stream.read(MAX_CACHE_BYTES + 1)
+                        if len(payload) != size or len(payload) > MAX_CACHE_BYTES:
+                            raise ValueError("staged cache size changed")
+                        if not isinstance(loads_strict_json(payload), dict):
+                            raise ValueError("cache root must be an object")
+                        del payload
+                    except (ValueError, TypeError, RecursionError):
+                        # Strict parser errors can include private nested keys.
+                        raise CacheWriteError(
+                            "cache snapshot is not bounded restart-readable JSON; "
+                            "previous file preserved, in-memory work retained"
+                        ) from None
                     stream.flush()
                     os.fsync(stream.fileno())
                 os.replace(temporary, destination)

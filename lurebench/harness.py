@@ -27,20 +27,44 @@ TASK_TARGET: Dict[str, Callable[[Lure], int]] = {
 }
 
 
+def _resolve_task(detector, task: Optional[str]) -> str:
+    selected = getattr(detector, "task", "fraud") if task is None else task
+    if not isinstance(selected, str) or selected not in TASK_TARGET:
+        raise ValueError("task must be fraud or provenance")
+    return selected
+
+
+def _prepare_records(dataset: Sequence[Lure], task: str):
+    """Validate and detach all inputs before any detector callback.
+
+    Capture targets and IDs separately from the mutable copies passed to the
+    detector. This is ordinary object isolation, not an in-process sandbox or
+    an atomic snapshot of caller data mutated concurrently during preparation.
+    """
+    prepared = []
+    for index, record in enumerate(dataset, 1):
+        try:
+            if not isinstance(record, Lure):
+                raise ValueError("expected a Lure")
+            copied = Lure.from_dict(record.to_dict())
+        except (ValueError, TypeError, RecursionError):
+            raise ValueError(f"dataset record {index} is not a valid copyable Lure") from None
+        prepared.append((copied, copied.id, TASK_TARGET[task](copied)))
+    return prepared
+
+
 def collect_scores(detector, dataset: Sequence[Lure], task: Optional[str] = None):
-    """Return answered record ids, targets and scores for reusable analysis."""
-    task = task or getattr(detector, "task", "fraud")
-    if task not in TASK_TARGET:
-        raise ValueError(f"unknown task {task!r}; expected one of {sorted(TASK_TARGET)}")
-    target = TASK_TARGET[task]
+    """Return answered IDs, captured targets, and scores from isolated records."""
+    task = _resolve_task(detector, task)
+    prepared = _prepare_records(dataset, task)
     ids: List[str] = []
     y_true: List[int] = []
     scores: List[float] = []
-    for lure in dataset:
+    for lure, record_id, truth in prepared:
         score = validate_score(detector.score(lure))
         if score is not None:
-            ids.append(lure.id)
-            y_true.append(target(lure))
+            ids.append(record_id)
+            y_true.append(truth)
             scores.append(score)
     return ids, y_true, scores
 
@@ -172,15 +196,13 @@ def run(
     Args:
         detector: An object exposing ``score(lure) -> float in [0, 1]`` and an
             optional ``task`` / ``name`` attribute.
-        dataset: Sequence of :class:`Lure`.
+        dataset: Sequence of :class:`Lure`, copied and validated before callbacks.
         threshold: Decision threshold applied to the score.
         task: Override the detector's declared task (``fraud`` or ``provenance``).
     """
     threshold = validate_threshold(threshold)
-    task = task or getattr(detector, "task", "fraud")
-    if task not in TASK_TARGET:
-        raise ValueError(f"unknown task {task!r}; expected one of {sorted(TASK_TARGET)}")
-    target = TASK_TARGET[task]
+    task = _resolve_task(detector, task)
+    prepared = _prepare_records(dataset, task)
 
     y_true: List[int] = []
     y_pred: List[int] = []
@@ -189,19 +211,19 @@ def run(
     skipped_positive = skipped_negative = 0
     record_scores: List[Optional[float]] = []
 
-    for lure in dataset:
+    for lure, _, truth in prepared:
         score = validate_score(detector.score(lure))
         record_scores.append(score)
         if score is None:  # detector abstains on this record
             skipped += 1
-            if target(lure) == 1:
+            if truth == 1:
                 skipped_positive += 1
             else:
                 skipped_negative += 1
             continue
         scores.append(score)
         y_pred.append(int(score >= threshold))
-        y_true.append(target(lure))
+        y_true.append(truth)
 
     metrics = evaluate(y_true, y_pred, scores)
     return Report(

@@ -56,6 +56,25 @@ optional Accelerate advisory and the limits of explicit loader flags.
 
 ## Ordinary evaluation
 
+`run` and `collect_scores` prepare the entire input before detector callbacks:
+each record is copied and revalidated as a `Lure`, and its ID and task target are
+captured separately. A callback that changes its supplied record cannot change
+the ground truth used for its score or abstention, or mutate caller-owned nested
+metadata through that record. Invalid later records fail before any score call.
+An explicit task must be `fraud` or `provenance`; only `None` selects the detector's
+declared task (or `fraud` when it has no task attribute).
+
+Preparation uses extra memory proportional to the dataset and nested metadata.
+Callbacks receive ordinary mutable Lure copies, not subclasses or shared caller
+objects. Store intentional annotations separately instead of relying on mutations
+to propagate back. Repeated IDs/references retain their observation slots; copying
+does not prove independence, authenticate labels, or remove leakage. Constructors,
+direct detector calls, cache warming, and other workflows remain separate
+boundaries. Concurrent caller mutations during preparation are not an atomic
+snapshot, and arbitrary in-process detector code is not sandboxed or prevented
+from accessing labels. Use the separate container protocol for withholding labels
+from a detector's request payload.
+
 Headline metrics remain conditional on answered records. `n_skipped` reports
 abstentions; the human-readable summary now displays it too. A metric over zero
 answered records is not evidence of good performance. Do not compare conditional

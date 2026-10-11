@@ -112,3 +112,86 @@ commitment binding, symlink rejection, and panel replay/alteration rejection.
 These checks do not authenticate dataset provenance, freeze returned mutable
 records, or establish an atomic filesystem or multi-source snapshot. The local
 0.11.0 build is a verification artifact, not a new published release.
+
+## Cache persistence recovery follow-up
+
+Two baseline regressions reproduced successful flushes that replaced a valid
+cache with JSON rejected at restart: duplicate nested keys after JSON key
+coercion, and nesting beyond the strict reader's limit. The writer now checks
+the exact staged bytes with the restart parser before replacing the destination.
+Invalid snapshots raise a redacted `CacheWriteError`, preserve the previous file,
+and restore pending work, including concurrent additions.
+
+All **26 new persistence tests** passed, including absent and existing files,
+exact depth and byte limits, circular and unsupported values, staged-byte
+validation, private-error redaction, concurrent recovery, and callback-free
+persistence retry after size, replacement, and fsync failures. The focused cache
+suites passed **85 tests**. The full LureBench suite passed **1,545 tests**, with
+39 existing skips and 9 warnings, using temporary urllib3 2.8.0. Ruff and whitespace
+checks passed. LureScope's unchanged source passed **1,107 Python tests** with
+16 existing warnings while explicitly using the updated LureBench source.
+
+The offline wheel matched **154 exact source files**. The new installed-cache
+check passed outside the checkout under `python -I -S` on Python 3.12.13 and
+3.13.15. It verified previous-file preservation, correction and restart, and
+completion persistence retry without another synthetic callback. Installed panel
+replay and alteration rejection also passed. The CI workflow includes this cache
+check; its YAML parsed locally, but remote CI has not run these unpushed changes.
+
+Validation adds a bounded staged-file read and parse per flush; serialized size
+is not a Python heap limit. Valid JSON coercions remain supported. These checks
+do not create cross-process coordination, power-loss durability, or an atomic
+snapshot of concurrently mutated nested values. New work remains local, and no
+paid provider requests, releases, or deployments were made.
+
+## Harness input isolation follow-up
+
+Baseline regressions showed a detector callback changing a positive record's
+label to zero before the harness read its target: a false negative was reported
+as a true negative, and score collection returned the callback-modified ID and
+target. Both entry points now validate and copy all inputs before callbacks,
+capturing IDs and targets separately from the mutable copies supplied for scoring.
+Explicit false/empty task overrides are rejected rather than silently defaulted.
+
+All **53 new tests** passed. They cover fraud and provenance targets, positive
+abstention accounting, nested metadata, repeated references, invalid late records
+before callbacks, explicit task selection, callback failures, and preservation of
+already prepared inputs if a callback holds a separate reference to caller data.
+The full LureBench suite passed **1,598 tests**, with 39 existing skips and 9
+warnings using temporary urllib3 2.8.0. LureScope passed **1,174 Python tests** with
+16 existing warnings while explicitly using this updated LureBench source.
+
+Ruff and whitespace checks passed. The rebuilt wheel matched **154 exact source
+files**. Fresh installed checks outside the checkout under `python -I -S` passed
+input isolation, panel replay, and altered-report rejection on Python 3.12.13 and
+3.13.15, with optional imports blocked. The installed cache preservation and
+restart check also passed. The existing installed-panel CI gate now includes
+input-mutation regressions; remote CI has not run this unpushed work.
+
+Preparation requires additional memory for copied records and nested metadata.
+It is not an atomic snapshot during concurrent caller writes or a sandbox for
+arbitrary Python code. Labels are still visible to ordinary in-process detectors;
+constructors, direct calls, and cache warming are separate boundaries. Duplicate
+observation slots are retained, not claimed to be independent. No historical
+results, paid experiments, releases, or remote branches were changed.
+
+## Combined installed package audit
+
+The latest local LureBench and LureScope wheels were tested together outside
+both checkouts on Python 3.12.13. Module-origin checks confirmed that all imports
+from either project came from the explicit temporary installation roots. Model
+frameworks and provider SDK imports were blocked during the six-outcome check.
+
+A synthetic six-record detector attempted to change labels and nested metadata.
+The harness preserved one outcome in each of TP, FP, TN, FN, positive abstention,
+and negative abstention without changing caller records. LureScope accepted the
+resulting decision-count export. At 600 messages, an assumed prevalence of 0.1,
+three review minutes per case, and ten available review hours, its projection
+conserved 600 outcomes and returned 400 review cases, 20 required hours, and a
+ten-hour shortfall. These are arithmetic fixtures, not estimates for real traffic.
+
+A separate process ran LureScope's installed scoring/proof/publication and
+MIME/header checks using the same installed producer, with model frameworks
+blocked and producer checkout imports excluded. These checks passed; no external
+provider, inbox, model download, or production service was used. No additional
+code or schema changes were needed for the combined audit.

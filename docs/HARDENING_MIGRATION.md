@@ -12,9 +12,11 @@ Do not silently replace historical results with measurements from this new contr
 | Replay and comparison | No provider construction for explicit cache-only CLI workflows | Use [cache replay](CACHE_SAFETY.md) and [paired comparisons](PAIRED_COMPARISON.md) with trusted original identities |
 | Leakage audit | Complete candidates at zero threshold and for empty shingle sets | Review [the audit's exact meaning](LEAKAGE_AUDIT.md); old frozen corpora are not regenerated |
 | Missing detector scores | Abstention is not a benign prediction, evasion, or confident detection | Handle `DetectorAbstainedError`; inspect answer coverage and missing-outcome bounds |
+| Harness inputs | Validated per-record copies and separately captured IDs/targets precede callbacks | Keep annotations outside callback mutations; account for preparation memory and use explicit valid tasks |
 | LLM judges | Only canonical ASCII integers 0–100 are accepted | Preserve old results; explicitly budget any experiment under the new parser |
 | Cached LLM scores | Parser, prompt, provider configuration, and model identity are bound | A legacy/mismatched cache stops before provider work; choose a new path deliberately |
 | Corrupt caches | Fail closed instead of starting an empty paid run | Preserve the rejected file; restore a reviewed backup or budget a new run |
+| Cache persistence | Staged bytes must pass the strict restart reader before replacement | Keep the instance after a failed flush; correct the cause and flush retained work without a new callback |
 | Calibration | No silently dropped abstentions, duplicate record IDs, or invalid values | Resolve missing outcomes and audit sampling before creating a policy |
 | Empirical thresholds | Tie-aware sweep, unit-interval thresholds only | An unattainable FPR budget raises rather than exporting an unusable policy |
 | Adaptive attacks | Missing scores/generation stop explicitly | Do not reinterpret a failed experiment as resistance; review intent preservation separately |
