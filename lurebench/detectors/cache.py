@@ -67,7 +67,7 @@ class CachedDetector(Detector):
         self.task = getattr(inner, "task", "fraud")
         namespace = getattr(inner, "cache_namespace", None)
         if path and hasattr(inner, "cache_namespace") and namespace is None:
-            raise ValueError("persistent custom LLM score caching requires an explicit cache_context")
+            raise ValueError("persistent score caching for this detector requires an explicit cache_context")
         self.cache_name = self.name if namespace is None else f"{self.name}\ncontext={namespace}"
         self.store = JsonDiskCache(path, flush_every=flush_every,
                                    read_only=cache_only, max_computations=max_new_calls)

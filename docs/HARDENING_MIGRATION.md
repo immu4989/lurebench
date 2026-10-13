@@ -6,6 +6,33 @@ Do not silently replace historical results with measurements from this new contr
 
 ## What changes for researchers
 
+Moderation now rejects incomplete or malformed category results without
+converting the boolean flag into a score. Its reviewed profile requires all 13
+current categories; alternative taxonomies are not implicitly accepted. New
+context-bound caches reject legacy names-only scores. Review the
+[moderation contract](DETECTOR_OUTCOMES.md#moderation-category-contract), retain
+historical evidence, and deliberately choose new cache paths for new evaluation.
+When serving through LureScope, deploy the updated companion adapter as well;
+upgrading the service alone does not replace an older installed LureBench parser.
+
+Loading a trained TF-IDF artifact now preserves its saved task. An explicit
+`task=` must match rather than relabel the model, and missing metadata or classes
+other than the integer pair 0/1 are rejected. Full probability rows are validated
+before selecting the positive column. Review the
+[trained-model contract](DETECTOR_OUTCOMES.md#trained-binary-classifier-semantics)
+before loading legacy artifacts; this does not make joblib deserialization safe
+for untrusted files. Training/saving already emits the required task metadata.
+
+TF-IDF persistent caches additionally bind exact loaded model bytes and runtime
+versions. Legacy name-only or different-model caches stop without a new score or
+overwrite. Choose a new cache path deliberately. In-memory trained/injected
+pipelines need a reviewed `cache_context=` for persistence, or save and reload a
+trusted artifact to obtain its byte-bound identity. Model intake now requires
+a nonempty regular non-symlink file of at most 64 MiB; optional
+`expected_sha256=` rejects a mismatch before deserialization. See
+[trained-model cache identities](CACHE_SAFETY.md#trained-model-identities) for
+the exact identity, rotation procedure, and trust/decompression limits.
+
 Binoculars no longer imports and constructs its upstream backend by default.
 Use a reviewed backend or deliberate `allow_unsafe_upstream=True` in an isolated
 research environment. Invalid raw scores now raise; over-length inputs abstain

@@ -41,8 +41,47 @@ def check(root: Path) -> None:
     from lurebench.cli import main
     from lurebench.detectors.binoculars import BinocularsDetector
     from lurebench.detectors.cache import CachedDetector
+    from lurebench.detectors.moderation import CATEGORIES, OpenAIModerationDetector
+    from lurebench.detectors.tfidf import TfidfLogisticDetector
+    from lurebench.diskcache import CacheReadError
     from lurebench.harness import collect_scores, run
     from lurebench.schema import Lure, save_jsonl
+
+    probe = Lure("synthetic", "Synthetic input", 1, "ai", "phishing")
+    moderation_scores = {name: .25 for name in CATEGORIES}
+    moderation_result = {"results": [{"flagged": False, "category_scores": moderation_scores}]}
+    moderation_client = SimpleNamespace(moderations=SimpleNamespace(
+        create=lambda **kwargs: moderation_result,
+    ))
+    moderation = OpenAIModerationDetector(client=moderation_client, cache_context="c" * 64)
+    if moderation.score(probe) != .25:
+        raise ValueError("installed moderation adapter changed valid proxy scores")
+    moderation_scores["violence"] = float("nan")
+    try:
+        moderation.score(probe)
+    except RuntimeError:
+        pass
+    else:
+        raise ValueError("installed moderation adapter masked invalid category scores")
+    pipeline = SimpleNamespace(classes_=[1, 0], predict_proba=lambda texts: [[.75, .25]])
+    trained = TfidfLogisticDetector.from_pipeline(pipeline, "provenance")
+    if trained.task != "provenance" or trained.score(probe) != .75:
+        raise ValueError("installed trained adapter lost task or class polarity")
+    pipeline.predict_proba = lambda texts: [[.75, float("nan")]]
+    try:
+        trained.score(probe)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("installed trained adapter accepted an invalid probability row")
+    try:
+        TfidfLogisticDetector.from_pipeline(
+            SimpleNamespace(classes_=[0], predict_proba=lambda texts: [[1.]]), "fraud",
+        )
+    except ValueError:
+        pass
+    else:
+        raise ValueError("installed trained adapter relabelled a one-class estimator")
 
     try:
         BinocularsDetector()
@@ -84,6 +123,34 @@ def check(root: Path) -> None:
 
     with tempfile.TemporaryDirectory(prefix="lure-panel-install-") as directory:
         work = Path(directory)
+        moderation_cache = CachedDetector(moderation, str(work / "moderation.json"))
+        try:
+            moderation_cache.score(probe)
+        except RuntimeError:
+            pass
+        else:
+            raise ValueError("installed moderation cache accepted invalid provider evidence")
+        if moderation_cache._cache:
+            raise ValueError("installed moderation cache retained a malformed response")
+        try:
+            CachedDetector(trained, str(work / "unbound.json"))
+        except ValueError:
+            pass
+        else:
+            raise ValueError("installed trained adapter persisted unidentified pipeline scores")
+        pipeline.predict_proba = lambda texts: [[.75, .25]]
+        bound = TfidfLogisticDetector.from_pipeline(pipeline, "provenance", cache_context="a" * 64)
+        bound_cache = CachedDetector(bound, str(work / "trained.json"))
+        if bound_cache.score(probe) != .75:
+            raise ValueError("installed bound pipeline changed class polarity")
+        bound_cache.flush()
+        changed = TfidfLogisticDetector.from_pipeline(pipeline, "provenance", cache_context="b" * 64)
+        try:
+            CachedDetector(changed, str(work / "trained.json"))
+        except CacheReadError:
+            pass
+        else:
+            raise ValueError("installed trained cache accepted another pipeline identity")
         records = [Lure(str(i), f"Synthetic installed fixture {i}", 1, "human", "phishing",
                         meta={"family_id": f"family-{i // 2}"}) for i in range(8)]
         save_jsonl(records, work / "records.jsonl")

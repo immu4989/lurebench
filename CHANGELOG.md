@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+- Moderation requires exactly one result, a boolean flag, and the complete
+  reviewed 13-category score profile, with every score finite and in [0, 1].
+  Missing/invalid categories never fall back to the flagged boolean or disappear
+  from the maximum. Parser failures raise without caching a score; valid maxima
+  remain uncalibrated content-safety proxies. Context-bound caching separates
+  parser/model/endpoint/SDK configurations; injected clients need a reviewed
+  context for persistent caching. Legacy cache files are preserved and rejected.
+
+- TF-IDF persistent score caches bind the exact deserialized artifact bytes,
+  task, class order, scoring contract, and runtime versions. Model replacement
+  and legacy contexts fail before scoring, preserving the old cache. In-memory
+  pipelines require a reviewed context for persistent caching. File loading
+  uses a bounded regular-file snapshot and supports an optional pre-load SHA-256
+  check; these controls do not make executable joblib artifacts safe.
+
+- Trained TF-IDF adapters preserve saved fraud/provenance task metadata and reject
+  explicit task mismatches, missing metadata, or ambiguous class labels. Only
+  the two integer classes 0 and 1 are supported, in either column order; class
+  mappings cannot change after attachment. Full probability rows must be finite,
+  bounded, and sum to one within 1e-6, without coercion or normalization. Feature
+  rankings respect class-1 coefficient polarity. Joblib remains trusted-code
+  loading, not a safe format for untrusted submissions.
+
 - Binoculars requires a reviewed injected backend or explicit unsafe-upstream
   loading opt-in. It rejects invalid raw scores before clipping, abstains on
   too-short/over-length tokenized input instead of silently truncating, and binds

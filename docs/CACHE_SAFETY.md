@@ -9,9 +9,42 @@ Preserve a rejected cache. Restore a reviewed backup, or explicitly choose a
 new path and budget for the resulting calls. There is no automatic destructive
 repair or implicit paid retry of invalid cached scores/completions.
 
+## Trained model identities
+
+TF-IDF score caches now bind the scoring contract, task, ordered class labels,
+exact loaded artifact SHA-256, and reported Python/scikit-learn/NumPy/SciPy/joblib
+versions. Replacing a model under the same filename cannot silently reuse the
+old model's scores. Identical bytes at another path keep the same identity under
+the same runtime; reserialization or version changes conservatively change it.
+This identity describes configuration, not identical floating-point behavior
+across hardware or proof of the model's publisher, training data, or safety.
+
+The loader captures a nonempty regular non-symlink file of at most **64 MiB**,
+hashes that snapshot, and deserializes those same bytes. Optional
+`expected_sha256=` must match before joblib loading. Use an independently trusted
+expected digest when you need this check; calculating a digest of an untrusted
+download does not establish trust. The file limit does not bound decompressed
+memory, execution time, or arbitrary code run by joblib. Parent directories and
+the model itself must be trusted; observed file changes are rejected, but this
+is not a filesystem isolation mechanism.
+
+Newly trained or injected in-memory pipelines need a reviewed lowercase SHA-256
+`cache_context=` for **persistent** caching. The context must identify fitted
+weights, preprocessing, custom code, and relevant numerical settings. It is a
+caller assertion, not an automatic inspection. Alternatively, save a trusted
+trained artifact and construct a new detector from that file to obtain its
+byte-bound identity. Plain scoring and in-memory caching require no context.
+Do not mutate a pipeline's parameters after wrapping it in a cache; construct a
+new detector and cache identity for changed models.
+
+Legacy name-only caches and caches for a different context fail without scoring
+or rewriting the old file. Preserve them; deliberately select a new cache path
+for a new experiment. For historical replay, use the original recorded identity
+and do not label old observations as results from the new contract.
+
 ## Read-only replay without model construction
 
-Use the exact detector display name, task, and (for context-bound LLM scores)
+Use the exact detector display name, task, and (for context-bound scores)
 `cache_namespace` from the trusted original experiment configuration:
 
 ```sh

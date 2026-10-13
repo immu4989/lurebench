@@ -33,11 +33,13 @@ def test_train_and_score_separates_classes():
     assert fraud_score > benign_score  # learned the separation
 
 
-def test_save_load_roundtrip(tmp_path):
-    det = TfidfLogisticDetector.train(_toy_corpus(), task="fraud")
+@pytest.mark.parametrize("task", ["fraud", "provenance"])
+def test_save_load_roundtrip(tmp_path, task):
+    det = TfidfLogisticDetector.train(_toy_corpus(), task=task)
     path = tmp_path / "m.joblib"
     det.save(str(path))
     loaded = TfidfLogisticDetector(model_path=str(path))
+    assert loaded.task == task
     probe = Lure(id="p", text="urgent wire transfer pay now", label=1, source="ai", typology="bec")
     assert loaded.score(probe) == pytest.approx(det.score(probe))
 

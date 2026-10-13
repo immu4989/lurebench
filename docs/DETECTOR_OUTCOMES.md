@@ -28,6 +28,75 @@ that a provider has kept its backend unchanged.
 `DetectorAbstainedError` when the detector abstains. Previously it returned zero.
 Callers must explicitly decide how to handle an unavailable prediction.
 
+## Moderation category contract
+
+The moderation adapter consumes one standalone text result using the 13-category
+profile documented for `omni-moderation-latest`: harassment and threatening
+harassment, hate and threatening hate, illicit and violent illicit content,
+self-harm, self-harm intent and instructions, sexual content and sexual content
+involving minors, violence, and graphic violence. The result must contain a
+boolean `flagged` field and every category score as a finite non-boolean real
+value in `[0, 1]`. Wire category names and SDK attribute aliases are accepted;
+duplicate aliases, unknown categories, missing values, and multiple results fail.
+This fixed profile is deliberate: older or different taxonomies need a reviewed
+adapter change, not silent omission of unsupported categories.
+
+The numeric result remains the maximum category score. The adapter never
+substitutes `flagged` for absent numeric evidence, ignores malformed values, or
+converts them into zero. Invalid responses raise `ModerationResponseError`
+without caching a score. Transport/SDK exceptions still propagate. Benchmark
+callers should record a detector error, not interpret failure as benign or as a
+successful abstention. Complete valid zero scores remain valid.
+
+Moderation detects content-safety categories, not fraud, and its maximum is not
+a calibrated fraud probability. The provider can update the underlying model;
+policies based on category scores can therefore need recalibration. See the
+[official response guidance](https://developers.openai.com/api/docs/guides/moderation#understand-moderation-results).
+The adapter validates the values exposed by the SDK or injected client, not raw
+HTTP bytes; it cannot undo transformations already performed by that client.
+
+Persistent caches bind the parser/profile, requested model, configured endpoint,
+SDK version, task, and optional reviewed `cache_context`. A model alias does not
+pin remote weights. Preserve legacy name-only caches and use a new path for a
+new experiment; use the recorded old identity only for historical replay.
+An injected `client=` must supply `moderations.create` and needs a lowercase
+SHA-256 `cache_context=` for persistent caching. That context is the caller's
+assertion about custom client behavior/configuration, not authentication.
+Do not mutate a configured client after creating its cache.
+
+## Trained binary classifier semantics
+
+`TfidfLogisticDetector(model_path=...)` now uses the artifact's saved `task`:
+`fraud` means class 1 is fraud, while `provenance` means class 1 is AI authorship.
+Passing an explicit `task=` asserts that it matches the stored metadata; it does
+not relabel a trained model. Missing or unknown task metadata fails closed.
+`from_pipeline(pipeline, task=...)` still requires an explicit known task, whose
+meaning is the caller's responsibility. Valid fraud artifacts retain their scores.
+
+Pipelines must have exactly the two integer class labels 0 and 1, in either
+order, and a callable `predict_proba`. Boolean, string, floating-point, duplicate,
+single-class, and multiclass labels are rejected before inference. The adapter
+selects the column labelled 1; it never substitutes the last column when that
+label is absent. This follows [scikit-learn's probability-column contract](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html#sklearn.linear_model.LogisticRegression.predict_proba).
+Both output columns are checked: one row, two finite non-boolean real values in
+`[0, 1]`, summing to one within absolute tolerance `1e-6`. The tolerance permits
+float32 rounding; values are not renormalized. Changed class mappings before or
+during inference raise rather than silently reversing the score's meaning.
+
+For binary linear models, positive coefficients point toward `classes_[1]`.
+Feature rankings reverse that direction when label 1 is in the first column.
+Unsupported or inconsistent feature metadata yields no feature explanation;
+these rankings remain model coefficients, not causal explanations or proof of
+calibration.
+
+**Only load trusted joblib files.** These checks happen after deserialization and
+do not authenticate metadata, inspect arbitrary Python behavior, or sandbox a
+model. [Joblib persistence can execute arbitrary code](https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations).
+Review trusted legacy models in their original environment before re-exporting
+missing metadata; do not guess a task from a filename or assign labels to make a
+rejected model pass. Preserve historical results. LureScope's pinned data-only
+serving profile does not use this joblib loader and is unchanged by this contract.
+
 ## Llama Guard safety verdicts
 
 The optional Llama Guard 3 adapter follows the

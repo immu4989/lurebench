@@ -134,3 +134,78 @@ GHSA-4j2p-28q2-5m79; no dependency alert was dismissed. No real Binoculars model
 was downloaded, imported, loaded, or exercised. Backend execution, artifact
 provenance, remote-code safety, hardware compatibility, and thread safety require
 separate review. This local milestone was not committed, pushed, or released.
+
+## Subsequent local trained model semantics milestone
+
+The trained TF-IDF adapter now requires explicit binary integer class mappings,
+validates both probability columns, preserves saved task metadata, and rejects
+explicit task mismatches. Feature rankings follow the coefficient direction for
+label 1. Invalid metadata and changed class mappings fail before a result is
+published; this is not safe deserialization or proof of the training labels.
+
+- Before the fix, **47 of 52 initial contract tests failed**, reproducing class,
+  probability-row, task, and feature-polarity errors. The final adapter suite has
+  **68 passing tests**: 63 contract cases and five existing/expanded training
+  cases. A real scikit-learn benign-only estimator is rejected instead of its
+  sole probability becoming fraud probability 1. Fraud and provenance training
+  both retain their task and score after a real joblib save/load round trip.
+- Six inputs against the existing trusted bundled fraud artifact retained exact
+  positive-column probabilities, including empty, ordinary, fraud-like, accented,
+  and non-Latin text. This checks compatibility, not accuracy or calibration.
+- Full LureBench suite: **1,883 passed, 39 skipped, 15 warnings**, using the
+  previously documented temporary urllib3 overlay. The additional provenance
+  round trip repeats existing sklearn solver and joblib/NumPy warning categories.
+  Full LureScope suite: **1,255 passed, 16 warnings**; **107 browser tests** passed.
+- Ruff and whitespace checks passed. The new Bench wheel matched **156 exact
+  files**; its source archive included byte-exact trained-model tests and the
+  updated installed smoke script. It was installed alongside the previous local
+  Scope wheel in a fresh temporary directory outside both checkouts.
+- Installed Bench checks passed under Python **3.12.13** and **3.13.15**, with
+  `-I -S` and optional ML imports blocked. They exercise reversed columns,
+  positive-label selection, one-class rejection, and invalid companion columns.
+  Installed Scope model/proof, authentication, and browser checks also passed.
+
+The [scikit-learn probability-column contract](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html#sklearn.linear_model.LogisticRegression.predict_proba)
+and [persistence security guidance](https://scikit-learn.org/stable/model_persistence.html#security-maintainability-limitations)
+inform the semantic checks and documented trust boundary. Joblib artifacts remain
+trusted executable input; metadata checks occur after loading. Historical results,
+model artifacts, and published packages were not rewritten. These changes remain
+local and unpushed; the 0.11.0 wheel is a verification artifact, not a release.
+
+## Subsequent local trained cache identity milestone
+
+TF-IDF detector cache identities now include exact loaded model bytes, task,
+ordered classes, score contract, and reported runtime versions. The loader reads
+one bounded regular-file snapshot and deserializes that same snapshot; optional
+expected SHA-256 verification precedes deserialization. Injected/in-memory
+pipelines require a reviewed context for persistent caching. No identity is
+inferred from the model's filename, and no historical cache is rewritten.
+
+- **19 new identity tests passed.** They cover model replacement at the same
+  path, identical bytes moved to another path, legacy-cache preservation,
+  context/task/class-order separation, runtime changes, invalid pins, and refusal
+  of empty, oversized, directory, and symlink sources before deserialization.
+  Both compressed and uncompressed joblib fixtures prove that replacing the
+  path after capture cannot change the bytes supplied to the loader.
+- The stale-score regression previously allowed a replacement model to reuse
+  the original model's cached score. The new behavior raises `CacheReadError`
+  without changing that cache. A matching recorded identity supports read-only
+  replay without invoking the replacement detector's scoring function.
+- Full LureBench suite: **1,902 passed, 39 skipped, 15 warnings**, using the same
+  temporary urllib3 overlay. Full LureScope suite: **1,255 passed, 16 warnings**.
+  All **107 browser tests**, **26 producer artifact pins**, and **10 independent
+  authority artifacts** passed. Ruff and whitespace checks passed.
+- The rebuilt Bench wheel matched **156 exact files**. Its source archive
+  retained byte-exact model-contract/identity tests and the installed check.
+  Bench and Scope local wheels were installed together into a fresh temporary
+  directory. Bench checks passed on Python **3.12.13** and **3.13.15** under
+  `-I -S`, with optional imports blocked, including changed-context rejection.
+  Installed Scope model/proof, authentication, and browser checks also passed.
+
+The 64 MiB intake limit bounds serialized bytes, not decompressed memory or
+execution. Runtime-version strings do not pin custom code or hardware, and
+model mutation after cache construction is unsupported. Trusted parent
+directories, reviewed artifacts, and externally trusted expected hashes remain
+operator responsibilities. See [identity and migration limits](CACHE_SAFETY.md#trained-model-identities).
+These changes remain local and unpushed; no public release, deployment, paid
+provider request, or historical artifact migration was performed.
