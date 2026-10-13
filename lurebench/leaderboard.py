@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from collections.abc import Mapping
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .detectors import get_detector
@@ -69,15 +70,37 @@ def parse_detector_spec(spec) -> Tuple[str, dict, Optional[str]]:
     A display name is returned whenever a model is pinned, so a leaderboard can
     carry one row per model instead of several rows with the same label.
     """
+    def checked_text(value):
+        if (not isinstance(value, str) or not 1 <= len(value) <= 1024
+                or value.strip() != value or any(
+                    ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value)):
+            raise ValueError("detector specification requires bounded nonempty text without controls")
+        return value
+
     if isinstance(spec, (tuple, list)):
-        name, kwargs = spec[0], dict(spec[1] or {})
+        if len(spec) != 2 or (spec[1] is not None and not isinstance(spec[1], Mapping)):
+            raise ValueError("detector specification must be a name and keyword mapping")
+        name = checked_text(spec[0])
+        kwargs = dict(spec[1]) if spec[1] is not None else {}
+        if any(not isinstance(key, str) for key in kwargs):
+            raise ValueError("detector keyword names must be strings")
+        for key in ("model", "engine"):
+            if kwargs.get(key) is not None:
+                checked_text(kwargs[key])
         model = kwargs.get("model")
         display = f"{name} ({model})" if model else None
         return name, kwargs, display
+    checked_text(spec)
     if "@" not in spec:
         return spec, {}, None
     name, _, rest = spec.partition("@")
-    engine, _, model = rest.partition("/")
+    engine, separator, model = rest.partition("/")
+    checked_text(name)
+    checked_text(engine)
+    if "@" in engine:
+        raise ValueError("detector specification has an invalid engine")
+    if separator:
+        checked_text(model)
     kwargs = {"engine": engine}
     if model:
         kwargs["model"] = model
@@ -116,13 +139,18 @@ def evaluate_detectors(
         raise ValueError("task must be fraud or provenance")
     if type(workers) is not int or not 1 <= workers <= 128:
         raise ValueError("workers must be an integer from 1 through 128")
+    if isinstance(detector_names, (str, bytes, Mapping)):
+        raise ValueError("detector specifications must be a sequence, not a single name or mapping")
+    try:
+        specs = [parse_detector_spec(spec) for spec in detector_names]
+    except TypeError:
+        raise ValueError("detector specifications must be iterable") from None
     dataset = copy_lures(dataset)
     results: List[dict] = []
-    for spec in detector_names:
+    for name, kwargs, display in specs:
         # A single detector failing (missing extra, gated model, no API key,
         # network error, scoring exception) must never take down the whole
         # leaderboard, so everything from construction through scoring is guarded.
-        name, kwargs, display = parse_detector_spec(spec)
         try:
             detector = get_detector(name, **kwargs)
             if display:

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Binoculars requires a reviewed injected backend or explicit unsafe-upstream
+  loading opt-in. It rejects invalid raw scores before clipping, abstains on
+  too-short/over-length tokenized input instead of silently truncating, and binds
+  persistent caches to an operator-supplied backend context and input contract.
+  The retained linear output is now correctly described as an uncalibrated
+  provenance proxy. Stub and installed-wheel checks require no optional models.
+
+- `eval` validates bounded bootstrap controls before detector construction and
+  supports explicit reproducible seeds. Undefined AUC, zero answered records,
+  one answered record, and wholly undefined draws produce per-metric unavailable
+  intervals without discarding completed measurements. The additive report API
+  exposes these statuses; strict interval calls retain their failure behavior.
+  Count-only statistics no longer repeat unrelated ranking calculations. Legacy
+  scored-record and zero-denominator conventions remain explicitly disclosed.
+  Leaderboards parse every specification before executing the first detector.
+
 - Leaderboards validate thresholds, task overrides, worker counts, and all records
   before constructing detectors. Cache warming copies records before scheduling;
   robustness scoring cannot mutate the clean text later supplied to an attack.

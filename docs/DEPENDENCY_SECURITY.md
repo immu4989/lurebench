@@ -37,6 +37,9 @@ Existing environments are not upgraded by merely pulling the changed lock.
 
 ## Accelerate remains unresolved
 
+Rechecked on **12 October 2026**: the advisory still reports no patched release.
+The dependency was not upgraded or the alert dismissed on the assumption of a fix.
+
 [GHSA-4j2p-28q2-5m79](https://github.com/advisories/GHSA-4j2p-28q2-5m79)
 lists Accelerate through 1.14.0 as affected and currently lists no patched
 release. The optional Llama Guard extra still resolves Accelerate 1.14.0.
@@ -72,3 +75,13 @@ Configuration and inference contracts are tested using in-process stubs only.
 No gated model was downloaded or loaded. Do not infer that all allowed versions,
 devices, or model variants were tested. A real optional-stack compatibility run
 still needs reviewed artifacts, isolation, resources, and separate authorization.
+
+## Binoculars upstream loading boundary
+
+The source branch now disables implicit Binoculars construction before importing
+the optional package. Use a separately reviewed backend or explicitly opt into
+upstream remote-code/model-loading behavior. The adapter's bounded input and
+finite-score checks protect the measurement contract, not model execution.
+See [the loader, proxy-score, and cache migration contract](DETECTOR_OUTCOMES.md#binoculars-provenance-baseline).
+No model weights, third-party code, or dependencies were downloaded during this
+change. The Accelerate advisory above remains a separate unresolved issue.

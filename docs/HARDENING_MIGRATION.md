@@ -6,6 +6,13 @@ Do not silently replace historical results with measurements from this new contr
 
 ## What changes for researchers
 
+Binoculars no longer imports and constructs its upstream backend by default.
+Use a reviewed backend or deliberate `allow_unsafe_upstream=True` in an isolated
+research environment. Invalid raw scores now raise; over-length inputs abstain
+instead of being silently truncated. Persistent score caches require a reviewed
+backend context and a new cache path. The retained linear output is a provenance
+proxy, not calibrated probability; see [the full migration contract](DETECTOR_OUTCOMES.md#binoculars-provenance-baseline).
+
 | Area | New behavior | Operator action |
 | --- | --- | --- |
 | Dataset intake | Strict JSON/field types, bounded regular-file reads, atomic validated writes | Review [dataset compatibility and limits](DATASET_INTAKE.md); finish validation before paid work |
@@ -107,6 +114,11 @@ to risk-controlled policies simply by reading them.
 The additive `uncertainty-cached` and `verify-uncertainty` commands require no
 provider calls. They default to whole declared-lineage resampling, retain
 abstentions, and return null for undefined metrics, including zero-denominator
-MCC. Legacy `eval --bootstrap` and the existing report interval API are unchanged.
+MCC. Legacy scored-record interval values retain their metric conventions;
+`eval --bootstrap` now preserves unavailable intervals explicitly and validates
+bounded configuration before detector construction. The strict report interval
+API continues to raise on unavailable statistics; the additive
+`confidence_interval_results` API returns per-metric availability. See
+[interval compatibility and limits](VALIDITY.md#confidence-intervals).
 See [the method, limits, and reproduction guide](CLUSTER_UNCERTAINTY.md) before
 interpreting nominal intervals as population evidence.

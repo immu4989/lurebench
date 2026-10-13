@@ -24,6 +24,37 @@ from .probability import validate_threshold
 RISK_CONTROL_METHOD = "learn_then_test_fixed_sequence_exact_binomial_v1"
 MAX_POLICY_BYTES = 64 * 1024
 MAX_POLICY_RECORDS = 10_000_000
+MAX_BOOTSTRAP_RECORDS = 50_000
+MAX_BOOTSTRAP_REPLICATES = 10_000
+MAX_BOOTSTRAP_DRAWS = 50_000_000
+
+
+def validate_bootstrap_configuration(replicates, confidence, seed, n_records, *, allow_zero=False):
+    """Bound resampling work before scoring or statistic callbacks.
+
+    The draw bound is per statistic, not a deadline or a provider billing cap.
+    Zero replicates disables resampling only when explicitly allowed by a CLI.
+    """
+    confidence = validate_threshold(confidence)
+    if not 0 < confidence < 1:
+        raise ValueError("bootstrap confidence must be between zero and one")
+    if type(replicates) is not int or not (0 if allow_zero else 1) <= replicates <= MAX_BOOTSTRAP_REPLICATES:
+        raise ValueError("invalid bootstrap replicate count")
+    if type(seed) is not int or not 0 <= seed <= 2**64 - 1:
+        raise ValueError("bootstrap seed must be an unsigned 64-bit integer")
+    if type(n_records) is not int or n_records < 0:
+        raise ValueError("invalid bootstrap record count")
+    if replicates and (n_records > MAX_BOOTSTRAP_RECORDS or n_records * replicates > MAX_BOOTSTRAP_DRAWS):
+        raise ValueError("bootstrap exceeds bounded work; reduce records or replicates explicitly")
+    return confidence
+
+
+class UndefinedBootstrapStatistic(ValueError):
+    """A valid calculation has no defined estimate or defined bootstrap draws."""
+
+    def __init__(self, status: str, message: str):
+        super().__init__(message)
+        self.status = status
 
 
 def _validate_observations(y_true, scores):
@@ -507,18 +538,16 @@ def bootstrap_ci(
     Undefined resamples are disclosed; resulting quantiles are conditional on
     defined statistics, not an unconditional coverage guarantee.
     """
+    confidence = validate_bootstrap_configuration(replicates, confidence, seed, len(values))
     if not values:
         raise ValueError("bootstrap requires observations")
-    confidence = validate_threshold(confidence)
-    if type(replicates) is not int or replicates < 1 or not 0 < confidence < 1:
-        raise ValueError("invalid bootstrap configuration")
     truths = [item[0] for item in values]
     scores = [item[1] for item in values]
     scores = _validate_observations(truths, scores)
     values = list(zip(truths, scores, strict=True))
     estimate = statistic(truths, scores)
     if not math.isfinite(estimate):
-        raise ValueError("statistic is undefined on the observed sample")
+        raise UndefinedBootstrapStatistic("undefined_estimate", "statistic is undefined on the observed sample")
     rng = random.Random(seed)
     draws: List[float] = []
     for _ in range(replicates):
@@ -527,7 +556,7 @@ def bootstrap_ci(
         if math.isfinite(result):
             draws.append(result)
     if not draws:
-        raise ValueError("statistic was undefined for every bootstrap replicate")
+        raise UndefinedBootstrapStatistic("no_defined_replicates", "statistic was undefined for every bootstrap replicate")
     draws.sort()
     alpha = (1.0 - confidence) / 2.0
     low = draws[max(0, int(alpha * len(draws)))]

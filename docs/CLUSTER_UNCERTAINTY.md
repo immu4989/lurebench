@@ -26,6 +26,8 @@ Records with no links become singletons, not proven-independent samples.
 `--resampling-unit record` explicitly samples individual messages. Unlike these
 commands, the legacy `eval --bootstrap` and `Report.confidence_intervals` still
 use their original record-level procedure and metric conventions.
+Their controls are now bounded, and the CLI returns explicit unavailable-interval
+statuses instead of losing the entire report; see [legacy intervals](VALIDITY.md#confidence-intervals).
 
 For a fully offline tutorial, reuse the existing synthetic panel fixtures:
 

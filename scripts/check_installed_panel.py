@@ -22,6 +22,7 @@ class ForbidOptionalImports(importlib.abc.MetaPathFinder):
         if fullname.split(".", 1)[0] in {
             "torch", "transformers", "sklearn", "numpy", "joblib", "pickle",
             "openai", "anthropic", "huggingface_hub", "httpx", "requests",
+            "binoculars",
         }:
             raise ImportError("optional dependency forbidden in installed panel check")
         return None
@@ -36,10 +37,30 @@ def check(root: Path) -> None:
         raise ValueError("fresh interpreter required")
     sys.meta_path.insert(0, ForbidOptionalImports())
     sys.path.insert(0, str(root))
+    from lurebench import cli, leaderboard
     from lurebench.cli import main
+    from lurebench.detectors.binoculars import BinocularsDetector
     from lurebench.detectors.cache import CachedDetector
     from lurebench.harness import collect_scores, run
     from lurebench.schema import Lure, save_jsonl
+
+    try:
+        BinocularsDetector()
+    except ValueError as exc:
+        if "allow_unsafe_upstream" not in str(exc):
+            raise
+    else:
+        raise ValueError("installed Binoculars adapter implicitly loaded upstream")
+    backend = SimpleNamespace(max_token_observed=512,
+        tokenizer=lambda *a, **kw: {"input_ids": [1, 2, 3]},
+        compute_score=lambda text: float("nan"))
+    binoculars = BinocularsDetector(backend=backend, cache_context="a" * 64)
+    try:
+        binoculars.score(Lure("synthetic", "Synthetic input", 1, "ai", "phishing"))
+    except ValueError:
+        pass
+    else:
+        raise ValueError("installed Binoculars adapter clipped invalid raw output")
 
     for operation in (run, collect_scores):
         record = Lure("snapshot", "Synthetic input", 1, "human", "phishing",
@@ -86,6 +107,39 @@ def check(root: Path) -> None:
                 raise ValueError("installed panel command returned unexpected status")
             return json.loads(output.getvalue())
 
+        evaluated = command(["eval", "--dataset", str(work / "records.jsonl"),
+                             "--bootstrap", "20", "--seed", "41", "--json"], 0)[0]
+        if (evaluated["metrics"]["n"] != 8 or evaluated["confidence_intervals"]["auc"] is not None
+                or evaluated["confidence_interval_status"]["auc"]["status"] != "undefined_estimate"
+                or evaluated["bootstrap"]["seed"] != 41):
+            raise ValueError("installed evaluation lost single-class results")
+        original_constructor = cli.get_detector
+        original_leaderboard_constructor = leaderboard.get_detector
+        attempted_constructors = []
+
+        def forbidden(*args, **kwargs):
+            attempted_constructors.append(True)
+            raise AssertionError("invalid evaluation plan constructed a detector")
+
+        cli.get_detector = leaderboard.get_detector = forbidden
+        try:
+            output, errors = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                invalid = main(["eval", "--dataset", str(work / "records.jsonl"), "--bootstrap", "-1"])
+            if invalid != 2 or output.getvalue():
+                raise ValueError("installed evaluation did not reject invalid bootstrap controls")
+            try:
+                leaderboard.evaluate_detectors(records, ["heuristic-v0", ["malformed"]])
+            except ValueError:
+                pass
+            else:
+                raise ValueError("installed leaderboard accepted a malformed plan")
+            if attempted_constructors:
+                raise ValueError("installed preflight ran a detector constructor")
+        finally:
+            cli.get_detector = original_constructor
+            leaderboard.get_detector = original_leaderboard_constructor
+
         report = command(["compare-panel", *arguments], 0)
         if report["family_adjustment"]["adjusted_p_values"] != {"candidate": .125}:
             raise ValueError("installed panel arithmetic differs from synthetic reference")
@@ -128,7 +182,8 @@ def check(root: Path) -> None:
             location = getattr(module, "__file__", None)
             if not location or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("producer import escaped installed root")
-    print("Verified installed harness isolation, panel and uncertainty replay without optional imports")
+    print("Verified installed evaluation preflight, interval availability, harness isolation, "
+          "panel and uncertainty replay without optional imports")
 
 
 if __name__ == "__main__":

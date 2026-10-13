@@ -14,7 +14,12 @@ from typing import List
 from .attacks import available as attacks_available
 from .attacks import get_attack
 from .audit import audit_splits
-from .calibration import build_policy, calibration_metrics, validate_risk_control_groups
+from .calibration import (
+    build_policy,
+    calibration_metrics,
+    validate_bootstrap_configuration,
+    validate_risk_control_groups,
+)
 from .corpus import build_core, write_core
 from .corpus_v2 import build_core_v2, write_core_v2
 from .crossgen import cross_generator_provenance
@@ -455,14 +460,21 @@ def _cmd_publish(args: argparse.Namespace) -> int:
 
 
 def _cmd_eval(args: argparse.Namespace) -> int:
-    dataset = load_jsonl(args.dataset)
+    try:
+        threshold = validate_threshold(args.threshold)
+        validate_bootstrap_configuration(args.bootstrap, args.confidence, args.seed, 0, allow_zero=True)
+        dataset = load_jsonl(args.dataset)
+        validate_bootstrap_configuration(args.bootstrap, args.confidence, args.seed, len(dataset), allow_zero=True)
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"! evaluation inputs rejected ({type(exc).__name__})", file=sys.stderr)
+        return 2
     names: List[str] = args.detector or ["heuristic-v0"]
 
     reports: List[Report] = []
     for name in names:
         try:
             detector = get_detector(name)
-            reports.append(run(detector, dataset, threshold=args.threshold, task=args.task))
+            reports.append(run(detector, dataset, threshold=threshold, task=args.task))
         except Exception as exc:  # noqa: BLE001 - one detector must not abort the run
             print(f"! skipping {name}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
@@ -483,27 +495,45 @@ def _cmd_eval(args: argparse.Namespace) -> int:
                 "metrics": r.metrics.as_dict(),
             }
             if args.bootstrap:
+                intervals = r.confidence_interval_results(args.bootstrap, args.confidence, args.seed)
                 item["confidence_intervals"] = {
-                    name: interval.__dict__
-                    for name, interval in r.confidence_intervals(
-                        args.bootstrap, args.confidence
-                    ).items()
+                    name: result.interval.__dict__ if result.interval is not None else None
+                    for name, result in intervals.items()
                 }
+                item["confidence_interval_status"] = {
+                    name: {"status": result.status,
+                           "requested_replicates": result.requested_replicates,
+                           "executed_replicates": result.executed_replicates}
+                    for name, result in intervals.items()
+                }
+                item["bootstrap"] = {"method": "legacy_scored_record_percentile",
+                                     "seed": args.seed, "confidence": args.confidence,
+                                     "replicates": args.bootstrap,
+                                     "population": "answered_records_only",
+                                     "zero_denominator_metrics": "legacy_zero_except_auc",
+                                     "cluster_adjusted": False}
             payload.append(item)
-        print(json.dumps(payload, indent=2))
+        print(json.dumps(payload, indent=2, allow_nan=False))
     else:
         print(f"\nLureBench eval — {len(dataset)} records — {args.dataset}\n")
         for r in reports:
             print("  " + r.summary_line())
             if args.bootstrap:
-                intervals = r.confidence_intervals(args.bootstrap, args.confidence)
-                rendered = "  ".join(
-                    f"{name.upper()} {ci.estimate:.3f} [{ci.lower:.3f}, {ci.upper:.3f}]"
-                    f" (defined {ci.replicates}/{ci.requested_replicates}"
-                    f"{' ; conditional' if ci.conditional_on_defined else ''})"
-                    for name, ci in intervals.items()
-                )
-                print(f"    nominal {int(args.confidence * 100)}% paired bootstrap: {rendered}")
+                intervals = r.confidence_interval_results(args.bootstrap, args.confidence, args.seed)
+                rendered = []
+                for name, result in intervals.items():
+                    ci = result.interval
+                    if ci is None:
+                        rendered.append(f"{name.upper()} unavailable ({result.status})")
+                    else:
+                        rendered.append(
+                            f"{name.upper()} {ci.estimate:.3f} [{ci.lower:.3f}, {ci.upper:.3f}]"
+                            f" (defined {ci.replicates}/{ci.requested_replicates}"
+                            f"{' ; conditional' if ci.conditional_on_defined else ''})"
+                        )
+                print(f"    nominal {args.confidence * 100:g}% scored-record bootstrap: {'  '.join(rendered)}")
+                print("    Not cluster-adjusted; legacy zero-denominator conventions except AUC. "
+                      "Use uncertainty-cached for declared-lineage analysis.")
         print()
     return 0
 
@@ -2651,6 +2681,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_eval.add_argument(
         "--confidence", type=float, default=0.95, help="confidence level used with --bootstrap"
     )
+    p_eval.add_argument("--seed", type=int, default=4989, help="unsigned 64-bit bootstrap seed")
     p_eval.set_defaults(func=_cmd_eval)
 
     p_det = sub.add_parser("detectors", help="list registered detectors")

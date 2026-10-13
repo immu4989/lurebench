@@ -1,6 +1,8 @@
 # Detector outcomes and missing evidence (unreleased)
 
-A detector returns a finite real probability in `[0, 1]`, or `None` to abstain.
+A detector returns a finite real score in `[0, 1]`, or `None` to abstain.
+This bounded interface does not establish probability calibration for a heuristic
+or safety/provenance proxy.
 Booleans, numeric strings, non-finite numbers, and out-of-range values violate
 the contract. Scoring, collection, cached scores, and hard predictions now reject
 these values instead of coercing them into benchmark observations. An invalid
@@ -54,6 +56,57 @@ probability. An accepted `safe` answer does not establish that a message is not
 fraud. See [dependency security](DEPENDENCY_SECURITY.md) for the still-unresolved
 optional Accelerate advisory and the limits of explicit loader flags.
 
+## Binoculars provenance baseline
+
+Default `BinocularsDetector()` construction is disabled before importing the
+optional upstream package. The [upstream source inspected on 12 October 2026](https://github.com/ahans30/Binoculars/blob/main/binoculars/detector.py)
+loads two models with `trust_remote_code=True` and tokenizes with truncation.
+An application must not trigger those side effects merely by enumerating or
+selecting a baseline. A reviewed backend can instead be supplied explicitly:
+
+```python
+from lurebench.detectors.binoculars import BinocularsDetector
+from lurebench.harness import run
+
+# These objects come from your separately reviewed artifact-loading process.
+detector = BinocularsDetector(
+    backend=reviewed_backend,
+    cache_context=reviewed_backend_manifest_sha256,
+)
+report = run(detector, held_out_records, task="provenance")
+```
+
+The backend must expose `compute_score(text)`, a callable `tokenizer`, and an
+integer `max_token_observed` between 1 and 128,000. Tokenization must honor
+`truncation=False` and return `input_ids` as a flat list of nonnegative integers.
+Input over 100,000 characters, fewer than two tokens, or above the backend's token
+budget abstains before inference. Malformed tokenizer output and changes to the
+captured tokenizer or token limit fail before the scoring call. Backends must be
+trusted, stable, and separately reviewed for thread safety; this is not a Python
+sandbox, a tokenizer memory bound, or an atomic concurrent-artifact guarantee.
+
+Operators who deliberately accept the upstream loading behavior may use
+`BinocularsDetector(allow_unsafe_upstream=True)` after reviewing and installing
+a pinned upstream implementation in an isolated environment. This opt-in does
+not disable remote code, pin its model revisions, force Safetensors, prevent
+downloads, or repair vulnerable dependencies. It is not exposed by LureScope's
+HTTP request models. No real upstream model was loaded in the adapter tests.
+
+Raw outputs must be finite positive real scalars. NaN, infinities, booleans,
+strings, lists, zero, and negative values raise without becoming a cached score.
+Previously, NaN could become `1.0` through clipping. Valid historical values keep
+the transform `clip((0.95 - raw) / 0.30 + 0.5, 0, 1)`. This is an **uncalibrated
+provenance ranking proxy**, not `P(ai)`, a fraud probability, or the upstream
+`predict()` operating point. Clipping can introduce ranking ties; do not claim
+this wrapper reproduces the upstream paper's operating characteristics.
+
+Persistent caching requires a lowercase SHA-256 `cache_context` supplied by the
+operator to identify reviewed backend code, both models, tokenizers, and numerical
+configuration. The namespace additionally binds the score-contract version and
+input limits. It does not authenticate those artifacts or automatically verify
+the supplied manifest. Legacy or different-context caches fail rather than being
+silently reused. Preserve old results and use an explicit new cache path.
+
 ## Ordinary evaluation
 
 `run` and `collect_scores` prepare the entire input before detector callbacks:
@@ -76,6 +129,15 @@ remain separate boundaries. Concurrent caller mutations during preparation are n
 snapshot, and arbitrary in-process detector code is not sandboxed or prevented
 from accessing labels. Use the separate container protocol for withholding labels
 from a detector's request payload.
+
+Leaderboard detector specifications are parsed as a complete plan before any
+constructor runs. Malformed later names, model/engine syntax, or keyword mappings
+reject the plan without scoring earlier detectors. Names/model/engine text must
+be nonempty, at most 1,024 characters, and free of controls and surrounding
+whitespace; pair forms require exactly `(name, mapping)` (or `None` for no
+keywords). A bare string is not a sequence of detector specifications. This
+validates syntax, not installed extras, credentials, or arbitrary constructor
+arguments; runtime detector failures still produce per-detector error rows.
 
 Headline metrics remain conditional on answered records. `n_skipped` reports
 abstentions; the human-readable summary now displays it too. A metric over zero

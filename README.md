@@ -674,7 +674,9 @@ The CLI covers the pipeline, including `audit-splits` for cross-split
 near-duplicate detection and `calibrate` for validation-only policy export.
 `assemble-core-v2` produces clustered train/validation/test plus a separately
 held private split, and `eval
---bootstrap 2000` adds uncertainty intervals. See [benchmark validity](docs/VALIDITY.md),
+--bootstrap 2000 --seed 4989` adds bounded scored-record uncertainty intervals with
+explicit unavailable statuses. Prefer `uncertainty-cached` for declared-lineage
+resampling. See [benchmark validity](docs/VALIDITY.md),
 the [finite-sample FPR control method](docs/RISK_CONTROL.md),
 the [changelog](CHANGELOG.md), the [taxonomy & STIX guide](docs/taxonomy.md), and
 [docs/adding-a-detector.md](docs/adding-a-detector.md) to contribute a detector.

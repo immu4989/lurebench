@@ -16,8 +16,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Sequence
 
-from .calibration import ConfidenceInterval, bootstrap_ci
-from .metrics import Metrics, evaluate, roc_auc
+from .calibration import (
+    ConfidenceInterval,
+    UndefinedBootstrapStatistic,
+    bootstrap_ci,
+    validate_bootstrap_configuration,
+)
+from .metrics import (
+    Metrics,
+    confusion,
+    evaluate,
+    mcc_from_confusion,
+    roc_auc,
+    validate_binary_labels,
+)
 from .probability import validate_score, validate_threshold
 from .schema import Lure, copy_lures
 
@@ -58,6 +70,14 @@ def collect_scores(detector, dataset: Sequence[Lure], task: Optional[str] = None
             y_true.append(truth)
             scores.append(score)
     return ids, y_true, scores
+
+
+@dataclass(frozen=True)
+class MetricIntervalResult:
+    status: str
+    interval: Optional[ConfidenceInterval]
+    requested_replicates: int
+    executed_replicates: int
 
 
 @dataclass
@@ -152,28 +172,72 @@ class Report:
     def confidence_intervals(
         self, replicates: int = 2000, confidence: float = 0.95, seed: int = 4989
     ) -> Dict[str, ConfidenceInterval]:
-        if not self.observations:
+        validate_bootstrap_configuration(replicates, confidence, seed, len(self.observations or []))
+        observations = self._interval_observations()
+        if not observations:
             raise ValueError("report has no scored observations")
+        return {
+            name: bootstrap_ci(
+                observations, statistic, replicates=replicates,
+                confidence=confidence, seed=seed,
+            )
+            for name, statistic in self._bootstrap_statistics().items()
+        }
 
+    def _interval_observations(self):
+        observations = [(truth, validate_threshold(score)) for truth, score in (self.observations or [])]
+        validate_binary_labels([truth for truth, _ in observations])
+        return observations
+
+    def _bootstrap_statistics(self):
+        threshold = validate_threshold(self.threshold)
         def metric(name: str):
             def statistic(truths, scores):
-                predictions = [int(score >= self.threshold) for score in scores]
-                return float(getattr(evaluate(truths, predictions, scores), name))
+                predictions = [int(score >= threshold) for score in scores]
+                tp, fp, tn, fn = confusion(truths, predictions)
+                # These three statistics need no sorting or threshold sweep.
+                # Retain the legacy zero-denominator convention exactly.
+                if name == "mcc":
+                    return mcc_from_confusion(tp, fp, tn, fn)
+                if name == "recall":
+                    return tp / (tp + fn) if tp + fn else 0.0
+                return fp / (fp + tn) if fp + tn else 0.0
             return statistic
 
         def auc(truths, scores):
             value = roc_auc(truths, scores)
             return float("nan") if value is None else value
 
-        statistics = {"mcc": metric("mcc"), "recall": metric("recall"),
-                      "fpr": metric("fpr"), "auc": auc}
-        return {
-            name: bootstrap_ci(
-                self.observations, statistic, replicates=replicates,
-                confidence=confidence, seed=seed,
-            )
-            for name, statistic in statistics.items()
-        }
+        return {"mcc": metric("mcc"), "recall": metric("recall"),
+                "fpr": metric("fpr"), "auc": auc}
+
+    def confidence_interval_results(
+        self, replicates: int = 2000, confidence: float = 0.95, seed: int = 4989,
+    ) -> Dict[str, MetricIntervalResult]:
+        """Legacy scored-record intervals with explicit per-metric availability.
+
+        Unlike confidence_intervals, missing statistics do not discard other
+        intervals. Invalid inputs and unexpected calculation failures still raise.
+        Fewer than two answered observations produces no interval. Legacy zero-
+        denominator metric conventions remain; use uncertainty-cached for the
+        strict, full-population, declared-lineage uncertainty contract.
+        """
+        validate_bootstrap_configuration(replicates, confidence, seed, len(self.observations or []))
+        observations = self._interval_observations()
+        results = {}
+        for name, statistic in self._bootstrap_statistics().items():
+            if len(observations) < 2:
+                status = "no_scored_observations" if not observations else "insufficient_observations"
+                results[name] = MetricIntervalResult(status, None, replicates, 0)
+                continue
+            try:
+                interval = bootstrap_ci(observations, statistic, replicates, confidence, seed)
+            except UndefinedBootstrapStatistic as exc:
+                executed = replicates if exc.status == "no_defined_replicates" else 0
+                results[name] = MetricIntervalResult(exc.status, None, replicates, executed)
+            else:
+                results[name] = MetricIntervalResult("available", interval, replicates, replicates)
+        return results
 
 
 def run(

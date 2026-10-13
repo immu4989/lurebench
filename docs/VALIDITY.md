@@ -147,8 +147,44 @@ Point estimates hide sampling uncertainty. Add deterministic paired percentile
 bootstrap intervals to an evaluation with:
 
 ```bash
-lurebench eval -d test.jsonl -m heuristic-v0 --bootstrap 2000
+lurebench eval -d test.jsonl -m heuristic-v0 --bootstrap 2000 --seed 4989 --json
 ```
 
-Intervals are reported for MCC, recall, FPR and AUC. Equal detector scores are
-treated as a single realizable threshold when computing recall at an FPR budget.
+This legacy procedure resamples only answered records, pairing each score with
+its label. It is not cluster-adjusted and cannot account for related messages or
+selective abstention. MCC, recall, and FPR retain their historical zero-denominator
+convention; AUC is undefined when the answered sample lacks either class.
+For the stricter full-population treatment and declared-lineage resampling, use
+[cached uncertainty](CLUSTER_UNCERTAINTY.md).
+
+In the unreleased source branch, an unavailable interval no longer discards the
+completed evaluation. JSON retains `confidence_intervals` with the original
+interval fields for available metrics and `null` otherwise. The companion
+`confidence_interval_status` records each metric's status and requested/executed
+resampling counts. Statuses are `available`, `no_scored_observations`,
+`insufficient_observations` (one answered record), `undefined_estimate`, or
+`no_defined_replicates`. The latter means all requested draws ran but none had a
+defined statistic. Partially undefined draws remain disclosed inside an available
+interval, whose quantiles are conditional on the defined draws. None of these
+statuses certifies population coverage or deployment suitability.
+
+Python callers can use `Report.confidence_interval_results()` for the same
+per-metric availability. `Report.confidence_intervals()` remains the strict API:
+it raises when a required statistic is unavailable. Invalid observations and
+unexpected calculation failures are errors, not unavailable evidence.
+
+`eval` validates its threshold, confidence, unsigned 64-bit seed, and resampling
+budget before constructing detectors. The seed defaults to 4989. A positive
+replicate count is limited to 10,000, at most 50,000 input records, and at most
+50 million record draws per statistic (`records × replicates`). The CLI checks
+the full input count before scoring; the Python report API uses its answered
+observations. No records or replicates are silently dropped to fit the bounds.
+`--bootstrap 0` disables resampling and those record/draw limits; confidence and
+seed must still be valid. These are computation bounds, not runtime deadlines or
+provider cost caps. Syntax-invalid configuration exits with code 2 and no report.
+
+Valid repeated runs over identical ordered scores and controls are deterministic;
+rerunning a live detector is not guaranteed to reproduce those scores or be free.
+The legacy count-statistic implementation avoids unrelated ranking calculations
+while preserving its previous interval values. Equal detector scores still count
+as a single realizable threshold when computing recall at an FPR budget.
