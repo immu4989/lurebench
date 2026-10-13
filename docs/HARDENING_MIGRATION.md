@@ -101,3 +101,12 @@ and remains in `detector`. Do not treat a policy ID as a content digest: empiric
 schema-1 identity historically excludes score/threshold bytes. Pin the full
 artifact when exact approval matters. Historical schema-1 files are not upgraded
 to risk-controlled policies simply by reading them.
+
+## Lineage uncertainty from existing caches
+
+The additive `uncertainty-cached` and `verify-uncertainty` commands require no
+provider calls. They default to whole declared-lineage resampling, retain
+abstentions, and return null for undefined metrics, including zero-denominator
+MCC. Legacy `eval --bootstrap` and the existing report interval API are unchanged.
+See [the method, limits, and reproduction guide](CLUSTER_UNCERTAINTY.md) before
+interpreting nominal intervals as population evidence.

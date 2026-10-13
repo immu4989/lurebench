@@ -58,7 +58,9 @@ the failure. Running callbacks cannot be cancelled or refunded by this scheduler
 see [Python executor shutdown semantics](https://docs.python.org/3/library/concurrent.futures.html#concurrent.futures.Executor.shutdown).
 Provider timeouts must bound callbacks that could otherwise hang. Controls are
 strict integers: 1–128 workers and a nonnegative progress interval; zero disables
-progress output. The complete dataset is still materialized before scheduling.
+progress output. The complete dataset is validated and copied, including nested
+metadata, before scheduling. Mutations through callback records do not propagate
+to caller-owned records; this is not a sandbox or an atomic concurrent snapshot.
 
 This is a **callback count, not a provider request, token, or dollar cap**.
 Internal retries may issue multiple requests. Limits reset with a new instance,

@@ -1,0 +1,435 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LureBench cached detector uncertainty v1",
+  "description": "Structural validation only; arithmetic, reproducibility, independence, and authenticity require separate checks.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analysis",
+    "method",
+    "resampling_unit",
+    "threshold",
+    "confidence",
+    "seed",
+    "requested_replicates",
+    "executed_replicates",
+    "input_fingerprint",
+    "sample",
+    "replicate_records",
+    "metrics",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "analysis": {
+      "const": "detector_cluster_uncertainty"
+    },
+    "method": {
+      "const": "whole_group_percentile_v1"
+    },
+    "resampling_unit": {
+      "enum": [
+        "record",
+        "declared_group"
+      ]
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "confidence": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 1
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 18446744073709551615
+    },
+    "requested_replicates": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "executed_replicates": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    },
+    "input_fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "sha256"
+      ],
+      "properties": {
+        "profile": {
+          "const": "lurebench-uncertainty-effective-inputs-v1"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "records",
+        "resampling_units",
+        "smallest_unit_records",
+        "largest_unit_records",
+        "largest_unit_fraction",
+        "units_with_positive_records",
+        "units_with_negative_records",
+        "units_with_answered_records",
+        "decision_counts"
+      ],
+      "properties": {
+        "records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50000
+        },
+        "resampling_units": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "smallest_unit_records": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "largest_unit_records": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "largest_unit_fraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "units_with_positive_records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "units_with_negative_records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "units_with_answered_records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decision_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tp",
+            "fp",
+            "tn",
+            "fn",
+            "abstained_positive",
+            "abstained_negative"
+          ],
+          "properties": {
+            "tp": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fp": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tn": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fn": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "abstained_positive": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "abstained_negative": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "replicate_records": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum",
+        "maximum"
+      ],
+      "properties": {
+        "minimum": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "maximum": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accuracy",
+        "mcc",
+        "recall",
+        "fpr",
+        "auc",
+        "answer_coverage",
+        "positive_answer_coverage",
+        "negative_answer_coverage"
+      ],
+      "properties": {
+        "accuracy": {
+          "$ref": "#/$defs/probability_interval"
+        },
+        "mcc": {
+          "$ref": "#/$defs/interval"
+        },
+        "recall": {
+          "$ref": "#/$defs/probability_interval"
+        },
+        "fpr": {
+          "$ref": "#/$defs/probability_interval"
+        },
+        "auc": {
+          "$ref": "#/$defs/probability_interval"
+        },
+        "answer_coverage": {
+          "$ref": "#/$defs/probability_interval"
+        },
+        "positive_answer_coverage": {
+          "$ref": "#/$defs/probability_interval"
+        },
+        "negative_answer_coverage": {
+          "$ref": "#/$defs/probability_interval"
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task",
+        "detector",
+        "cache_namespace",
+        "grouping",
+        "dataset_sha256",
+        "cache_coverage"
+      ],
+      "properties": {
+        "task": {
+          "enum": [
+            "fraud",
+            "provenance"
+          ]
+        },
+        "detector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "cache_namespace": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "grouping": {
+          "enum": [
+            "lineage",
+            "record"
+          ]
+        },
+        "dataset_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "cache_coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "records",
+            "unique_score_keys",
+            "cached_records",
+            "cached_unique_keys",
+            "missing_unique_keys",
+            "cached_abstained_records",
+            "replay_complete",
+            "limitations"
+          ],
+          "properties": {
+            "records": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unique_score_keys": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cached_records": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cached_unique_keys": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "missing_unique_keys": {
+              "const": 0
+            },
+            "cached_abstained_records": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "replay_complete": {
+              "const": true
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "probability_interval": {
+      "allOf": [
+        {"$ref": "#/$defs/interval"},
+        {"properties": {"estimate": {"minimum": 0}, "lower": {"minimum": 0}, "upper": {"minimum": 0}}}
+      ]
+    },
+    "interval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "estimate",
+        "lower",
+        "upper",
+        "status",
+        "defined_replicates",
+        "undefined_replicates",
+        "conditional_on_defined"
+      ],
+      "properties": {
+        "estimate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "lower": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "upper": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -1,
+          "maximum": 1
+        },
+        "status": {
+          "enum": [
+            "available",
+            "undefined_estimate",
+            "insufficient_resampling_units",
+            "no_defined_replicates"
+          ]
+        },
+        "defined_replicates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "undefined_replicates": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conditional_on_defined": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "available"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "estimate": {
+                "type": "number"
+              },
+              "lower": {
+                "type": "number"
+              },
+              "upper": {
+                "type": "number"
+              },
+              "defined_replicates": {
+                "minimum": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "lower": {
+                "type": "null"
+              },
+              "upper": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

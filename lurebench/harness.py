@@ -19,7 +19,7 @@ from typing import Callable, Dict, List, Optional, Sequence
 from .calibration import ConfidenceInterval, bootstrap_ci
 from .metrics import Metrics, evaluate, roc_auc
 from .probability import validate_score, validate_threshold
-from .schema import Lure
+from .schema import Lure, copy_lures
 
 TASK_TARGET: Dict[str, Callable[[Lure], int]] = {
     "fraud": lambda lure: lure.label,
@@ -41,16 +41,7 @@ def _prepare_records(dataset: Sequence[Lure], task: str):
     detector. This is ordinary object isolation, not an in-process sandbox or
     an atomic snapshot of caller data mutated concurrently during preparation.
     """
-    prepared = []
-    for index, record in enumerate(dataset, 1):
-        try:
-            if not isinstance(record, Lure):
-                raise ValueError("expected a Lure")
-            copied = Lure.from_dict(record.to_dict())
-        except (ValueError, TypeError, RecursionError):
-            raise ValueError(f"dataset record {index} is not a valid copyable Lure") from None
-        prepared.append((copied, copied.id, TASK_TARGET[task](copied)))
-    return prepared
+    return [(record, record.id, TASK_TARGET[task](record)) for record in copy_lures(dataset)]
 
 
 def collect_scores(detector, dataset: Sequence[Lure], task: Optional[str] = None):

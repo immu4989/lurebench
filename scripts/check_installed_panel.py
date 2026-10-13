@@ -99,12 +99,36 @@ def check(root: Path) -> None:
         report_path.write_text(json.dumps(report))
         if command(["verify-panel", *arguments, "--report", str(report_path)], 1)["matches_replay"]:
             raise ValueError("installed verification accepted altered report")
+        uncertainty_args = ["--dataset", str(work / "records.jsonl"), "--cache",
+                            str(work / "baseline.json"), "--detector-name", "baseline",
+                            "--task", "fraud", "--replicates", "30"]
+        uncertainty = command(["uncertainty-cached", *uncertainty_args], 0)
+        if (uncertainty["sample"]["resampling_units"] != 4
+                or uncertainty["metrics"]["auc"]["status"] != "undefined_estimate"
+                or uncertainty["metrics"]["recall"]["estimate"] != 0.):
+            raise ValueError("installed uncertainty did not preserve grouping or undefined metrics")
+        uncertainty_path = work / "uncertainty.json"
+        uncertainty_path.write_text(json.dumps(uncertainty))
+        verification_args = ["verify-uncertainty", *uncertainty_args,
+                             "--report", str(uncertainty_path)]
+        before = {p.name: p.read_bytes() for p in work.iterdir()}
+        if not command(verification_args, 0)["matches_replay"]:
+            raise ValueError("installed uncertainty did not reproduce")
+        if before != {p.name: p.read_bytes() for p in work.iterdir()}:
+            raise ValueError("installed uncertainty verification mutated inputs")
+        uncertainty["metrics"]["recall"]["estimate"] = 1.
+        uncertainty_path.write_text(json.dumps(uncertainty))
+        if command(verification_args, 1)["matches_replay"]:
+            raise ValueError("installed uncertainty accepted altered report")
+        schema = root / "lurebench/spec/detector-uncertainty-v1.schema.json"
+        if not schema.is_file() or json.loads(schema.read_text())["properties"]["schema_version"] != {"const": 1}:
+            raise ValueError("installed uncertainty schema is missing")
     for name, module in tuple(sys.modules.items()):
         if name == "lurebench" or name.startswith("lurebench."):
             location = getattr(module, "__file__", None)
             if not location or not Path(location).resolve().is_relative_to(root):
                 raise ValueError("producer import escaped installed root")
-    print("Verified installed harness isolation and panel replay without optional imports")
+    print("Verified installed harness isolation, panel and uncertainty replay without optional imports")
 
 
 if __name__ == "__main__":

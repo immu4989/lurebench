@@ -10,6 +10,8 @@ from zipfile import BadZipFile, ZipFile
 def verify(wheel: Path, root: Path, package: str) -> int:
     sources = list((root / package).rglob("*.py"))
     sources.extend((root / "spec").glob("luremandate*.schema.json"))
+    if package == "lurebench":
+        sources.append(root / "spec/detector-uncertainty-v1.schema.json")
     for directory in (root / "conformance").glob("luremandate*-v1"):
         sources.extend(
             path

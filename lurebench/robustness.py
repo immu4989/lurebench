@@ -14,7 +14,7 @@ from typing import List, Optional, Sequence
 from .attacks.base import Attack
 from .harness import TASK_TARGET
 from .probability import validate_score, validate_threshold
-from .schema import Lure
+from .schema import Lure, copy_lures
 
 
 @dataclass
@@ -68,15 +68,18 @@ def run_robustness(
 ) -> RobustnessReport:
     """Apply ``attack`` to the positives ``detector`` catches; measure evasion."""
     threshold = validate_threshold(threshold)
-    if task not in TASK_TARGET:
+    if not isinstance(task, str) or task not in TASK_TARGET:
         raise ValueError("unsupported robustness task")
     target = TASK_TARGET[task]
-    positives = [r for r in dataset if target(r) == 1]
+    positives = [r for r in copy_lures(dataset) if target(r) == 1]
 
     detected: List[Lure] = []
     clean_abstained = 0
     for r in positives:
-        s = validate_score(detector.score(r))
+        # Preserve a private clean record for the attack phase. A detector must
+        # not change which text the attack receives or share mutable annotations
+        # with another scoring call through the objects supplied by this harness.
+        s = validate_score(detector.score(copy_lures([r])[0]))
         if s is None:
             clean_abstained += 1
         elif s >= threshold:
@@ -84,7 +87,7 @@ def run_robustness(
 
     still = evaded = after_abstained = 0
     for r in detected:
-        attacked = replace(r, text=attack.apply(r.text))
+        attacked = copy_lures([replace(r, text=attack.apply(r.text))])[0]
         s = validate_score(detector.score(attacked))
         if s is None:
             after_abstained += 1

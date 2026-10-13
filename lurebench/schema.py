@@ -107,6 +107,24 @@ class Lure:
         return asdict(self)
 
 
+def copy_lures(records: Iterable[Lure]) -> List[Lure]:
+    """Validate and detach ordinary records before trusted integration callbacks.
+
+    Nested dataclass fields are copied via asdict. This is not a sandbox for
+    arbitrary Python objects or an atomic snapshot of concurrent caller changes.
+    Subclass identity and attributes outside the Lure schema are not preserved.
+    """
+    copied = []
+    for index, record in enumerate(records, 1):
+        try:
+            if not isinstance(record, Lure):
+                raise ValueError("expected a Lure")
+            copied.append(Lure.from_dict(record.to_dict()))
+        except (ValueError, TypeError, RecursionError):
+            raise ValueError(f"dataset record {index} is not a valid copyable Lure") from None
+    return copied
+
+
 def load_jsonl(path: str | Path, *, max_bytes: int = MAX_DATASET_BYTES,
                max_record_bytes: int = MAX_RECORD_BYTES) -> List[Lure]:
     """Load a JSONL dataset into a list of :class:`Lure`."""

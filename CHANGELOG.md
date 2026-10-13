@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Leaderboards validate thresholds, task overrides, worker counts, and all records
+  before constructing detectors. Cache warming copies records before scheduling;
+  robustness scoring cannot mutate the clean text later supplied to an attack.
+  These protections isolate ordinary callback objects, not arbitrary Python code.
+
+- Added `uncertainty-cached` with whole-declared-lineage percentile resampling,
+  eight performance/coverage metrics, explicit unavailable and conditional
+  intervals, shared draws, and bounded integer-weighted computation. Entirely
+  abstaining groups remain in the population; one family yields no interval.
+  `verify-uncertainty` reproduces every saved field from explicit local inputs.
+  Reports bind effective inputs and exact dataset bytes without emitting record
+  IDs or text. These nominal intervals do not establish independence or safety.
+
 - Evaluation and score collection copy and validate all Lure records before
   detector callbacks, capturing IDs and task targets separately. Callback
   mutations no longer relabel observations, change abstention class accounting,

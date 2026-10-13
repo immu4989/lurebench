@@ -34,7 +34,7 @@ from typing import Iterable, List, Optional
 
 from ..diskcache import CacheOnlyMissError, CacheReadError, JsonDiskCache
 from ..probability import validate_score
-from ..schema import Lure
+from ..schema import Lure, copy_lures
 from .base import Detector
 
 
@@ -165,12 +165,14 @@ def prewarm(detector: CachedDetector, dataset: Iterable[Lure], workers: int = 8,
     records are not necessarily the number of underlying provider requests.
     At most ``workers`` tasks are outstanding. Failures stop further admission;
     already-running callbacks are awaited, not cancelled or refunded.
+    All input records are validated and copied before scheduling; callback
+    mutations through those copies cannot change caller-owned records.
     """
     if type(workers) is not int or not 1 <= workers <= 128:
         raise ValueError("prewarm workers must be an integer from 1 through 128")
     if type(progress_every) is not int or progress_every < 0:
         raise ValueError("prewarm progress interval must be a nonnegative integer")
-    records: List[Lure] = list(dataset)
+    records: List[Lure] = copy_lures(dataset)
     # Reject invalid existing values before any new, potentially metered work.
     detector.plan(records)
     snapshot = detector.store.snapshot()

@@ -68,9 +68,11 @@ Preparation uses extra memory proportional to the dataset and nested metadata.
 Callbacks receive ordinary mutable Lure copies, not subclasses or shared caller
 objects. Store intentional annotations separately instead of relying on mutations
 to propagate back. Repeated IDs/references retain their observation slots; copying
-does not prove independence, authenticate labels, or remove leakage. Constructors,
-direct detector calls, cache warming, and other workflows remain separate
-boundaries. Concurrent caller mutations during preparation are not an atomic
+does not prove independence, authenticate labels, or remove leakage. Cache warming
+also validates and copies all records before scheduling. Leaderboards validate
+thresholds, task overrides, workers, and records before detector construction,
+then retain a private snapshot for slices. Direct detector calls and constructors
+remain separate boundaries. Concurrent caller mutations during preparation are not an atomic
 snapshot, and arbitrary in-process detector code is not sandboxed or prevented
 from accessing labels. Use the separate container protocol for withholding labels
 from a detector's request payload.
@@ -97,6 +99,11 @@ from a stochastic or stateful detector. The snapshot is local in-memory data;
 the summary JSON does not include raw message text or per-record scores.
 
 ## Robustness evaluation
+
+`run_robustness` validates and copies the entire dataset before scoring, including
+negative records. Clean and attacked scoring receive separate nested copies;
+mutating a clean scoring record cannot change the text later given to the attack.
+This does not verify that the attack preserves intent or sandbox callback code.
 
 Adaptive attacks also enforce this contract. A missing clean/rewritten score
 raises `DetectorAbstainedError`; invalid scores, non-string/empty generations,

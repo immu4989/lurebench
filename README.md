@@ -55,7 +55,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 **Unreleased hardening:** [migration and offline verification](docs/HARDENING_MIGRATION.md)
 cover checkpoint intake, honest missing-score reporting, safer paid-call caches,
 and faster calibration. These source-branch changes are not in PyPI 0.11.0.
-[Local verification on 10 October 2026](docs/VERIFICATION_2026_10_10.md) records
+[Local verification on 12 October 2026](docs/VERIFICATION_2026_10_12.md) records
 the current checks, skipped coverage, and release boundaries.
 
 **Stricter provenance evaluation:** [unseen-lineage cross-generator protocol](docs/CROSS_GENERATOR_PROTOCOL.md)
@@ -77,6 +77,12 @@ For several planned alternatives, `compare-panel` adds Holm correction while
 retaining unavailable tests in the declared comparison family.
 `verify-panel` reproduces a saved report from local inputs and detects altered
 fields without model calls. Matching a replay is not producer authentication.
+
+**How much evidence comes from independent families?**
+[Lineage-aware uncertainty](docs/CLUSTER_UNCERTAINTY.md) resamples whole declared
+families from cached scores, retains abstentions, and reports unavailable or
+conditional intervals explicitly. `verify-uncertainty` reproduces saved reports
+without paid calls. Declared lineage does not itself prove independence.
 
 Fraud detectors that score well on classic spam corpora fall apart on lures written by modern language models. LureBench measures that gap on a common footing: one schema, one harness, one leaderboard, across fraud typologies and generator families. It runs out of the box with no model downloads or API keys, and it ships baseline detectors from a keyword heuristic up to a trained classifier.
 

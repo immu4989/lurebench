@@ -19,9 +19,9 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from .detectors import get_detector
 from .detectors.cache import CachedDetector, prewarm
-from .harness import TASK_TARGET, run
-from .probability import validate_score
-from .schema import Lure
+from .harness import TASK_TARGET, _resolve_task, run
+from .probability import validate_score, validate_threshold
+from .schema import Lure, copy_lures
 
 FRAUD_TYPOLOGIES = ["phishing", "bec", "romance", "pig_butchering"]
 
@@ -104,7 +104,19 @@ def evaluate_detectors(
     ``cache_dir`` turns on on-disk score caching and concurrent pre-warming, which
     is what makes an API-backed detector practical here: without it the harness
     issues one blocking request per record. Results are identical either way.
+
+    Shared invalid controls/records raise before constructing any detector.
+    The validated dataset snapshot is retained for slices; callback objects are
+    detached by cache warming and the harness. This is not process isolation.
     """
+    # Shared experiment errors must stop before any detector construction or
+    # paid cache warming. Per-detector execution errors still become error rows.
+    threshold = validate_threshold(threshold)
+    if task is not None and (not isinstance(task, str) or task not in TASK_TARGET):
+        raise ValueError("task must be fraud or provenance")
+    if type(workers) is not int or not 1 <= workers <= 128:
+        raise ValueError("workers must be an integer from 1 through 128")
+    dataset = copy_lures(dataset)
     results: List[dict] = []
     for spec in detector_names:
         # A single detector failing (missing extra, gated model, no API key,
@@ -115,11 +127,11 @@ def evaluate_detectors(
             detector = get_detector(name, **kwargs)
             if display:
                 detector.name = display
+            t = _resolve_task(detector, task)
             if cache_dir:
                 safe = re.sub(r"[^A-Za-z0-9._-]+", "_", getattr(detector, "name", name))
                 detector = CachedDetector(detector, os.path.join(cache_dir, f"{safe}.json"))
                 prewarm(detector, dataset, workers=workers)
-            t = task or getattr(detector, "task", "fraud")
             report = run(detector, dataset, threshold=threshold, task=t)
             if report.record_scores is None:
                 raise ValueError("leaderboard requires the original per-record score snapshot")

@@ -28,6 +28,7 @@ from .ingest import available as ingest_available
 from .ingest import dedupe, get_adapter
 from .leaderboard import evaluate_detectors, render_markdown, write_json
 from .manifest import build_manifest, check_balance
+from .probability import validate_threshold
 from .robustness import render_markdown as render_robustness
 from .robustness import run_robustness
 from .schema import load_jsonl, load_jsonl_with_digest, save_jsonl
@@ -165,6 +166,29 @@ def _cmd_compare_cached(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_uncertainty_cached(args: argparse.Namespace) -> int:
+    from .uncertainty import run_cached_uncertainty, verify_cached_uncertainty
+
+    try:
+        configuration = dict(detector_name=args.detector_name, task=args.task,
+            cache_namespace=args.cache_namespace, resampling_unit=args.resampling_unit,
+            threshold=args.threshold, replicates=args.replicates, confidence=args.confidence,
+            seed=args.seed,
+        )
+        if args.command == "verify-uncertainty":
+            report = verify_cached_uncertainty(
+                Path(args.dataset), Path(args.cache), Path(args.report), **configuration,
+            )
+        else:
+            report = run_cached_uncertainty(Path(args.dataset), Path(args.cache), **configuration)
+        print(json.dumps(report, indent=2, allow_nan=False))
+    except (OSError, ValueError, RuntimeError, TypeError) as exc:
+        print(f"! cached uncertainty rejected ({type(exc).__name__}); no live fallback",
+              file=sys.stderr)
+        return 2
+    return 0 if report.get("matches_replay", True) else 1
+
+
 def _cmd_cache_replay(args: argparse.Namespace) -> int:
     from .detectors.cache import ReplayDetector
 
@@ -195,16 +219,16 @@ def _cmd_cache_replay(args: argparse.Namespace) -> int:
 
 
 def _cmd_leaderboard(args: argparse.Namespace) -> int:
-    dataset = load_jsonl(args.dataset)
-    names = args.detector or available()
-    results = evaluate_detectors(
-        dataset,
-        names,
-        threshold=args.threshold,
-        task=args.task,
-        cache_dir=args.cache_dir,
-        workers=args.workers,
-    )
+    try:
+        dataset = load_jsonl(args.dataset)
+        names = args.detector or available()
+        results = evaluate_detectors(
+            dataset, names, threshold=args.threshold, task=args.task,
+            cache_dir=args.cache_dir, workers=args.workers,
+        )
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"! leaderboard inputs rejected ({type(exc).__name__})", file=sys.stderr)
+        return 2
     markdown = render_markdown(results, dataset_label=args.dataset, n_records=len(dataset))
 
     if args.out:
@@ -485,7 +509,12 @@ def _cmd_eval(args: argparse.Namespace) -> int:
 
 
 def _cmd_robustness(args: argparse.Namespace) -> int:
-    dataset = load_jsonl(args.dataset)
+    try:
+        threshold = validate_threshold(args.threshold)
+        dataset = load_jsonl(args.dataset)
+    except (OSError, ValueError, TypeError) as exc:
+        print(f"! robustness inputs rejected ({type(exc).__name__})", file=sys.stderr)
+        return 2
     try:
         detector = get_detector(args.detector)
     except Exception as exc:  # noqa: BLE001
@@ -517,7 +546,7 @@ def _cmd_robustness(args: argparse.Namespace) -> int:
             print(f"! skipping {aname}: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         reports.append(
-            run_robustness(detector, dataset, attack, threshold=args.threshold, task=args.task)
+            run_robustness(detector, dataset, attack, threshold=threshold, task=args.task)
         )
 
     if not reports:
@@ -2617,7 +2646,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--bootstrap",
         type=int,
         default=0,
-        help="paired bootstrap replicates for MCC/TPR/FPR/AUC intervals",
+        help="legacy record-level bootstrap; use uncertainty-cached for whole-lineage resampling",
     )
     p_eval.add_argument(
         "--confidence", type=float, default=0.95, help="confidence level used with --bootstrap"
@@ -2682,6 +2711,25 @@ def build_parser() -> argparse.ArgumentParser:
     replay_output.add_argument("--decision-counts", action="store_true",
                                help="export all six outcomes for offline capacity planning")
     p_replay.set_defaults(func=_cmd_cache_replay)
+
+    for command, description in (
+        ("uncertainty-cached", "whole-lineage bootstrap uncertainty without live calls"),
+        ("verify-uncertainty", "reproduce a saved uncertainty report from cache and explicit controls"),
+    ):
+        p_uncertainty = sub.add_parser(command, help=description)
+        p_uncertainty.add_argument("--dataset", "-d", required=True)
+        p_uncertainty.add_argument("--cache", required=True, help="existing JSON score cache")
+        p_uncertainty.add_argument("--detector-name", required=True, help="exact original display name")
+        p_uncertainty.add_argument("--task", required=True, choices=["fraud", "provenance"])
+        p_uncertainty.add_argument("--cache-namespace", help="original configured LLM cache identity")
+        p_uncertainty.add_argument("--resampling-unit", choices=["lineage", "record"], default="lineage")
+        p_uncertainty.add_argument("--threshold", type=float, default=.5)
+        p_uncertainty.add_argument("--replicates", type=int, default=2000)
+        p_uncertainty.add_argument("--confidence", type=float, default=.95)
+        p_uncertainty.add_argument("--seed", type=int, default=4989)
+        if command == "verify-uncertainty":
+            p_uncertainty.add_argument("--report", required=True)
+        p_uncertainty.set_defaults(func=_cmd_uncertainty_cached)
 
     p_panel = sub.add_parser("compare-panel", help="planned cached comparisons with Holm correction")
     p_panel.add_argument("--dataset", "-d", required=True)
