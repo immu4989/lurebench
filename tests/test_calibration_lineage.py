@@ -48,11 +48,15 @@ def test_cli_checks_transitive_negative_lineage_before_loading_detector(tmp_path
         Lure(id="b", text="Synthetic b", label=label, source="human",
              typology="benign" if label == 0 else "phishing", meta={"rewrite_of": "other"}),
     ]
+    # Ensure the sample can pass the size preflight, so this tests lineage.
+    records.extend(Lure(id=f"independent-{i}", text=f"Independent notes {i}", label=label,
+                        source="human", typology="benign" if label == 0 else "phishing")
+                   for i in range(30))
     dataset, output = tmp_path / "validation.jsonl", tmp_path / "policy.json"
     save_jsonl(records, dataset)
     monkeypatch.setattr(cli, "get_detector", lambda *a, **kw: pytest.fail("detector loaded"))
     assert main(["calibrate", "-d", str(dataset), "-m", "heuristic-v0", "--task", task,
                  "--objective", "risk_controlled_fpr", "--target-fpr", "0.1",
-                 "--out", str(output)]) == 1
-    assert "repeated negative-class lineage" in capsys.readouterr().err
+                 "--out", str(output)]) == 2
+    assert "calibration inputs rejected (ValueError)" in capsys.readouterr().err
     assert not output.exists()

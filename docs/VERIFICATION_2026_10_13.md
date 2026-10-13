@@ -61,3 +61,84 @@ authenticate a provider. Updating LureScope alone cannot fix a previously
 installed LureBench parser; deploy compatible builds together after release
 review. No public package, deployment, historical cache, or model artifact was
 modified. Local version 0.11.0 wheels are verification artifacts, not releases.
+
+## Subsequent calibration preflight and evidence identity milestone
+
+Calibration now rejects invalid controls before validation-file reads and rejects
+unusable populations before constructing a detector. The task declared by the
+constructed detector must match the requested task before any scores are taken.
+New empirical and risk-controlled policy IDs commit to labels, scores, selected
+threshold, and policy evidence using full SHA-256. Historical policy IDs and
+schema v1/v2 files remain unchanged on load. The ID does not bind deployed model
+weights, prompts, or provider configuration.
+
+- **20 of 21 initial regression tests failed** before implementation. The final
+  preflight/identity file has **43 passing tests**. Together with selection and
+  lineage tests, **74 cases passed**. Coverage includes output preservation,
+  redacted input errors, constructor/score non-invocation, invalid ignored
+  controls, both tasks, exact canonical identity reproduction, long names, and
+  changed scores that retain the same threshold but change the policy ID.
+- At a 1% target, the preflight accepts **299 negatives at 95% confidence** and
+  **459 at 99%**, with a positive observation also required. Those runs match
+  the existing selector's threshold, metrics, and risk-control object exactly.
+  One fewer negative is rejected before selection. A subnormal positive target
+  is rejected without overflowing a minimum-sample calculation.
+- Full LureBench: **2,013 passed, 40 skipped, 15 warnings**, with the previously
+  documented urllib3 overlay. Paired-source LureScope: **1,268 passed, 16
+  warnings**. **107 browser tests**, Ruff, whitespace, **26 producer pins**, and
+  **10 independent authority artifacts** passed.
+- Built wheels matched **156 Bench** and **164 Scope** package/authority files;
+  the Scope source archive retained **19 browser inputs**. Installed Bench
+  checks passed under Python **3.12.13** and **3.13.15**, outside the checkouts
+  with `-I -S` and optional imports blocked. Installed Scope loaded generated
+  policies for all three objectives, preserved their IDs, and reported name-only
+  binding without configuration verification. Installed model/proof,
+  authentication, and browser checks passed.
+
+The preflight does not test unseen detector scores, guarantee i.i.d. sampling,
+preflight output permissions, or impose a provider billing cap. Threshold
+selection and finite-sample inference mathematics are unchanged. No provider
+requests or historical-artifact migrations were performed. This milestone is
+local and unreleased; its 0.11.0 wheels are verification artifacts only.
+
+## Subsequent configuration-bound policy milestone
+
+Schema v3 binds validation evidence to a declared exact portable artifact,
+installed inference source, and runtime profile. It supports empirical and
+risk-controlled objectives without changing their selection mathematics.
+V3 loaders recompute the full evidence identity and retain existing grid,
+count, and statistical-bound checks. Legacy builders and historical IDs remain
+compatible. The low-level builder records a caller-supplied binding; actual
+portable-score collection is implemented by the companion `lurescope calibrate`.
+
+- **28 new producer tests** passed: all objectives and schema validation,
+  load/save preservation, binding changes, evidence-ID mismatch, malformed or
+  unsupported bindings, legacy-schema rejection of bindings, risk arithmetic,
+  and equivalent integer/float probability representations.
+- Full Bench: **2,043 passed, 40 skipped, 15 warnings**, using the documented
+  urllib3 overlay. Paired-source Scope: **1,305 passed, 16 warnings**. Scope's
+  **34 new binding tests** cover actual portable calibration, immutable model
+  state, mismatches before scoring, recheck before publication, explicit override
+  semantics, redacted HTTP failures, proof refusal, and shared schema bytes.
+- **107 browser tests**, Ruff, whitespace, **26 historical producer pins**,
+  **10 independent authority artifacts**, and static asset checks passed.
+  Existing wheel-test fixtures were expanded to exercise the required v3 schema;
+  missing/stale schema coverage was added without weakening the verifier.
+- Wheels matched **157 Bench** and **166 Scope** exact package/authority files,
+  including the v3 schema. Scope's source archive retained **19 browser inputs**.
+  Installed Bench checks passed under Python **3.12.13** and **3.13.15** with
+  optional imports blocked. Installed Scope loaded bound policies for all three
+  objectives, verified matches, and rejected a changed runtime identity. Existing
+  model/proof, authentication, and browser checks also passed.
+- Outside both checkouts, the installed `lurescope calibrate` command generated
+  a v3 policy from two synthetic text records under Python **3.12.13** with
+  `-I -S`. The installed service matched and scored under that runtime. Under
+  **3.13.15**, the same policy loaded but reported `mismatch` and scoring failed.
+  Installed HTTP `/policy` and `/score` also verified the matching 3.12 workflow.
+
+These are contract and deployment-boundary tests, not new fraud-accuracy results.
+No paid provider, new model training, public release, or deployment was involved.
+The binding assumes trusted installed code and runtime, does not attest arbitrary
+process mutations or hardware, and does not verify sampling or upstream text
+extraction. A trusted policy hash/signing process remains necessary for origin
+and replacement control. This milestone remains local and unpushed.

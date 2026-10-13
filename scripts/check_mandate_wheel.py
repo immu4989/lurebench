@@ -12,6 +12,7 @@ def verify(wheel: Path, root: Path, package: str) -> int:
     sources.extend((root / "spec").glob("luremandate*.schema.json"))
     if package == "lurebench":
         sources.append(root / "spec/detector-uncertainty-v1.schema.json")
+        sources.append(root / "spec/decision-policy-v3.schema.json")
     for directory in (root / "conformance").glob("luremandate*-v1"):
         sources.extend(
             path

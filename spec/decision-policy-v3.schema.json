@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/immu4989/lurebench/main/spec/decision-policy-v3.schema.json",
+  "title": "LureBench configuration-bound decision policy v3",
+  "description": "Evidence and exact portable inference configuration; not issuer authentication or process attestation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "detector",
+    "task",
+    "threshold",
+    "objective",
+    "target_fpr",
+    "validation_records",
+    "validation_sha256",
+    "evaluation_sha256",
+    "created_at",
+    "detector_binding"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 3
+    },
+    "policy_id": {
+      "type": "string",
+      "pattern": "^tfidf-logreg-[a-f0-9]{64}$"
+    },
+    "detector": {
+      "const": "tfidf-logreg"
+    },
+    "task": {
+      "const": "fraud"
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "objective": {
+      "enum": [
+        "max_mcc",
+        "target_fpr",
+        "risk_controlled_fpr"
+      ]
+    },
+    "target_fpr": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "validation_records": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10000000
+    },
+    "validation_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "evaluation_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "validation_true_positives": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "validation_recall": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 1
+    },
+    "risk_control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "risk",
+        "confidence",
+        "validation_negatives",
+        "false_positives",
+        "empirical_fpr",
+        "upper_confidence_bound",
+        "hypothesis_p_value",
+        "threshold_grid_size"
+      ],
+      "properties": {
+        "method": {
+          "const": "learn_then_test_fixed_sequence_exact_binomial_v1"
+        },
+        "risk": {
+          "const": "false_positive_rate"
+        },
+        "confidence": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "validation_negatives": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "false_positives": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "empirical_fpr": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "upper_confidence_bound": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "hypothesis_p_value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "threshold_grid_size": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 100001
+        }
+      }
+    },
+    "detector_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "artifact_sha256",
+        "implementation_sha256",
+        "runtime_sha256"
+      ],
+      "properties": {
+        "profile": {
+          "const": "lurescope-portable-tfidf-exact-v1"
+        },
+        "artifact_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "implementation_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "runtime_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "objective": {
+            "const": "risk_controlled_fpr"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "risk_control",
+          "validation_true_positives",
+          "validation_recall"
+        ],
+        "properties": {
+          "target_fpr": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1
+          }
+        }
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "risk_control"
+              ]
+            },
+            {
+              "required": [
+                "validation_true_positives"
+              ]
+            },
+            {
+              "required": [
+                "validation_recall"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "objective": {
+            "const": "target_fpr"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "target_fpr": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  ]
+}

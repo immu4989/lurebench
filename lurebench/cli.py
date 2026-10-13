@@ -18,6 +18,9 @@ from .calibration import (
     build_policy,
     calibration_metrics,
     validate_bootstrap_configuration,
+    validate_calibration_configuration,
+    validate_calibration_detector,
+    validate_calibration_population,
     validate_risk_control_groups,
 )
 from .corpus import build_core, write_core
@@ -290,15 +293,28 @@ def _cmd_calibrate(args: argparse.Namespace) -> int:
 
     kwargs = {"model_path": args.model_path} if args.model_path else {}
     try:
+        validate_calibration_configuration(
+            args.objective, args.target_fpr, args.confidence, args.threshold_grid_size, args.bins,
+        )
+        validate_calibration_detector(args.detector, args.task)
         records = load_jsonl(args.validation)
+        record_ids = [record.id for record in records]
+        labels = [TASK_TARGET[args.task](record) for record in records]
+        validate_calibration_population(
+            record_ids, labels, args.objective, args.target_fpr, args.confidence,
+        )
         groups = None
         if args.objective == "risk_controlled_fpr":
             groups = lineage_components(records)
-            validate_risk_control_groups(
-                [record.id for record in records],
-                [TASK_TARGET[args.task](record) for record in records], groups,
-            )
+            validate_risk_control_groups(record_ids, labels, groups)
+    except (OSError, KeyError, RuntimeError, ValueError) as exc:
+        print(f"! calibration inputs rejected ({type(exc).__name__})", file=sys.stderr)
+        return 2
+    try:
         detector = get_detector(args.detector, **kwargs)
+        validate_calibration_detector(getattr(detector, "name", args.detector), args.task)
+        if getattr(detector, "task", None) != args.task:
+            raise ValueError("calibration task does not match detector task")
         ids, truths, scores = collect_scores(detector, records, task=args.task)
         if len(ids) != len(records):
             raise ValueError(

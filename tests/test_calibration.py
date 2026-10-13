@@ -52,9 +52,8 @@ def test_policy_round_trip_has_validation_provenance(tmp_path):
     assert loaded == policy
     assert len(json.loads(path.read_text())["validation_sha256"]) == 64
     validation_digest = hashlib.sha256(b"a\nb").hexdigest()
-    legacy_material = f"detector\0fraud\0max_mcc\0None\0{validation_digest}"
-    legacy_identity = hashlib.sha256(legacy_material.encode("utf-8")).hexdigest()[:12]
-    assert policy.policy_id == f"detector-{legacy_identity}"
+    assert policy.validation_sha256 == validation_digest
+    assert len(policy.policy_id.removeprefix("detector-")) == 64
 
 
 def test_exact_binomial_bound_matches_zero_event_closed_form():
@@ -217,6 +216,9 @@ def test_calibration_cli_never_drops_abstentions(tmp_path, monkeypatch, capsys, 
                     typology="benign"),
                Lure(id="positive", text="verify your account", label=1, source="human",
                     typology="phishing")]
+    if objective == "risk_controlled_fpr":
+        records.extend(Lure(id=f"negative-{i}", text=f"independent sample {i}", label=0,
+                            source="human", typology="benign") for i in range(299))
     source = tmp_path / "validation.jsonl"
     output = tmp_path / "policy.json"
     save_jsonl(records, source)

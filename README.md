@@ -672,6 +672,10 @@ lurebench leaderboard -d data/full/core/test.jsonl \
 
 The CLI covers the pipeline, including `audit-splits` for cross-split
 near-duplicate detection and `calibrate` for validation-only policy export.
+On this source branch, schema v3 also binds exact portable serving configuration:
+use the companion `lurescope calibrate` command to collect evidence with the
+actual serving implementation. A joblib model hash alone is not inference
+equivalence. See [configuration-bound policies](docs/RISK_CONTROL.md#configuration-bound-policies).
 `assemble-core-v2` produces clustered train/validation/test plus a separately
 held private split, and `eval
 --bootstrap 2000 --seed 4989` adds bounded scored-record uncertainty intervals with

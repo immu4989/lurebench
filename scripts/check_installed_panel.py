@@ -22,7 +22,7 @@ class ForbidOptionalImports(importlib.abc.MetaPathFinder):
         if fullname.split(".", 1)[0] in {
             "torch", "transformers", "sklearn", "numpy", "joblib", "pickle",
             "openai", "anthropic", "huggingface_hub", "httpx", "requests",
-            "binoculars",
+            "binoculars", "accelerate",
         }:
             raise ImportError("optional dependency forbidden in installed panel check")
         return None
@@ -38,16 +38,56 @@ def check(root: Path) -> None:
     sys.meta_path.insert(0, ForbidOptionalImports())
     sys.path.insert(0, str(root))
     from lurebench import cli, leaderboard
+    from lurebench.calibration import (
+        DetectorBinding,
+        build_policy,
+        validate_calibration_configuration,
+    )
     from lurebench.cli import main
     from lurebench.detectors.binoculars import BinocularsDetector
     from lurebench.detectors.cache import CachedDetector
+    from lurebench.detectors.llama_guard import LlamaGuardDetector
     from lurebench.detectors.moderation import CATEGORIES, OpenAIModerationDetector
     from lurebench.detectors.tfidf import TfidfLogisticDetector
     from lurebench.diskcache import CacheReadError
     from lurebench.harness import collect_scores, run
     from lurebench.schema import Lure, save_jsonl
 
+    first, _ = build_policy("installed", "fraud", ["a", "b"], [0, 1], [.1, .9])
+    changed, _ = build_policy("installed", "fraud", ["a", "b"], [0, 1], [.11, .9])
+    if first.threshold != changed.threshold or first.policy_id == changed.policy_id:
+        raise ValueError("installed policy identity lost its validation observations")
+    binding = DetectorBinding("lurescope-portable-tfidf-exact-v1", "a" * 64, "b" * 64, "c" * 64)
+    bound, _ = build_policy("tfidf-logreg", "fraud", ["a", "b"], [0, 1], [.1, .9],
+                            detector_binding=binding)
+    if bound.schema_version != 3 or bound.detector_binding != binding:
+        raise ValueError("installed calibration lost exact configuration binding")
+    try:
+        validate_calibration_configuration("max_mcc", None, .95, 1001, 0)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("installed calibration preflight accepted invalid diagnostic controls")
+
     probe = Lure("synthetic", "Synthetic input", 1, "ai", "phishing")
+    try:
+        LlamaGuardDetector()
+    except ValueError as exc:
+        if "allow_unsafe_upstream" not in str(exc):
+            raise
+    else:
+        raise ValueError("installed Llama Guard implicitly loaded model frameworks")
+    token_ids = SimpleNamespace(shape=(1, 2))
+    token_ids.to = lambda device: token_ids
+    reviewed = SimpleNamespace(
+        tokenizer=SimpleNamespace(apply_chat_template=lambda *a, **kw: token_ids,
+                                  decode=lambda *a, **kw: "safe", chat_template="synthetic"),
+        model=SimpleNamespace(device="cpu", eval=lambda: None,
+                              generate=lambda *a, **kw: [[1, 2, 3]]),
+        inference_context=contextlib.nullcontext,
+    )
+    if LlamaGuardDetector(backend=reviewed, cache_context="d" * 64).score(probe) != 0.:
+        raise ValueError("installed reviewed safety backend changed its verdict")
     moderation_scores = {name: .25 for name in CATEGORIES}
     moderation_result = {"results": [{"flagged": False, "category_scores": moderation_scores}]}
     moderation_client = SimpleNamespace(moderations=SimpleNamespace(

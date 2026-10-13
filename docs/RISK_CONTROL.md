@@ -86,9 +86,29 @@ With zero false positives, the minimum number of validation negatives is:
 | 0.1% | 2,995 | 4,603 |
 
 Any observed false positives require more data. LureBench reports the required
-minimum and exits without a policy when the sample is insufficient. This is a
+minimum through `minimum_zero_event_sample(target_fpr, confidence)` and exits
+without a policy when the sample is insufficient. The CLI rejects an impossible
+sample before detector construction rather than waiting for scores. This is a
 feature: an unsubstantiated low-FPR promise should not become deployment
 configuration merely because a command was run.
+
+### Calibration preflight
+
+On this source branch, `calibrate` validates the objective, target, confidence,
+threshold-grid size, and diagnostic bin count before reading validation data.
+It then checks bounded unique IDs, labels, and risk-control sample feasibility
+before constructing a detector. Risk control requires both classes and enough
+negatives to pass even with zero false positives. Declared negative lineage is
+checked before construction too. Invalid inputs exit with code **2** and a
+redacted error; existing output files remain unchanged. Detector/task mismatch
+is checked after construction but before scoring and exits with code **1**.
+
+Valid settings that do not affect the selected objective remain accepted; invalid
+supplied controls are rejected even when that objective would ignore them.
+Empirical objectives retain their existing one-class conventions. Passing these
+checks does not certify independence, guarantee a feasible observed threshold,
+bound provider spending, or preflight the output filesystem. Abstentions still
+prevent policy creation: every validation record must have a valid score.
 
 ## What policy v2 commits to
 
@@ -105,6 +125,64 @@ The artifact includes:
 The second digest makes changes to labels or scores visible during reproduction.
 Neither digest authenticates who issued the policy. Sign or attest the artifact
 through your organization's release system if issuer authenticity matters.
+
+Newly generated v1 and v2 policy IDs use the first 191 characters of the detector
+name plus `-` and a full SHA-256 digest. The canonical identity object contains
+`contract: decision-policy-evidence-v1`, the full detector name, task, objective,
+`target_fpr_hex` (or null), `validation_sha256`, `evaluation_sha256`,
+`threshold_hex`, and the complete `risk_control` object (or null). It is encoded
+as ASCII-escaped UTF-8 JSON with sorted keys and compact separators. Thresholds,
+targets, and observation scores use Python float hexadecimal strings where
+specified; observation rows use the existing ordered ID/label/score digest.
+Creation time is excluded, so identical runs retain the same evidence ID.
+
+Changing a label or score changes the ID even when the selected threshold stays
+the same. Existing files keep their supplied IDs on load; neither schema nor
+historical evidence is rewritten. Schema v1 still omits the separate
+`evaluation_sha256` field, although its new ID commits to that digest. Preserve
+the underlying observations if you need independent ID reproduction.
+
+Neither schema binds the deployed model weights, prompt, preprocessing, or
+provider configuration. The detector field is a name, not verification that a
+deployment matches the detector used for calibration. A stronger evidence ID or
+trusted policy-file hash does not close that gap; review configuration equivalence
+and revalidate after changes before relying on the statistical statement.
+
+## Configuration-bound policies
+
+Schema v3 adds `detector_binding` to either an empirical or risk-controlled
+policy. The current profile is `lurescope-portable-tfidf-exact-v1`, restricted to
+the fraud task and `tfidf-logreg`. It records SHA-256 identities for the exact
+portable JSON artifact, installed portable inference source, and declared
+runtime profile. It does not translate the original joblib hash into a claim
+that sklearn and portable inference are interchangeable.
+
+Use the companion `lurescope calibrate` workflow on the intended serving runtime
+to collect scores with its actual bundled portable implementation. The Python
+`build_policy(..., detector_binding=DetectorBinding(...))` API validates and
+records a supplied binding; that low-level API does not establish how scores
+were collected. Callers remain responsible for the provenance of supplied
+observations. Ordinary `lurebench calibrate` continues to produce v1/v2 policies.
+
+V3 requires an evaluation digest for all objectives. Its full-digest ID covers
+the binding, detector/task/objective, selected threshold and target as float-hex
+strings, validation count and both evidence digests, optional utility counts and
+recall, and the risk-control object. The canonical object uses contract
+`decision-policy-bound-evidence-v1`, sorted keys, compact separators, and ASCII
+escaping; risk-control probabilities are also represented as float-hex strings
+inside the identity object. Equivalent integer/float probability representations
+therefore retain the same ID. The loader recomputes the ID and rejects
+inconsistent evidence; it
+also retains the existing count, grid, and bound checks. Creation time is not
+part of the ID. The [v3 schema](../spec/decision-policy-v3.schema.json) is included
+in the wheel for offline consumers.
+
+A matching binding is not issuer authentication or process attestation, and a
+party able to replace both evidence and its ID can construct a new consistent
+artifact. Protect trusted policy bytes with an independently approved hash or
+your normal signing/release controls. Sampling validity, upstream text extraction,
+and deployment population shift remain outside the binding. Legacy files are
+still loadable and never relabelled as configuration-verified.
 
 ## Assumptions and non-guarantees
 

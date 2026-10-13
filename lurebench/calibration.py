@@ -12,7 +12,7 @@ import stat
 import tempfile
 from bisect import bisect_left
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, List, Optional, Sequence, Tuple
@@ -108,6 +108,27 @@ class RiskControl:
 
 
 @dataclass(frozen=True)
+class DetectorBinding:
+    """Exact local inference profile, not issuer or process authentication."""
+
+    profile: str
+    artifact_sha256: str
+    implementation_sha256: str
+    runtime_sha256: str
+
+
+def validate_detector_binding(binding, detector, task):
+    if not isinstance(binding, DetectorBinding) or (
+        binding.profile != "lurescope-portable-tfidf-exact-v1"
+        or detector != "tfidf-logreg" or task != "fraud"
+    ):
+        raise ValueError("unsupported policy detector binding")
+    for value in (binding.artifact_sha256, binding.implementation_sha256, binding.runtime_sha256):
+        if not isinstance(value, str) or re.fullmatch(r"[a-f0-9]{64}", value) is None:
+            raise ValueError("invalid policy detector binding digest")
+
+
+@dataclass(frozen=True)
 class DecisionPolicy:
     schema_version: int
     policy_id: str
@@ -123,6 +144,7 @@ class DecisionPolicy:
     validation_true_positives: Optional[int] = None
     validation_recall: Optional[float] = None
     risk_control: Optional[RiskControl] = None
+    detector_binding: Optional[DetectorBinding] = None
 
     def as_dict(self) -> dict:
         payload = asdict(self)
@@ -134,6 +156,8 @@ class DecisionPolicy:
             payload.pop("validation_recall")
         if self.risk_control is None:
             payload.pop("risk_control")
+        if self.detector_binding is None:
+            payload.pop("detector_binding")
         return payload
 
     def save(self, path: str) -> None:
@@ -179,6 +203,10 @@ class DecisionPolicy:
         if not isinstance(payload, dict):
             raise ValueError("decision policy must be a JSON object")
         try:
+            if payload.get("detector_binding") is not None:
+                if not isinstance(payload["detector_binding"], dict):
+                    raise ValueError("detector_binding must be an object")
+                payload["detector_binding"] = DetectorBinding(**payload["detector_binding"])
             if payload.get("risk_control") is not None:
                 if not isinstance(payload["risk_control"], dict):
                     raise ValueError("risk_control must be an object")
@@ -192,8 +220,22 @@ class DecisionPolicy:
 
 def _validate_policy(policy: DecisionPolicy) -> None:
     """Check exported policy structure and count arithmetic, not its authenticity."""
+    if type(policy.schema_version) is int and policy.schema_version == 3:
+        validate_detector_binding(policy.detector_binding, policy.detector, policy.task)
+        if not policy.created_at:
+            raise ValueError("schema v3 requires a timestamp")
+        if not isinstance(policy.evaluation_sha256, str) or not re.fullmatch(r"[a-f0-9]{64}", policy.evaluation_sha256):
+            raise ValueError("schema v3 requires evaluation provenance")
+        legacy_version = 2 if policy.risk_control is not None else 1
+        _validate_policy(replace(policy, schema_version=legacy_version, detector_binding=None,
+                                 evaluation_sha256=policy.evaluation_sha256 if legacy_version == 2 else None))
+        if policy.policy_id != bound_policy_id(policy):
+            raise ValueError("bound policy identity does not match its evidence")
+        return
     if type(policy.schema_version) is not int or policy.schema_version not in (1, 2):
         raise ValueError("unsupported policy schema")
+    if policy.detector_binding is not None:
+        raise ValueError("legacy policies cannot carry detector bindings")
     for value in (policy.policy_id, policy.detector, policy.objective):
         if not isinstance(value, str) or not 1 <= len(value) <= 256 or any(
             ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in value
@@ -594,6 +636,94 @@ def validate_risk_control_groups(
         )
 
 
+def validate_calibration_configuration(
+    objective, target_fpr, confidence, threshold_grid_size, n_bins=10,
+) -> None:
+    """Validate controls before input reads, detector construction, or scoring."""
+    if objective not in ("max_mcc", "target_fpr", "risk_controlled_fpr"):
+        raise ValueError("unsupported calibration objective")
+    if target_fpr is not None:
+        validate_threshold(target_fpr)
+    if objective in ("target_fpr", "risk_controlled_fpr") and target_fpr is None:
+        raise ValueError("this calibration objective requires target_fpr")
+    if objective == "risk_controlled_fpr" and not 0 < target_fpr < 1:
+        raise ValueError("risk-controlled FPR requires target_fpr in (0, 1)")
+    confidence = validate_threshold(confidence)
+    if not 0 < confidence < 1:
+        raise ValueError("confidence must be in (0, 1)")
+    if type(threshold_grid_size) is not int or not 2 <= threshold_grid_size <= 100_001:
+        raise ValueError("threshold_grid_size must be between 2 and 100001")
+    if type(n_bins) is not int or not 1 <= n_bins <= 10_000:
+        raise ValueError("n_bins must be between 1 and 10000")
+
+
+def validate_calibration_detector(detector, task) -> None:
+    if (
+        not isinstance(detector, str) or not 1 <= len(detector) <= 256
+        or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF
+               for char in detector)
+        or task not in ("fraud", "provenance")
+    ):
+        raise ValueError("policy detector identity or task is invalid")
+
+
+def validate_calibration_population(
+    record_ids, y_true, objective, target_fpr, confidence, *, groups=None,
+) -> None:
+    """Reject unusable evidence before spending detector work.
+
+    Risk-control feasibility uses the zero-event binomial probability in log
+    space. Passing is necessary, not sufficient: observed scores still determine
+    whether a threshold can be certified, and lineage checks cannot prove i.i.d.
+    """
+    if len(record_ids) != len(y_true) or not record_ids:
+        raise ValueError("record_ids and y_true must have the same non-zero length")
+    if len(record_ids) > MAX_POLICY_RECORDS:
+        raise ValueError("policy validation record limit exceeded")
+    if (
+        any(not isinstance(value, str) or not 1 <= len(value) <= 1024
+            or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF
+                   for char in value)
+            for value in record_ids)
+        or len(set(record_ids)) != len(record_ids)
+    ):
+        raise ValueError("policy record IDs must be unique bounded strings without controls")
+    validate_binary_labels(y_true)
+    if objective == "risk_controlled_fpr":
+        validate_calibration_configuration(objective, target_fpr, confidence, 1001)
+        validate_risk_control_groups(record_ids, y_true, groups)
+        negatives = sum(int(label == 0) for label in y_true)
+        if not 0 < negatives < len(y_true):
+            raise ValueError("risk-controlled policy requires validation negatives and positives")
+        if negatives * math.log1p(-target_fpr) > math.log1p(-confidence):
+            raise ValueError("insufficient validation negatives even with zero false positives")
+
+
+def bound_policy_id(policy: DecisionPolicy) -> str:
+    """Canonical v3 identity; exported digests commit to external observations."""
+    risk = asdict(policy.risk_control) if policy.risk_control is not None else None
+    if risk is not None:
+        for key in ("confidence", "empirical_fpr", "upper_confidence_bound", "hypothesis_p_value"):
+            risk[key] = float(risk[key]).hex()
+    material = {
+        "contract": "decision-policy-bound-evidence-v1",
+        "detector": policy.detector, "task": policy.task, "objective": policy.objective,
+        "threshold_hex": float(policy.threshold).hex(),
+        "target_fpr_hex": None if policy.target_fpr is None else float(policy.target_fpr).hex(),
+        "validation_records": policy.validation_records,
+        "validation_sha256": policy.validation_sha256,
+        "evaluation_sha256": policy.evaluation_sha256,
+        "validation_true_positives": policy.validation_true_positives,
+        "validation_recall_hex": (None if policy.validation_recall is None
+                                  else float(policy.validation_recall).hex()),
+        "risk_control": risk,
+        "detector_binding": asdict(policy.detector_binding),
+    }
+    digest = hashlib.sha256(json.dumps(material, sort_keys=True, separators=(",", ":"),
+                                       ensure_ascii=True).encode("utf-8")).hexdigest()
+    return f"{policy.detector[:191]}-{digest}"
+
+
 def build_policy(
     detector: str,
     task: str,
@@ -605,31 +735,19 @@ def build_policy(
     confidence: float = 0.95,
     threshold_grid_size: int = 1001,
     *, groups: Mapping[str, str] | None = None,
+    detector_binding: Optional[DetectorBinding] = None,
 ) -> Tuple[DecisionPolicy, Metrics]:
     if not (len(record_ids) == len(y_true) == len(scores)) or not record_ids:
         raise ValueError("record_ids, y_true and scores must have the same non-zero length")
-    if len(record_ids) > MAX_POLICY_RECORDS:
-        raise ValueError("policy validation record limit exceeded")
-    if (
-        any(not isinstance(value, str) or not 1 <= len(value) <= 1024
-            or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF
-                   for char in value)
-            for value in record_ids)
-        or len(set(record_ids)) != len(record_ids)
-    ):
-        raise ValueError("policy record IDs must be unique bounded strings without controls")
-    if (
-        not isinstance(detector, str) or not 1 <= len(detector) <= 256
-        or any(ord(char) < 32 or ord(char) == 127 or 0xD800 <= ord(char) <= 0xDFFF
-               for char in detector)
-        or task not in ("fraud", "provenance")
-    ):
-        raise ValueError("policy detector identity or task is invalid")
+    validate_calibration_configuration(objective, target_fpr, confidence, threshold_grid_size)
+    validate_calibration_detector(detector, task)
+    if detector_binding is not None:
+        validate_detector_binding(detector_binding, detector, task)
+    validate_calibration_population(
+        record_ids, y_true, objective, target_fpr, confidence, groups=groups,
+    )
     risk_control = None
     if objective == "risk_controlled_fpr":
-        validate_risk_control_groups(record_ids, y_true, groups)
-        if target_fpr is None:
-            raise ValueError("risk_controlled_fpr requires target_fpr")
         threshold, metrics, risk_control = select_risk_controlled_threshold(
             y_true,
             scores,
@@ -650,17 +768,21 @@ def build_policy(
         )
         evaluation.update(row.encode("utf-8") + b"\n")
     evaluation_digest = evaluation.hexdigest()
-    if risk_control is None:
-        identity_material = f"{detector}\0{task}\0{objective}\0{target_fpr}\0{digest}"
-    else:
-        identity_material = (
-            f"{detector}\0{task}\0{objective}\0{target_fpr}\0{confidence}\0"
-            f"{threshold_grid_size}\0{digest}\0{evaluation_digest}"
-        )
-    identity = hashlib.sha256(identity_material.encode("utf-8")).hexdigest()[:12]
+    # Both empirical and risk-controlled identities commit to the observations
+    # and selected threshold. This is evidence identity, not model binding or
+    # issuer authentication. Historical policy IDs are preserved by the loader.
+    identity_material = json.dumps({
+        "contract": "decision-policy-evidence-v1", "detector": detector, "task": task,
+        "objective": objective,
+        "target_fpr_hex": None if target_fpr is None else float(target_fpr).hex(),
+        "validation_sha256": digest, "evaluation_sha256": evaluation_digest,
+        "threshold_hex": float(threshold).hex(),
+        "risk_control": asdict(risk_control) if risk_control is not None else None,
+    }, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    identity = hashlib.sha256(identity_material.encode("utf-8")).hexdigest()
     policy = DecisionPolicy(
         schema_version=2 if risk_control is not None else 1,
-        policy_id=f"{detector[:243]}-{identity}",
+        policy_id=f"{detector[:191]}-{identity}",
         detector=detector,
         task=task,
         threshold=threshold,
@@ -674,5 +796,9 @@ def build_policy(
         validation_recall=metrics.recall if risk_control is not None else None,
         risk_control=risk_control,
     )
+    if detector_binding is not None:
+        policy = replace(policy, schema_version=3, evaluation_sha256=evaluation_digest,
+                         detector_binding=detector_binding)
+        policy = replace(policy, policy_id=bound_policy_id(policy))
     _validate_policy(policy)
     return policy, metrics

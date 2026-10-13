@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Llama Guard default construction refuses model loading before optional imports.
+  Reviewed backend injection supports isolated, externally managed inference;
+  upstream loading requires explicit opt-in. Cache identities separate loading
+  modes, and custom backends require a reviewed context for persistence. This
+  is a loading boundary, not a patch for the unresolved Accelerate advisory.
+
+- Schema v3 policies bind declared portable model, inference-source, and runtime
+  identities alongside validation evidence. Loaders verify the complete policy
+  identity and retain risk arithmetic checks. The data-only binding schema ships
+  in wheels; v1/v2 production and historical IDs remain compatible.
+
+- Calibration validates controls and sample feasibility before detector work,
+  checks detector/task agreement before scoring, and rejects invalid preflight
+  inputs with redacted errors and exit code 2. New policy IDs use full SHA-256
+  identities over observations and selected policy evidence; historical IDs and
+  v1/v2 schemas remain unchanged. These IDs do not verify deployed model identity.
+
 - Moderation requires exactly one result, a boolean flag, and the complete
   reviewed 13-category score profile, with every score finite and in [0, 1].
   Missing/invalid categories never fall back to the flagged boolean or disappear

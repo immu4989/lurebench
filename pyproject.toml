@@ -66,6 +66,7 @@ Issues = "https://github.com/immu4989/lurebench/issues"
 packages = ["lurebench"]
 
 [tool.hatch.build.targets.wheel.force-include]
+"spec/decision-policy-v3.schema.json" = "lurebench/spec/decision-policy-v3.schema.json"
 "spec/detector-uncertainty-v1.schema.json" = "lurebench/spec/detector-uncertainty-v1.schema.json"
 "spec/comparison-panel-plan-v1.schema.json" = "lurebench/spec/comparison-panel-plan-v1.schema.json"
 "spec/decision-counts.schema.json" = "lurebench/spec/decision-counts.schema.json"

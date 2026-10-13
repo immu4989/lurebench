@@ -99,6 +99,31 @@ serving profile does not use this joblib loader and is unchanged by this contrac
 
 ## Llama Guard safety verdicts
 
+Default construction is disabled before framework imports or model loading.
+Supply a reviewed backend with `tokenizer`, `model`, and a callable
+`inference_context` that returns the appropriate inference context manager:
+
+```python
+from types import SimpleNamespace
+from lurebench.detectors.llama_guard import LlamaGuardDetector
+
+# Objects and digest supplied by your separately reviewed model-loading process.
+backend = SimpleNamespace(tokenizer=reviewed_tokenizer, model=reviewed_model,
+                          inference_context=reviewed_inference_context)
+detector = LlamaGuardDetector(backend=backend, cache_context=approved_sha256)
+```
+
+The tokenizer must provide `apply_chat_template` and `decode`; the model must
+provide `eval`, `generate`, and `device`. Injection avoids adapter-driven imports,
+downloads, and artifact loading, but the supplied callbacks still execute code.
+It is not a sandbox or automatic validation of the backend's trustworthiness.
+
+An isolated Python research job may instead explicitly pass
+`allow_unsafe_upstream=True` after reviewing the stack and artifacts. This retains
+`trust_remote_code=False`, `use_safetensors=True`, and the revision/offline controls.
+A pinned revision or `local_files_only=True` alone is not authorization to load.
+There is no general benchmark-CLI switch that silently enables this behavior.
+
 The optional Llama Guard 3 adapter follows the
 [documented verdict format](https://dev.meta.ai/llama/docs/model-cards-and-prompt-formats/llama-guard-3):
 `safe`, or `unsafe` followed by a newline and distinct comma-separated categories
@@ -114,10 +139,13 @@ Runtime/loading failures still raise rather than becoming a benign result.
 
 The Python constructor accepts `revision=` as an immutable 40-character lowercase
 Hub commit and `local_files_only=True` to request offline loading. Persistent
-score caching requires that revision or an external `cache_context=` SHA-256
-identity for reviewed local/unpinned artifacts. The namespace also binds parser,
+score caching for the explicit upstream path requires that revision or an external `cache_context=` SHA-256
+identity for reviewed local/unpinned artifacts. Injected backends always need a
+reviewed context for persistent caching; their supplied revision/model labels do
+not establish which weights or code their callbacks use. The namespace binds
+the loading mode and loader-contract version as well as parser,
 model identifier, device, input/output limits, and tokenizer chat template.
-Use a new cache path; older prefix-parser scores are not compatible. Pins identify
+Use a new cache path; older parser/loader contexts are not compatible. Pins identify
 configuration and do not prove safety, immutable local files, or publisher trust.
 
 The hard 0/1 output is a **safety-taxonomy proxy**, not a calibrated fraud

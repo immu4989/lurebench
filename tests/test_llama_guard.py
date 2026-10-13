@@ -86,7 +86,7 @@ def lure(text="Synthetic review message"):
 
 def test_explicit_loader_controls_and_continuation_only_decoding(stub_stack):
     calls, state = stub_stack
-    detector = LlamaGuardDetector(revision="a" * 40, local_files_only=True)
+    detector = LlamaGuardDetector(revision="a" * 40, local_files_only=True, allow_unsafe_upstream=True)
     for name, (_, options) in [call for call in calls if call[0].endswith("_load")]:
         assert options["revision"] == "a" * 40
         assert options["local_files_only"] is True
@@ -103,7 +103,7 @@ def test_explicit_loader_controls_and_continuation_only_decoding(stub_stack):
 
 def test_bounds_abstain_without_truncation_or_generation(stub_stack):
     calls, state = stub_stack
-    detector = LlamaGuardDetector(max_input_tokens=3)
+    detector = LlamaGuardDetector(max_input_tokens=3, allow_unsafe_upstream=True)
     calls.clear()
     assert detector.score(lure("x" * 100_001)) is None
     assert detector.score(lure("")) is None
@@ -114,7 +114,7 @@ def test_bounds_abstain_without_truncation_or_generation(stub_stack):
 
 def test_token_cap_abstains_even_if_decoded_prefix_would_be_valid(stub_stack):
     calls, state = stub_stack
-    detector = LlamaGuardDetector()
+    detector = LlamaGuardDetector(allow_unsafe_upstream=True)
     calls.clear()
     state["generated_tokens"] = 128
     assert detector.score(lure()) is None
@@ -122,18 +122,19 @@ def test_token_cap_abstains_even_if_decoded_prefix_would_be_valid(stub_stack):
 
 
 def test_hub_revision_does_not_pin_a_local_directory(stub_stack, tmp_path):
-    detector = LlamaGuardDetector(model_id=str(tmp_path), revision="a" * 40)
+    detector = LlamaGuardDetector(model_id=str(tmp_path), revision="a" * 40, allow_unsafe_upstream=True)
     assert detector.cache_namespace is None
 
 
 def test_cache_identity_requires_pin_and_changes_with_parser_context(stub_stack, tmp_path):
-    unpinned = LlamaGuardDetector()
+    unpinned = LlamaGuardDetector(allow_unsafe_upstream=True)
     with pytest.raises(ValueError, match="cache_context"):
         CachedDetector(unpinned, str(tmp_path / "unpinned.json"))
-    first = LlamaGuardDetector(revision="a" * 40)
-    second = LlamaGuardDetector(revision="b" * 40)
-    bounded = LlamaGuardDetector(revision="a" * 40, max_input_tokens=100)
-    local = LlamaGuardDetector(model_id="/reviewed/local", cache_context="c" * 64)
+    first = LlamaGuardDetector(revision="a" * 40, allow_unsafe_upstream=True)
+    second = LlamaGuardDetector(revision="b" * 40, allow_unsafe_upstream=True)
+    bounded = LlamaGuardDetector(revision="a" * 40, max_input_tokens=100, allow_unsafe_upstream=True)
+    local = LlamaGuardDetector(model_id="/reviewed/local", cache_context="c" * 64,
+                              allow_unsafe_upstream=True)
     assert len({d.cache_namespace for d in (first, second, bounded, local)}) == 4
     path = tmp_path / "pinned.json"
     cached = CachedDetector(first, str(path), flush_every=1)

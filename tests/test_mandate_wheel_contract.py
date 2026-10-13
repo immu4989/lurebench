@@ -21,6 +21,7 @@ def source_and_members(tmp_path, request):
     }
     if package == "lurebench":
         source["spec/detector-uncertainty-v1.schema.json"] = b'{"uncertainty":true}\n'
+        source["spec/decision-policy-v3.schema.json"] = b'{"binding":true}\n'
     members = {}
     for relative, payload in source.items():
         path = root / relative
@@ -50,7 +51,7 @@ def wheel_at(path, members):
 def test_exact_code_schema_and_corpus_are_required(tmp_path, source_and_members):
     package, root, members = source_and_members
     wheel = wheel_at(tmp_path / "package.whl", members)
-    assert contract.verify(wheel, root, package) == (4 if package == "lurebench" else 3)
+    assert contract.verify(wheel, root, package) == (5 if package == "lurebench" else 3)
 
 
 def test_nested_python_modules_must_ship_exactly(tmp_path, source_and_members):
@@ -66,15 +67,16 @@ def test_nested_python_modules_must_ship_exactly(tmp_path, source_and_members):
         contract.verify(wheel_at(tmp_path / "stale.whl", members), root, package)
     members[relative] = source.read_bytes()
     assert contract.verify(wheel_at(tmp_path / "complete.whl", members), root, package) == (
-        5 if package == "lurebench" else 4
+        6 if package == "lurebench" else 4
     )
 
 
-def test_uncertainty_schema_is_required_and_exact(tmp_path, source_and_members):
+@pytest.mark.parametrize("schema", ["detector-uncertainty-v1", "decision-policy-v3"])
+def test_uncertainty_schema_is_required_and_exact(tmp_path, source_and_members, schema):
     package, root, members = source_and_members
     if package != "lurebench":
         return  # This additional schema belongs to the producer package only.
-    name = "lurebench/spec/detector-uncertainty-v1.schema.json"
+    name = f"lurebench/spec/{schema}.schema.json"
     del members[name]
     with pytest.raises(ValueError, match="missing"):
         contract.verify(wheel_at(tmp_path / "missing.whl", members), root, package)

@@ -7,6 +7,8 @@ showing where content-safety models fail on fraud lures.
 
 Install the extra:  pip install "lurebench[llamaguard]"
 Model access to meta-llama/Llama-Guard-3-8B (gated) is required.
+Default construction never imports frameworks or loads model artifacts. Inject
+a reviewed backend or explicitly opt into upstream loading in an isolated job.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from ..schema import Lure
 from .base import Detector
 
 PARSER_VERSION = "llama-guard-3-taxonomy-v2"
+LOADER_VERSION = "reviewed-backend-or-explicit-upstream-v1"
 
 
 def parse_verdict(output: str) -> Optional[float]:
@@ -46,7 +49,12 @@ class LlamaGuardDetector(Detector):
 
     def __init__(self, model_id: str = "meta-llama/Llama-Guard-3-8B", device: str = "auto",
                  *, revision: Optional[str] = None, local_files_only: bool = False,
-                 max_input_tokens: int = 8192, cache_context: Optional[str] = None) -> None:
+                 max_input_tokens: int = 8192, cache_context: Optional[str] = None,
+                 backend=None, allow_unsafe_upstream: bool = False) -> None:
+        if type(allow_unsafe_upstream) is not bool:
+            raise ValueError("allow_unsafe_upstream must be boolean")
+        if backend is not None and allow_unsafe_upstream:
+            raise ValueError("choose a reviewed backend or upstream loading, not both")
         if not isinstance(model_id, str) or not 1 <= len(model_id) <= 512 or any(
             ord(c) < 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF for c in model_id
         ):
@@ -63,23 +71,42 @@ class LlamaGuardDetector(Detector):
         if cache_context is not None and (not isinstance(cache_context, str) or
                 re.fullmatch(r"[0-9a-f]{64}", cache_context) is None):
             raise ValueError("cache_context must be a reviewed lowercase SHA-256 identity")
-        try:
-            import torch  # noqa: F401
-            from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
-        except ImportError as exc:  # pragma: no cover
-            raise ImportError(
-                "LlamaGuardDetector requires the 'llamaguard' extra.\n"
-                "  pip install 'lurebench[llamaguard]'"
-            ) from exc
-        options = {"revision": revision, "local_files_only": local_files_only,
-                   "trust_remote_code": False}
-        self._tokenizer = AutoTokenizer.from_pretrained(model_id, **options)
-        self._model = AutoModelForCausalLM.from_pretrained(
-            model_id, device_map=device, use_safetensors=True, **options,
-        )
+        custom_backend = backend is not None
+        if backend is None:
+            if not allow_unsafe_upstream:
+                raise ValueError(
+                    "Llama Guard loading may download and load unreviewed model artifacts; "
+                    "inject a reviewed backend or explicitly set allow_unsafe_upstream=True"
+                )
+            try:
+                import torch
+                from transformers import AutoModelForCausalLM, AutoTokenizer  # type: ignore
+            except ImportError as exc:  # pragma: no cover
+                raise ImportError(
+                    "LlamaGuardDetector requires the 'llamaguard' extra.\n"
+                    "  pip install 'lurebench[llamaguard]'"
+                ) from exc
+            options = {"revision": revision, "local_files_only": local_files_only,
+                       "trust_remote_code": False}
+            self._tokenizer = AutoTokenizer.from_pretrained(model_id, **options)
+            self._model = AutoModelForCausalLM.from_pretrained(
+                model_id, device_map=device, use_safetensors=True, **options,
+            )
+            self._inference_context = torch.no_grad
+        else:
+            self._tokenizer = getattr(backend, "tokenizer", None)
+            self._model = getattr(backend, "model", None)
+            self._inference_context = getattr(backend, "inference_context", None)
+        if not all(callable(value) for value in (
+            getattr(self._tokenizer, "apply_chat_template", None),
+            getattr(self._tokenizer, "decode", None), getattr(self._model, "generate", None),
+            getattr(self._model, "eval", None), self._inference_context,
+        )) or not hasattr(self._model, "device"):
+            raise ValueError("Llama Guard backend requires tokenizer, model, and inference context")
         self._model.eval()
         self._max_input_tokens = max_input_tokens
         identity = {"parser": PARSER_VERSION, "model": model_id, "revision": revision,
+                    "loader": LOADER_VERSION, "custom_backend": custom_backend,
                     "device": device, "local_files_only": local_files_only,
                     "max_input_tokens": max_input_tokens, "max_new_tokens": 128,
                     "cache_context": cache_context,
@@ -89,11 +116,9 @@ class LlamaGuardDetector(Detector):
         self.cache_namespace = (hashlib.sha256(json.dumps(
             identity, sort_keys=True, allow_nan=False,
         ).encode()).hexdigest() if cache_context is not None or
-            (revision is not None and not Path(model_id).exists()) else None)
+            (not custom_backend and revision is not None and not Path(model_id).exists()) else None)
 
     def score(self, lure: Lure) -> Optional[float]:
-        import torch
-
         if not lure.text or len(lure.text) > 100_000:
             return None
         conversation = [{"role": "user", "content": lure.text}]
@@ -101,7 +126,7 @@ class LlamaGuardDetector(Detector):
         if input_ids.shape[-1] > self._max_input_tokens:
             return None  # Do not silently assess only a truncated message.
         input_ids = input_ids.to(self._model.device)
-        with torch.no_grad():
+        with self._inference_context():
             out = self._model.generate(input_ids, max_new_tokens=128, do_sample=False)
         continuation = out[0][input_ids.shape[-1]:]
         if len(continuation) >= 128:

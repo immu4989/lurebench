@@ -94,6 +94,10 @@ synthetic checkpoint, verifies byte equality, and rejects two substitution cases
 
 ## Remaining boundaries
 
+- Llama Guard default construction now stops before model-framework imports.
+  Use a reviewed injected backend, or accept upstream loading explicitly in an
+  isolated Python job. Revision/offline flags alone no longer trigger loading.
+  See [the loader and cache migration](DETECTOR_OUTCOMES.md#llama-guard-safety-verdicts).
 - Cache coalescing is per instance, not cross-process locking or exactly-once billing.
 - Provider timeouts are not total deadlines; retries can incur additional cost.
 - Filesystem checks require trusted parents and cannot make later model loading atomic.

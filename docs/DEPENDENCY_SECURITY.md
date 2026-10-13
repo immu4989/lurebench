@@ -37,7 +37,7 @@ Existing environments are not upgraded by merely pulling the changed lock.
 
 ## Accelerate remains unresolved
 
-Rechecked on **12 October 2026**: the advisory still reports no patched release.
+Rechecked on **13 October 2026**: the advisory still reports no patched release.
 The dependency was not upgraded or the alert dismissed on the assumption of a fix.
 
 [GHSA-4j2p-28q2-5m79](https://github.com/advisories/GHSA-4j2p-28q2-5m79)
@@ -85,3 +85,27 @@ finite-score checks protect the measurement contract, not model execution.
 See [the loader, proxy-score, and cache migration contract](DETECTOR_OUTCOMES.md#binoculars-provenance-baseline).
 No model weights, third-party code, or dependencies were downloaded during this
 change. The Accelerate advisory above remains a separate unresolved issue.
+
+## Llama Guard loading boundary on 13 October 2026
+
+Llama Guard now refuses default construction before importing model frameworks.
+Callers must supply a reviewed backend or explicitly accept upstream loading
+with `allow_unsafe_upstream=True` in a separately isolated Python workflow.
+Safetensors-only loading, remote-code refusal, pinned revisions, and offline
+flags remain additional controls, not substitutes for artifact review.
+See the [backend and cache contract](DETECTOR_OUTCOMES.md#llama-guard-safety-verdicts).
+
+The companion service requires an operator opt-in and an immutable Hub revision
+before loading this optional model. Neither request model/engine strings nor a
+warm cache bypasses that gate. These changes reduce accidental exposure; they
+do not patch Accelerate or prove the named vulnerable functions are reachable
+through this adapter. The [upstream discussion](https://github.com/huggingface/accelerate/issues/4067)
+places the dispute around the trust boundary for checkpoint inputs. Do not infer
+a fixed release from an advisory's version-range cutoff or a closed issue.
+
+The GitHub alert review found six open default-branch Bench alerts: five concern
+HTTP-library versions already updated in this branch's lock, and one concerns
+Accelerate. Scope returned no open dependency alerts in that review. Neither
+result certifies runtime safety, and no alert was dismissed or remotely changed.
+Consumer pip environments still need their own dependency review; uv constraints
+are not wheel requirements. No real Llama Guard model was downloaded or executed.
