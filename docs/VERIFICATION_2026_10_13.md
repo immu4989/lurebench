@@ -1,5 +1,9 @@
 # Local verification 13 October 2026
 
+Status notes within earlier sections describe each verification milestone at
+that time. Those changes were subsequently pushed through `ebbc26c`; the paired
+enforcement and numerical milestones at the end remain local and unreleased.
+
 The moderation adapter now rejects incomplete or malformed numeric evidence,
 instead of substituting the `flagged` boolean or silently discarding invalid
 categories. Valid complete category maxima retain their previous numeric values;
@@ -142,3 +146,93 @@ The binding assumes trusted installed code and runtime, does not attest arbitrar
 process mutations or hardware, and does not verify sampling or upstream text
 extraction. A trusted policy hash/signing process remains necessary for origin
 and replacement control. This milestone remains local and unpushed.
+
+## Paired deployment enforcement verification
+
+The companion LureScope source now supports mandatory pinned v3 policies and an
+optional risk-controlled evidence floor. Its new admission checks reject client
+threshold/detector overrides and require a separate worker for exploratory
+attacks and proof generation. LureBench's risk-control guide documents the
+producer-to-deployment workflow without claiming that evidence alone forces
+clients to use a policy. No calibration mathematics or producer schema changed.
+
+The **42 new Scope enforcement tests** and full paired suites passed:
+**2,059 Bench tests** with 40 skips/15 warnings using the existing urllib3 overlay,
+**1,367 Scope tests** with 16 warnings, and **107 browser tests**. Ruff, whitespace,
+26 producer pins, 10 independent authority artifacts, and static asset checks
+passed. Built wheels matched 157 Bench and 166 Scope exact files; installed Bench
+checks passed under Python 3.12.13 and 3.13.15 with optional imports blocked.
+Installed Scope checks, including an independent HTTP/fresh-process CLI exercise,
+verified approved scoring and rejection after pin removal without providers.
+
+This establishes source-branch admission behavior, not deployment suitability,
+sampling independence, new fraud accuracy, or regulatory compliance. The new
+documentation and companion implementation remain local and unpushed.
+
+## Streaming binomial arithmetic milestone
+
+The prior recurrence could reach a subnormal fixed point: multiplying the
+smallest positive binary64 number by a ratio near one kept returning that same
+number. This extended the tail loop and could produce spurious positive tails.
+It also retained every relative weight in a list. The replacement streams two
+sums and continues the subnormal recurrence in log space until actual floating
+underflow. Zero-event upper bounds use the stable closed form with one outward
+floating-point step; the nonzero-event inversion method is unchanged.
+
+- **39 new numerical tests** pass. The initial 31-case suite reproduced seven
+  failures before the fix. Oracles include 100-digit Decimal finite sums,
+  SciPy binomial CDF values, and beta-quantile confidence bounds. All optional
+  SciPy oracle cases ran in the verification environment; none were skipped.
+- A fixed 200,000-trial, probability-0.5 CDF calculation returned exactly the
+  same float before and after the change. A local `tracemalloc` comparison measured
+  **8,026,280 bytes** peak for the pushed implementation versus **880 bytes** for
+  the streaming implementation. A separate 10-million-trial central-tail check
+  used **904 bytes** and agreed with SciPy within the declared 2e-11 relative
+  tolerance. These are local traced-allocation measurements, not RSS or latency
+  guarantees. The automated 200,000-trial regression requires less than 512 KiB.
+- Three companion Scope tests accept consistent zero-event count evidence at
+  400, 100,000, and 9,999,999 negatives. These are counts-only synthetic artifacts,
+  not evaluations of millions of messages. Both consumers retain historical
+  schemas and do not rewrite old policy identities.
+- Full Bench: **2,098 passed, 40 skipped, 15 warnings** with the existing urllib3
+  overlay. Paired Scope: **1,370 passed, 16 warnings**. Including **107 browser
+  tests**, **3,575 tests passed**. Ruff, whitespace, 26 historical producer pins,
+  10 independent authority artifacts, and static assets passed.
+- Wheels match **157 Bench** and **166 Scope** exact source/authority files;
+  Scope retains **19 browser archive inputs**. Installed Bench checks under
+  **Python 3.12.13 and 3.13.15** include numerical regressions with optional imports
+  blocked. Installed Scope model/proof, enforced admission, authentication, and
+  browser checks also pass.
+
+The implementation remains dependency-free and uses the same exact-binomial
+statistical method; floating-point arithmetic is not arbitrary-precision interval
+arithmetic. Newly generated evidence may differ in its last floating-point digits.
+See the [numerical implementation and primary references](RISK_CONTROL.md#numerical-implementation).
+No provider call, model download, training run, release, push, or production
+configuration change was performed. The new work remains local and uncommitted.
+
+## Strict risk acceptance boundary
+
+Numerical consistency tolerance no longer expands the statistical acceptance
+limits. Both reported and recomputed p-values and upper bounds must satisfy the
+unrelaxed criteria. The selector refuses results whose computed upper bound
+exceeds the target, including extreme-confidence rounding contradictions.
+
+Four producer and four consumer cases reproduced tolerance-budget acceptance
+before the fix. They cover actual violations, understated serialized evidence,
+and reported-only violations. A corrected selector regression independently
+reproduced the old function returning an upper bound of approximately 5.42e-20
+for a requested 1e-30 target. All nine final regressions pass; publication tests
+also preserve existing output bytes after rejection.
+
+Full verification passed **2,103 Bench tests** (40 skips, 15 warnings with the
+existing urllib3 overlay), **1,374 Scope tests** (16 warnings), and **107 browser
+tests**, totaling **3,584**. Ruff, 26 historical producer pins, 10 independent
+authority artifacts, and static assets passed. Installed checks on Python 3.12
+and 3.13 passed, including a separate dependency-free installed producer/consumer
+rejection and selector-refusal check. Scope's installed model/proof, enforcement,
+authentication, and browser checks passed.
+
+This intentionally tightens acceptance of borderline artifacts; it does not
+rewrite their files or promise exact machine arithmetic. The change and preceding
+local milestones remain uncommitted and unpushed.

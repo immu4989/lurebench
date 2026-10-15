@@ -9,6 +9,7 @@ import os
 import random
 import re
 import stat
+import sys
 import tempfile
 from bisect import bisect_left
 from collections.abc import Mapping
@@ -307,8 +308,42 @@ def _validate_policy(policy: DecisionPolicy) -> None:
     ):
         if not math.isclose(actual, expected, rel_tol=0., abs_tol=1e-12):
             raise ValueError("risk-control evidence is inconsistent with declared counts")
-    if expected_p > 1 - confidence + 1e-12 or expected_upper > policy.target_fpr + 1e-12:
+    # Representation tolerance above is not extra statistical risk budget.
+    # Check both reported and recomputed evidence against the unrelaxed limits.
+    if (max(expected_p, control.hypothesis_p_value) > 1 - confidence
+            or max(expected_upper, control.upper_confidence_bound) > policy.target_fpr):
         raise ValueError("declared counts do not establish the target FPR bound")
+
+
+def _relative_binomial_weights(trials: int, probability: float):
+    """Stream mode-scaled weights without rounded subnormal fixed points."""
+    mode = min(trials, math.floor((trials + 1) * probability))
+    yield mode, 1.0
+    for step in (-1, 1):
+        index, term, log_term = mode, 1.0, None
+        while 0 <= index + step <= trials:
+            if step == -1:
+                ratio = (index / (trials - index + 1)) * ((1 - probability) / probability)
+            else:
+                ratio = ((trials - index) / (index + 1)) * (probability / (1 - probability))
+            if ratio == 0:
+                break
+            if log_term is None:
+                next_term = term * ratio
+                if next_term < sys.float_info.min:
+                    # Re-anchor before multiplication loses subnormal precision.
+                    # Repeated binary64 multiplication can otherwise stick at
+                    # the smallest positive float until the ratio falls below .5.
+                    log_term = math.log(term) + math.log(ratio)
+                    next_term = math.exp(log_term)
+            else:
+                log_term += math.log(ratio)
+                next_term = math.exp(log_term)
+            if next_term == 0:
+                break
+            index += step
+            term = next_term
+            yield index, term
 
 
 def binomial_cdf(events: int, trials: int, probability: float) -> float:
@@ -333,25 +368,13 @@ def binomial_cdf(events: int, trials: int, probability: float) -> float:
     if probability == 1:
         return 0.0
 
-    mode = min(trials, math.floor((trials + 1) * probability))
-    weights = [(mode, 1.0)]
-
-    term = 1.0
-    for index in range(mode, 0, -1):
-        term *= (index / (trials - index + 1)) * ((1 - probability) / probability)
-        if term == 0.0:
-            break
-        weights.append((index - 1, term))
-
-    term = 1.0
-    for index in range(mode, trials):
-        term *= ((trials - index) / (index + 1)) * (probability / (1 - probability))
-        if term == 0.0:
-            break
-        weights.append((index + 1, term))
-
-    normalizer = math.fsum(weight for _, weight in weights)
-    lower_tail = math.fsum(weight for index, weight in weights if index <= events)
+    if events == 0:
+        return math.exp(trials * math.log1p(-probability))
+    # Two streaming passes retain no distribution-sized list. The recurrence
+    # stays dependency-free; floating tails can still round to zero or one.
+    normalizer = math.fsum(weight for _, weight in _relative_binomial_weights(trials, probability))
+    lower_tail = math.fsum(weight for index, weight in _relative_binomial_weights(trials, probability)
+                           if index <= events)
     return min(1.0, max(0.0, lower_tail / normalizer))
 
 
@@ -368,6 +391,10 @@ def clopper_pearson_upper(
         raise ValueError("confidence must be in (0, 1)")
     if events == trials:
         return 1.0
+    if events == 0:
+        bound = -math.expm1(math.log1p(-confidence) / trials)
+        # Round outward, including when the mathematical bound is subnormal.
+        return min(1.0, math.nextafter(bound, math.inf))
     alpha = 1.0 - confidence
     lower, upper = 0.0, 1.0
     for _ in range(64):
@@ -466,6 +493,10 @@ def select_risk_controlled_threshold(
     metrics = evaluate(y_true, predictions, scores)
     p_value = binomial_cdf(false_positives, n_negative, target_fpr)
     upper_bound = clopper_pearson_upper(false_positives, n_negative, confidence)
+    if p_value > alpha or upper_bound > target_fpr:
+        # At extreme confidence or a numerical boundary, refuse certification
+        # rather than allowing rounded CDF decisions to contradict the bound.
+        raise ValueError("floating-point evidence does not establish the requested FPR bound")
     assurance = RiskControl(
         method=RISK_CONTROL_METHOD,
         risk="false_positive_rate",

@@ -231,6 +231,50 @@ policy after material model, pipeline, provider, language, channel, or populatio
 changes. A single global guarantee can also conceal poor regional or language
 slices; control those as separately predeclared risks when they matter.
 
+## Enforcing a calibrated policy in LureScope
+
+Exporting statistical evidence does not require clients to use it. Compatible
+source-branch LureScope adds `LURESCOPE_POLICY_ENFORCEMENT=risk_controlled_bound`
+to require a pinned v3 policy, verified portable-model binding, and risk-control
+evidence for scoring. Client threshold or detector overrides are rejected;
+exploratory evaluation runs on a separate research worker. Generate v3 evidence
+with `lurescope calibrate` on the serving runtime, approve its exact bytes through
+your trusted release process, and check `lurescope policy --check-readiness`.
+Legacy LureBench joblib policies are not silently promoted to portable bindings.
+The mode does not establish validation independence or regulatory compliance.
+See [LureScope's source-branch enforcement workflow](https://github.com/immu4989/lurescope/blob/feat/lurepermit-lurerange/docs/BOUND_POLICY.md).
+
+## Numerical implementation
+
+The dependency-free binomial calculation sums mode-scaled weights in two streaming
+passes. It does not retain the entire distribution. At subnormal magnitudes it
+continues in log space, avoiding a binary64 fixed point where successive products
+remain equal to the smallest positive float. Tails below floating-point resolution
+still round to zero or one; this is not arbitrary-precision interval arithmetic.
+
+For zero observed errors, the one-sided upper bound uses
+`-expm1(log1p(-confidence) / negatives)` and takes one outward floating-point step.
+This avoids both subtractive cancellation and repeated distribution enumeration.
+Nonzero counts retain binomial-CDF inversion. The statistical construction remains
+the [exact binomial method described by NIST](https://itl.nist.gov/div898/software/dataplot/refman2/auxillar/exacbino.htm).
+Here “exact” names the finite-sample statistical method, not exact machine arithmetic.
+
+Tests compare small tails with 100-digit Decimal finite sums and larger cases
+with [SciPy's binomial implementation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.binom.html).
+SciPy is a test oracle, not a core runtime dependency. Tests also compare nonzero
+confidence bounds with independent beta quantiles. Existing artifact bytes and
+IDs are not rewritten; newly generated numerical evidence can differ in its last
+floating-point digits, which can change a content-derived policy identity.
+
+Numerical consistency tolerance is not extra risk budget. Both reported and
+recomputed p-values must be at most `1 - confidence`, and both reported and
+recomputed upper bounds must be at most `target_fpr`, without adding an epsilon.
+The selector refuses certification if its floating-point p-value and bound
+disagree about acceptance. At extreme settings or numerical boundaries this can
+be conservative. Previously tolerated borderline artifacts can be rejected;
+review or recalibrate them rather than editing their evidence or widening the
+target after seeing results. No stored artifact is rewritten by validation.
+
 ## Research and governance basis
 
 - Angelopoulos et al., [*Learn then Test: Calibrating Predictive Algorithms to

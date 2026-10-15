@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Statistical acceptance no longer adds serialization tolerance to risk limits.
+  Reported and recomputed p-values and upper bounds must satisfy the unrelaxed
+  confidence/FPR criteria. Numerically contradictory selector results fail
+  closed. Borderline artifacts previously admitted by tolerance may be rejected;
+  existing files are never silently rewritten.
+
+- Binomial CDF calculations stream mode-scaled weights instead of retaining a
+  distribution-sized list, and use log recurrence in the subnormal tail to
+  prevent rounded minimum-float plateaus. Zero-event Clopper-Pearson bounds use
+  a stable closed form with one outward floating-point step. Independent Decimal,
+  SciPy, large-count, and installed-core tests cover arithmetic and memory behavior;
+  no new runtime dependency or statistical method is introduced.
+
 - Llama Guard default construction refuses model loading before optional imports.
   Reviewed backend injection supports isolated, externally managed inference;
   upstream loading requires explicit opt-in. Cache identities separate loading

@@ -11,6 +11,7 @@ import contextlib
 import importlib.abc
 import io
 import json
+import math
 import sys
 import tempfile
 from pathlib import Path
@@ -40,7 +41,9 @@ def check(root: Path) -> None:
     from lurebench import cli, leaderboard
     from lurebench.calibration import (
         DetectorBinding,
+        binomial_cdf,
         build_policy,
+        clopper_pearson_upper,
         validate_calibration_configuration,
     )
     from lurebench.cli import main
@@ -52,6 +55,14 @@ def check(root: Path) -> None:
     from lurebench.diskcache import CacheReadError
     from lurebench.harness import collect_scores, run
     from lurebench.schema import Lure, save_jsonl
+
+    if binomial_cdf(40000, 100000, .5) != 0.:
+        raise ValueError("installed binomial recurrence retained a subnormal plateau")
+    expected_bound = -math.expm1(math.log1p(-.95) / 10000000)
+    if not expected_bound <= clopper_pearson_upper(0, 10000000, .95) <= math.nextafter(
+        expected_bound, math.inf,
+    ):
+        raise ValueError("installed zero-event bound lost its stable closed form")
 
     first, _ = build_policy("installed", "fraud", ["a", "b"], [0, 1], [.1, .9])
     changed, _ = build_policy("installed", "fraud", ["a", "b"], [0, 1], [.11, .9])
