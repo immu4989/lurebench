@@ -1,21 +1,19 @@
-"""Prevent known vulnerable optional HTTP resolution from silently returning."""
+"""Prevent known vulnerable optional dependency resolution from returning."""
 
+import tomllib
 from pathlib import Path
 
 import pytest
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python 3.10; supplied by the build development extra.
-    import tomli as tomllib
-
 from packaging.version import Version
 
 ROOT = Path(__file__).parents[1]
 
 
-@pytest.mark.parametrize(("name", "minimum"), [("httpx2", "2.12.0"), ("urllib3", "2.8.0")])
-def test_optional_http_transport_security_floor_and_lock_agree(name, minimum):
+@pytest.mark.parametrize(("name", "minimum"), [
+    ("httpx2", "2.12.0"), ("urllib3", "2.8.0"), ("certifi", "2026.10.19"),
+    ("filelock", "4.2.1"), ("setuptools", "84.1.0"),
+])
+def test_optional_dependency_security_floor_and_lock_agree(name, minimum):
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())
     lock = tomllib.loads((ROOT / "uv.lock").read_text())
     assert f"{name}>={minimum}" in project["tool"]["uv"]["constraint-dependencies"]
@@ -24,3 +22,16 @@ def test_optional_http_transport_security_floor_and_lock_agree(name, minimum):
     assert clients
     assert all(Version(item["version"]) >= Version(minimum) for item in clients)
     assert project["project"]["dependencies"] == []
+
+
+def test_supported_python_baseline_and_ci_agree():
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    assert project["project"]["requires-python"] == ">=3.11"
+    assert "Programming Language :: Python :: 3.10" not in project["project"]["classifiers"]
+    for workflow in ("ci.yml", "pypi-smoke.yml"):
+        text = (ROOT / ".github" / "workflows" / workflow).read_text()
+        assert 'python-version: ["3.11", "3.12", "3.13"]' in text
+        assert '"3.10"' not in text
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "uv sync --locked" in ci
+    assert "uv sync --frozen" not in ci

@@ -22,7 +22,7 @@
           "415": {"description": "Unsupported content type or encoding"},
           "417": {"description": "Expect is not supported"},
           "500": {"description": "Internal decision error; outcome may be uncertain"},
-          "503": {"description": "Runtime unavailable; outcome may be uncertain"}
+          "503": {"description": "Runtime busy or exhausted before evaluation, or unavailable with uncertain outcome"}
         }
       }
     }

@@ -123,6 +123,9 @@ invalid input or an I/O failure.
 lurebench permit-serve \
   --host 127.0.0.1 \
   --port 8765 \
+  --max-connections 16 \
+  --decision-wait-seconds 1 \
+  --max-decisions 512 \
   --receipt-log receipts.jsonl
 ```
 
@@ -158,8 +161,8 @@ using a monotonic clock. Partial arrival does not restart this deadline. A body
 that ends before its declared length returns 400; expiration returns 408.
 Neither reaches the decision engine or appends a receipt. Socket operations have
 a separate five-second idle timeout, including header reads. That idle timeout
-is not a total header deadline. Concurrent connections, thread counts, and
-decision/storage execution duration are not bounded by these controls.
+is not a total header deadline. Separate worker/admission bounds are described
+below; decision/storage execution duration remains unbounded.
 
 Every response closes the connection. Pipelining and persistent connections
 are not supported; unread bytes are not interpreted as another request.
@@ -183,11 +186,84 @@ Python explicitly [does not recommend `http.server` for production](https://docs
 Keep this pilot on loopback or a protected Unix socket, behind separately
 managed authentication, isolation, concurrency limits, and operational supervision.
 
+### Bounded connection and decision admission
+
+TCP (IPv4/IPv6 loopback) and Unix sockets share a bounded worker implementation.
+`--max-connections` defaults to 16 and accepts integers from 1 through 256. A
+slot covers an admitted connection from worker creation through handler/socket
+cleanup, including slow reads, decision waiting, and response writes. At capacity,
+an accepted socket is closed immediately, without reading, allocating a handler,
+or attempting an HTTP response. The operating-system listen backlog is separate.
+This is not a process-wide memory or thread-count limit.
+
+`--decision-wait-seconds` defaults to one second and accepts finite numbers from
+0 through 30; zero means no waiting. Direct Python applications accept the same
+keyword. A request that cannot acquire the application's decision lock raises
+`RuntimeDecisionBusy`, mapped to HTTP 503 `{"error":"runtime_busy"}`. That
+request has not entered the engine, consumed replay state, or appended a receipt.
+Busy admission does not latch a storage failure or reset a run. Successfully
+admitted work remains serialized. No fairness or FIFO ordering is promised.
+
+The wait limit is **not an execution timeout**: it does not cancel a running
+decision or interrupt `fsync`. The application may still be handling an earlier
+request. A definite `runtime_busy` response is distinct from `runtime_unavailable`
+or a lost response; never interpret any of them as authorization. A retry needs
+the caller's normal request/freshness policy, and ambiguous earlier requests
+must be reconciled rather than silently replayed.
+
+Unix requests are no longer processed serially in the accept loop. A health
+request can progress during an in-flight write if a worker slot is available.
+Health has no reserved capacity and remains a failure-latch snapshot: a 200
+does not prove that storage is progressing, another decision can be admitted,
+or capacity is available. Slow header senders can occupy every slot; there is
+still no total header deadline. Use an external gateway and process supervisor.
+
+Worker-start failures/interruption stop further transport admission. A failed
+start can already have created a worker, so its slot is not speculatively
+released; only worker cleanup releases it. Restart requires operator review of
+any in-flight outcomes. Threads are daemon workers: shutdown does not join or
+cancel stuck engine/storage work, restore state, or guarantee final delivery.
+Invalid limit values fail before binding sockets or creating receipt files.
+The CLI prints `STARTING`, not a premature readiness assertion; probe `/health`
+after startup. None of these controls makes the pilot a production HTTP server.
+
+The implementation uses Python's [bounded semaphore](https://docs.python.org/3.11/library/threading.html#threading.BoundedSemaphore)
+and [threaded server lifecycle](https://docs.python.org/3.11/library/socketserver.html#socketserver.ThreadingMixIn).
+The numeric limits are project defaults, not standards-mandated thresholds.
+
+### Session lifetime and replay-state bounds
+
+The existing v1 receipt schema permits at most 512 receipts per engine. The
+engine now checks that ceiling **before evaluation**, rather than advancing
+replay state and then rejecting receipt 513. `--max-decisions` (or the Python
+application keyword `max_decisions`) can lower the service budget to 1..512;
+it defaults to 512. Every emitted allow/block/stop receipt consumes one slot,
+including replay denials. Malformed inputs and busy admission do not.
+
+The last admitted decision can return its valid receipt. Later decisions receive
+HTTP 503 `{"error":"runtime_exhausted"}` (`RuntimeDecisionExhausted` in Python),
+without entering the engine. Direct `RuntimePDP.decide` raises
+`RuntimeCapacityExceeded` at its 512-receipt ceiling. Health becomes 503 with
+`reason: decision_limit_reached`. The `decision_budget` object reports `limit`,
+`evaluated`, and `remaining`; evaluated counts committed engine decisions, not
+successful persistence, delivery, or allowed actions. A final write may still
+be in progress. Observed storage/engine failures take precedence over exhaustion.
+
+Receipt validation, hashing, and history allocation precede publication of one
+immutable in-memory state snapshot. Direct engine calls are serialized; failed
+receipt preparation does not consume a nonce or chain position. History is never
+evicted to regain capacity, and each history has at most 512 entries. This is
+not durable state, transactional persistence, automatic recovery, or a total
+memory bound. There is no reset/automatic rotation: stop protected operations,
+reconcile the completed session and any uncertain outcomes, and explicitly
+establish a new context under operator control. Restarting loses replay history.
+
 ### Audit failure and operator recovery
 
-Use a dedicated, unused `RuntimePDP` with each logged application. Do not share
+Use a dedicated, unused `RuntimePDP` with every application, including memory-only
+mode. Do not share
 it between application instances or invoke it directly while the service owns
-it. A new receipt log refuses an engine that has already produced receipts.
+it. Application construction refuses an engine that has already produced receipts.
 The application serializes its own decisions and appends under one lock.
 
 The receipt log must remain a single-link regular file, private on POSIX. The
@@ -209,7 +285,8 @@ JSON and ordinary request-validation failures do not latch either failure.
 Interruptions during guarded work set the latch before propagating the interrupt.
 
 `GET /health` returns 503 after a latched failure; its body exposes only `ready`,
-`status`, a fixed `reason`, `receipt_logging`, and `executes_actions: false`.
+`status`, a fixed `reason`, `decision_budget`, `receipt_logging`, and
+`executes_actions: false`.
 The expanded 200 response reports the same fields with `reason: ready`.
 `RuntimeDecisionApplication.readiness()` provides the same non-blocking snapshot.
 It does not probe disk health, discover external edits before the next operation,

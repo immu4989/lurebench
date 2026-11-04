@@ -102,12 +102,22 @@ def test_processing_errors_are_fixed_and_redacted(error, status):
     assert set(json.loads(body)) == {'error'}
 
 
-@pytest.mark.parametrize("line", [b'PRIVATE_SENTINEL / HTTP/1.1',
-                                  b'GET / HTTP/PRIVATE_SENTINEL'])
+@pytest.mark.parametrize("line", [
+    b'PRIVATE_SENTINEL / HTTP/1.1',
+    b'GET / HTTP/PRIVATE_SENTINEL',
+    b'PRIVATE_SENTINEL',
+    b'POST /PRIVATE_SENTINEL',
+    b'GET /PRIVATE_SENTINEL HTTP/2.0',
+    b'GET /PRIVATE_SENTINEL HTTP/12345678901.0',
+    b'GET /PRIVATE_SENTINEL HTTP/1.1 EXTRA',
+])
 def test_framework_errors_do_not_reflect_request_line(line):
-    _, head, body, calls = exchange([], request_line=line)
+    status, head, body, calls = exchange([], request_line=line)
+    assert status in (400, 501, 505)
     assert calls == []
     assert b'PRIVATE_SENTINEL' not in head + body
+    assert b'Content-Type: application/json' in head
+    assert b'Connection: close' in head
     assert json.loads(body) == {"error": "invalid_http_request"}
 
 
@@ -119,6 +129,35 @@ def test_valid_request_retains_exact_bytes_and_closes_before_pipeline():
     assert calls == [b'{}']
     assert json.loads(body) == {"synthetic": True}
     assert b'Connection: close' in head
+
+
+def test_decision_admission_busy_is_fixed_json_without_receipt_or_state(tmp_path):
+    from lurebench.permit import build_permit_request
+    from lurebench.runtime import RuntimePDP, build_runtime_request, default_runtime_profile
+    from lurebench.runtime_service import RuntimeDecisionApplication
+
+    profile = default_runtime_profile()
+    log = tmp_path / 'receipts.jsonl'
+    app = RuntimeDecisionApplication(RuntimePDP(profile), log, decision_wait_seconds=0)
+    value = build_runtime_request(build_permit_request(sequence=1), profile=profile,
+                                  correlation_id='busy', nonce='busy-nonce')
+    payload = json.dumps(value).encode()
+    app._lock.acquire()
+    try:
+        status, head, body, calls = exchange([
+            (b'Content-Length', str(len(payload)).encode()),
+            (b'Content-Type', b'application/json'),
+        ], payload, decide=app.decide)
+        assert status == 503
+        assert json.loads(body) == {'error': 'runtime_busy'}
+        assert b'Connection: close' in head
+        assert calls == [payload]
+        assert app.pdp._receipt_sequence == 0
+        assert app.readiness()['ready'] is True
+        assert log.read_bytes() == b''
+    finally:
+        app._lock.release()
+    assert app.decide(payload)['receipt']['chain']['sequence'] == 1
 
 
 @pytest.mark.parametrize("headers", [
@@ -340,7 +379,31 @@ def test_audit_failure_disables_http_decisions_and_health(tmp_path, monkeypatch)
     assert status == 503 and b'PRIVATE' not in head + body
     assert json.loads(body) == {'ready': False, 'status': 'unavailable',
                                'reason': 'receipt_log_failed', 'receipt_logging': True,
+                               'decision_budget': {'limit': 512, 'evaluated': 1, 'remaining': 511},
                                'executes_actions': False}
     assert post(2)[0] == 503
     assert log.read_bytes() == preserved
     assert app.pdp._receipt_sequence == 1
+
+
+def test_exhaustion_returns_fixed_error_and_unavailable_health(tmp_path):
+    from lurebench.permit import build_permit_request
+    from lurebench.runtime import RuntimePDP, build_runtime_request
+    from lurebench.runtime_service import RuntimeDecisionApplication
+
+    log = tmp_path / 'receipts.jsonl'
+    app = RuntimeDecisionApplication(RuntimePDP(), log, max_decisions=1)
+    value = build_runtime_request(build_permit_request(sequence=1), profile=app.pdp.profile,
+                                  correlation_id='exhaustion', nonce='exhaustion-nonce')
+    payload = json.dumps(value).encode()
+    headers = [(b'Content-Length', str(len(payload)).encode()), (b'Content-Type', b'application/json')]
+    assert exchange(headers, payload, decide=app.decide)[0] == 200
+    preserved = log.read_bytes()
+    status, head, body, _ = exchange(headers, payload, decide=app.decide)
+    assert status == 503 and b'Connection: close' in head
+    assert json.loads(body) == {'error': 'runtime_exhausted'}
+    health = exchange([], body=b'', method=b'GET', target=b'/health', readiness=app.readiness)
+    assert health[0] == 503
+    assert json.loads(health[2])['reason'] == 'decision_limit_reached'
+    assert json.loads(health[2])['decision_budget'] == {'limit': 1, 'evaluated': 1, 'remaining': 0}
+    assert app.pdp.receipt_count == 1 and log.read_bytes() == preserved

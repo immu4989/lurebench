@@ -60,8 +60,11 @@ def check(root: Path) -> None:
     from lurebench.runtime import RuntimePDP, build_runtime_request, default_runtime_profile
     from lurebench.runtime_service import (
         RuntimeDecisionApplication,
+        RuntimeDecisionBusy,
+        RuntimeDecisionExhausted,
         RuntimeDecisionUnavailable,
         _Handler,
+        _TCPHTTPServer,
     )
     from lurebench.schema import Lure, save_jsonl
 
@@ -104,16 +107,47 @@ def check(root: Path) -> None:
                 or b'Connection: close' not in response):
             raise ValueError("installed runtime HTTP framing/redaction failed")
 
+    malformed = HttpConnection(b'GET / HTTP/PRIVATE_INSTALLED\r\n\r\n')
+    _Handler(malformed, ('127.0.0.1', 1), SimpleNamespace())
+    head, separator, body = bytes(malformed.output).partition(b'\r\n\r\n')
+    if (not separator or int(head.split(b' ', 2)[1]) != 400
+            or b'Content-Type: application/json' not in head
+            or b'Connection: close' not in head
+            or b'PRIVATE_INSTALLED' in head + body
+            or json.loads(body) != {"error": "invalid_http_request"}):
+        raise ValueError("installed runtime malformed-version response lost HTTP framing")
+
+    with _TCPHTTPServer(('127.0.0.1', 0), _Handler, bind_and_activate=False,
+                        max_connections=1) as server:
+        closed = []
+        server.shutdown_request = closed.append
+        server._connection_slots.acquire()
+        try:
+            server.process_request('synthetic-at-capacity', None)
+            if closed != ['synthetic-at-capacity']:
+                raise ValueError("installed runtime lost pre-worker capacity rejection")
+        finally:
+            server._connection_slots.release()
+
     with tempfile.TemporaryDirectory(prefix="lure-runtime-audit-install-") as directory:
         profile = default_runtime_profile()
         log = Path(directory) / 'receipts.jsonl'
-        application = RuntimeDecisionApplication(RuntimePDP(profile), log)
+        application = RuntimeDecisionApplication(RuntimePDP(profile), log, decision_wait_seconds=0)
 
         def runtime_request(sequence):
             return json.dumps(build_runtime_request(build_permit_request(sequence=sequence),
                 profile=profile, correlation_id=f'installed-{sequence}',
                 nonce=f'installed-nonce-{sequence}')).encode()
 
+        with application._lock:
+            try:
+                application.decide(runtime_request(1))
+            except RuntimeDecisionBusy:
+                pass
+            else:
+                raise ValueError("installed runtime entered a busy decision engine")
+            if log.read_bytes() or application.pdp._receipt_sequence != 0:
+                raise ValueError("installed runtime changed state after busy admission")
         application.decide(runtime_request(1))
         with patch('lurebench.runtime_service.os.fsync', side_effect=OSError('synthetic sync fault')):
             try:
@@ -135,6 +169,22 @@ def check(root: Path) -> None:
         _Handler(connection, ('127.0.0.1', 1), SimpleNamespace(application=application))
         if int(connection.output.split(b' ', 2)[1]) != 503:
             raise ValueError("installed runtime health ignored its failure latch")
+
+    limited = RuntimeDecisionApplication(RuntimePDP(), max_decisions=1)
+    payload = json.dumps(build_runtime_request(build_permit_request(sequence=1),
+        profile=limited.pdp.profile, correlation_id='installed-limit', nonce='installed-limit')).encode()
+    if limited.decide(payload)['receipt']['chain']['sequence'] != 1:
+        raise ValueError("installed runtime did not return the final permitted receipt")
+    try:
+        limited.decide(payload)
+    except RuntimeDecisionExhausted:
+        pass
+    else:
+        raise ValueError("installed runtime ignored its session ceiling")
+    if (limited.pdp.receipt_count != 1
+            or limited.readiness()['reason'] != 'decision_limit_reached'
+            or limited.readiness()['decision_budget']['remaining'] != 0):
+        raise ValueError("installed runtime changed exhausted state or lost its budget")
 
     if binomial_cdf(40000, 100000, .5) != 0.:
         raise ValueError("installed binomial recurrence retained a subnormal plateau")

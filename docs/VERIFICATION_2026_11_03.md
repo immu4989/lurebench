@@ -116,3 +116,129 @@ a nonblocking latch snapshot, not a live storage or stalled-I/O probe. Partial
 or uncertain bytes are preserved for operator review; there is no automatic
 rollback, replay-state restoration, or exactly-once delivery guarantee. Parent
 directories and exclusive engine ownership remain operator responsibilities.
+
+## Dependency security and supported interpreter baseline
+
+The source now requires Python 3.11+, following Python 3.10 end-of-life and the
+patched filelock line's Python requirement. The initial unconstrained-interpreter
+resolution failed for Python 3.10; no conditional vulnerable fallback was added.
+Package metadata, both CI matrices, README, lint target, and the current NIST
+draft agree on the new minimum. Historical release notes are not rewritten.
+CI installs use `--locked` to reject stale lockfiles.
+
+The lock selects certifi 2026.10.23, filelock 4.2.7, and setuptools 84.2.1.
+Five new security-floor/build tests initially failed across the repositories.
+Final floor and interpreter tests pass; both locks pass `uv lock --check --offline`.
+Unrelated remaining versions are unchanged; obsolete Python 3.10 branches were
+removed. See [the dependency review](DEPENDENCY_SECURITY.md) for advisory links,
+resolution scope, and the unresolved Accelerate alert.
+
+A fresh locked Python 3.11.15 dev/train environment exposed a runtime HTTP
+compatibility bug: early malformed-version errors suppressed the status line
+and headers through the standard library's HTTP/0.9 fallback. The handler now
+frames those error responses explicitly. The HTTP suite has 49 passing cases
+on Python 3.11 and 3.13, and the installed smoke covers the malformed-version path.
+
+Full LureBench suites: 2,217 passed, 40 skipped on both Python 3.11 and 3.13
+(5 and 15 dependency warnings respectively). Paired LureScope passes 1,442 on
+Python 3.11 and 3.12; browser tests pass 107. Combined distinct suite count:
+3,766, not the sum of repeated interpreter runs. The frozen released-producer
+LureScope environment passes 1,382 with 60 newer-producer-dependent skips;
+pairing the source producer removes those skips.
+
+Offline CA-bundle loading and filelock exclusive-acquire/release smokes pass with
+the new packages. These are compatibility checks, not exploit reproductions or
+proofs for all lock variants/operating systems. No model frameworks or weights
+were downloaded and no provider was called. Wheels and source archives build;
+wheel metadata rejects Python 3.10 and retains the dependency-free Bench core.
+Authority archive checks (158/167 files), 19 browser source inputs, 26 historical
+producer pins, 10 independent authority artifacts, static stamps, and Ruff pass.
+Artifacts and logs are in `/private/tmp/lure-dependencies-20261103.25aZ2O`.
+
+Nothing was committed, pushed, released, deployed, or dismissed on GitHub in this
+milestone. The full Scope alert lookup timed out in permission review twice;
+only the locally verified fixes are claimed, not closure of all remote alerts.
+
+## Runtime capacity admission — 4 November 2026
+
+The initial three regressions exposed unbounded TCP worker creation, an absent
+decision-wait control, and Unix health blocked behind a stalled receipt write.
+The first reproduction admitted a seventeenth worker while sixteen handlers
+were held at a synthetic barrier; the Unix health request timed out before the
+write was released. No third-party service or real user data was involved.
+
+Both transports now have 16 worker slots by default (configurable 1..256).
+Excess accepted sockets close before parsing or worker creation. Decision-lock
+admission waits at most the configured interval (default one second; 0..30),
+then returns a fixed `runtime_busy` 503 without entering the engine or changing
+replay/receipt state. This is admission control, not cancellation of active work
+or a real-time latency guarantee. Unix workers permit independent health
+handling when capacity remains. Explicit IPv6 loopback selects AF_INET6.
+
+The 37 capacity cases cover default limits on all three transports, invalid
+configuration before side effects, real timed admission, latch precedence,
+slot recovery, capacity closure, CLI forwarding, and interruption/error both
+before and after thread creation. Ambiguous start failures close further
+admission instead of speculatively releasing an already-running worker's slot.
+The 50 HTTP cases include actual busy responses and unchanged replay/receipt
+state. Real IPv4, IPv6, and private Unix listeners pass saturation/recovery
+checks; these tests required explicit local-listener permission in the sandbox.
+
+Full suites: LureBench 2,255 passed with 40 skips on Python 3.11 and 3.13;
+LureScope 1,446 passed; browser 107 passed. Distinct combined count: 3,808.
+The existing dependency warnings remain (Bench 5/15 by interpreter, Scope 16).
+Consumer regressions reject busy/unavailable JSON substituted for receipts and
+missing receipts presented as a passing evaluation, even after digest repair.
+Receipt schemas and historical authority identities are unchanged.
+
+Installed core smokes pass on Python 3.11, 3.12, and 3.13 with optional imports
+forbidden, including capacity rejection, busy-state preservation, and audit
+fail-stop. Model/proof, authentication/JSON, and browser installed smokes pass.
+Offline archives build; authority archive checks (158/167 files), 19 browser
+source inputs, 26 producer pins, 10 independent artifacts, static stamps, Ruff,
+and whitespace checks pass. Artifacts are in
+`/private/tmp/lure-capacity-20261103.uXAcey` (the run began before local midnight).
+
+Limits do not reserve health capacity, impose a total header deadline, bound
+process memory or lifetime replay state, or cancel blocked storage. Shutdown
+does not join stuck daemon workers. These remain explicit pilot boundaries;
+see [runtime admission](RUNTIME_AGENT_AUTHORIZATION.md#bounded-connection-and-decision-admission).
+All changes remain local and unreleased.
+
+## Session lifetime and pre-push verification — 4 November 2026
+
+The v1 schema already limited receipt sequence to 512, but the old engine
+advanced its nonce/sequence history before rejecting receipt 513. A receipt
+timestamp that predated its request likewise consumed state before validation
+failed. Three baseline regressions reproduced these failures and the service's
+accidental uncertain-state shutdown instead of planned exhaustion.
+
+The engine now checks the ceiling before evaluation and publishes a single
+immutable state snapshot after receipt validation, hashing, and history
+allocation. Direct calls are serialized. The service supports a smaller
+`max_decisions` budget (CLI `--max-decisions`, default 512), a distinct fixed
+`runtime_exhausted` response, and additive health budget counts. Existing failure
+latches take precedence. No history eviction, reset, automatic rotation, durable
+recovery, or transactional storage guarantee is introduced.
+
+Twenty-one lifetime cases cover a complete 512-receipt chain, unchanged state
+after rejection/preparation faults, immutable old snapshots, retained replay
+protection, concurrent direct calls, concurrent final-slot admission, logged and
+memory-only exhaustion, invalid configuration before side effects, and final
+receipt persistence failure. HTTP tests cover the last valid response, subsequent
+fixed exhaustion error, health budget, and unchanged log. LureScope rejects an
+exhaustion response substituted for a receipt even when hashes are repaired.
+
+Final full suites: LureBench **2,277 passed, 40 skipped** on Python 3.11 and 3.13;
+LureScope **1,447 passed**; browser **107 passed**. Distinct total: **3,831 passed**.
+Dependency warnings remain (Bench 5/15 by interpreter; Scope 16). Ruff, whitespace,
+26 producer pins, 10 independent authority artifacts, and static stamps pass.
+Offline wheels/source archives build; 158/167 exact authority sources and 19
+browser source inputs pass archive checks. Installed core checks pass on Python
+3.11/3.12/3.13 with optional imports forbidden, including the new session ceiling.
+Installed model/proof, auth/JSON, and browser checks pass outside the checkout.
+
+Logs and verification archives: `/private/tmp/lure-push-20261104.BAkBgj`.
+This verification prepares the pending changes for the user's requested branch
+push. It does not publish a release, deploy the service, merge into `main`, or
+establish that all dependency alerts have been resolved.

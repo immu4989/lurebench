@@ -30,7 +30,7 @@ uv run pytest
 uv run ruff check .
 ```
 
-CI uses `uv 0.12.3` and `uv sync --frozen`. If a dependency changes, run
+CI uses `uv 0.12.3` and `uv sync --locked`. If a dependency changes, run
 `uv lock`, review the package and hash changes in `uv.lock`, and commit the
 updated lockfile with the manifest change.
 

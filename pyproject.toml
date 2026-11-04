@@ -7,7 +7,7 @@ name = "lurebench"
 version = "0.11.0"
 description = "A maintained benchmark and evaluation harness for detecting AI-generated fraud lures (phishing, BEC, romance / pig-butchering)."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 authors = [{ name = "Imran Ahamed" }]
 keywords = [
@@ -30,7 +30,6 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -38,10 +37,16 @@ classifiers = [
 dependencies = []   # the core harness and heuristic baseline run dependency-free
 
 [tool.uv]
-# Constrain optional HTTP dependencies without adding clients to the core.
+# Constrain optional dependencies without adding packages to the core.
 # urllib3 <2.8.0: GHSA-vxq7-64xx-v4gw / GHSA-gh4c-6fx4-qh6g.
 # HTTPX2 <2.12.0: GHSA-8xx6-hgc6-gc2m.
-constraint-dependencies = ["httpx2>=2.12.0", "urllib3>=2.8.0"]
+# Certificate trust-store, file locking, and legacy installer advisories are
+# reviewed in docs/DEPENDENCY_SECURITY.md. These are uv resolution constraints,
+# not transitive requirements embedded in published wheels.
+constraint-dependencies = [
+    "httpx2>=2.12.0", "urllib3>=2.8.0", "certifi>=2026.10.19",
+    "filelock>=4.2.1", "setuptools>=84.1.0",
+]
 
 [project.optional-dependencies]
 binoculars = ["torch>=2.0", "transformers>=4.38"]
@@ -166,7 +171,7 @@ packages = ["lurebench"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 # Pinned explicitly rather than inheriting ruff's defaults, which change between

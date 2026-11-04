@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- Runtime sessions enforce the existing 512-receipt ceiling before evaluation;
+  `--max-decisions` can lower it. Exhaustion returns a distinct fixed 503 and
+  health budget without clearing replay history. Receipt preparation publishes
+  one immutable in-memory state snapshot only after validation and hashing;
+  this is not durable recovery or an atomic storage transaction.
+
+- Runtime TCP/Unix services cap active connection workers (16 by default),
+  close excess connections before parsing, and bound decision-lock admission
+  waits (one second by default). `runtime_busy` is a fixed 503 with no decision
+  or receipt; accepted work remains serialized and is not cancelled on timeout.
+  Unix health requests can progress while a decision waits on storage, provided
+  a worker slot is available. Explicit IPv6 loopback selects the correct socket
+  family. Thread-start failures stop new admission until operator restart.
+
+- **Compatibility:** the source baseline now requires Python 3.11 or newer;
+  Python 3.10 is upstream end-of-life and cannot install the reviewed filelock
+  fix. CI and package metadata agree on the new minimum. Optional dependency
+  resolution now requires certifi >=2026.10.19, filelock >=4.2.1, and setuptools
+  >=84.1.0, with refreshed locks and regression guards. The dependency-free core
+  remains dependency-free. The separate Accelerate advisory is not resolved.
+
+- Runtime framework errors retain HTTP status and JSON headers when Python 3.11
+  falls back to HTTP/0.9 after a malformed request line. Regressions cover early
+  syntax/version failures and the installed wheel, without reflecting input.
+
 - Runtime audit failures latch the application unavailable. Log replacement,
   external mutation, non-private/non-regular files, and append/flush/sync/close
   failures withhold decisions and prevent subsequent engine work. Expanded

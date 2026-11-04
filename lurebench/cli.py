@@ -2511,10 +2511,12 @@ def _cmd_permit_serve(args: argparse.Namespace) -> int:
 
         if args.unix_socket and (args.host != "127.0.0.1" or args.port != 8765):
             raise ValueError("--unix-socket cannot be combined with --host or --port")
+        host_display = f"[{args.host}]" if ":" in args.host else args.host
         endpoint = (
-            f"unix:{args.unix_socket}" if args.unix_socket else f"http://{args.host}:{args.port}"
+            f"unix:{args.unix_socket}" if args.unix_socket
+            else f"http://{host_display}:{args.port}"
         )
-        print(f"LUREPERMIT RUNTIME READY: {endpoint}")
+        print(f"LUREPERMIT RUNTIME STARTING: {endpoint}")
         print("boundary: decision service only; it never executes or proxies an action")
         serve_runtime(
             profile_path=Path(args.profile) if args.profile else None,
@@ -2522,6 +2524,9 @@ def _cmd_permit_serve(args: argparse.Namespace) -> int:
             port=args.port,
             unix_socket=Path(args.unix_socket) if args.unix_socket else None,
             receipt_log=Path(args.receipt_log) if args.receipt_log else None,
+            max_connections=args.max_connections,
+            decision_wait_seconds=args.decision_wait_seconds,
+            max_decisions=args.max_decisions,
         )
         return 0
     except KeyboardInterrupt:
@@ -3663,6 +3668,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_permit_serve.add_argument("--port", type=int, default=8765)
     p_permit_serve.add_argument("--unix-socket", help="new private Unix socket path")
     p_permit_serve.add_argument("--receipt-log", help="new append-only mode-0600 receipt JSONL")
+    p_permit_serve.add_argument("--max-connections", type=int, default=16,
+                               help="maximum active connection workers, 1..256 (default: 16)")
+    p_permit_serve.add_argument("--decision-wait-seconds", type=float, default=1.0,
+                               help="decision-lock admission wait, 0..30 seconds (default: 1)")
+    p_permit_serve.add_argument("--max-decisions", type=int, default=512,
+                               help="session receipt budget, 1..512 (default: 512)")
     p_permit_serve.set_defaults(func=_cmd_permit_serve)
 
     p_container = sub.add_parser(

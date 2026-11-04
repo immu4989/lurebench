@@ -4,6 +4,50 @@ These findings describe this source branch, not an already-published release.
 Dependency resolution is not runtime reachability analysis or a security
 certification. The core harness has no required third-party dependencies.
 
+## Security baseline refresh on 3 November 2026
+
+This unreleased source branch requires **Python 3.11 or newer**. Python 3.10
+[reached end of life on 1 October 2026](https://devguide.python.org/versions/).
+The patched filelock line requires Python 3.11; retaining the old project
+minimum made universal dependency resolution fail. No vulnerable Python 3.10
+fallback or misleading conditional extra was added. Create a new Python 3.11+
+environment before installing this branch; published releases are unchanged.
+
+The optional lock now selects certifi 2026.10.23, filelock 4.2.7, and setuptools
+84.2.1. uv project constraints require at least 2026.10.19, 4.2.1, and 84.1.0,
+respectively. Existing HTTPX2 and urllib3 floors remain. Unrelated package
+versions remain pinned; Python-3.10-only branches are removed from the lock.
+
+- [Certifi's maintainer advisory](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2)
+  covers a compromised emSign trust anchor. The floor includes the subsequent
+  restoration of unaffected roots, rather than using the initial removal alone.
+- [Filelock 4.2.1 release notes](https://github.com/tox-dev/filelock/releases/tag/4.2.1)
+  describe fixes for unsafe lock-path handling, side files, permissions, and
+  bounded acquisition. Updating the dependency does not prove that every lock
+  API or supported operating system is safe in an application configuration.
+- [Setuptools' advisory](https://github.com/advisories/GHSA-xmj3-9gf7-h52w)
+  covers path escape in legacy Windows wheel installation. The floor is 84.1.0.
+  LureBench itself still builds with Hatchling; setuptools is an optional
+  transitive dependency, not a new core requirement.
+
+The GitHub default-branch lookup returned 17 open alerts at this review: five
+HTTP-library alerts already addressed in this branch, eleven certifi/filelock/
+setuptools alerts covered by these updated version ranges, and the unresolved
+Accelerate alert. This is version-range triage, not demonstrated runtime
+reachability or an exhaustive vulnerability assessment. No alert was dismissed.
+The advisory still lists no patched Accelerate release; the loading boundaries
+and explicit limitations below remain necessary.
+
+Pulling a lockfile does not update an environment. For source development, use
+`uv sync --locked --python 3.11 --extra dev --extra train` after reviewing the
+changes; rebuild images that bundle older dependencies. uv constraints do not
+propagate into wheel metadata or independent pip resolutions. Consumers must
+audit their own selected extras, installer, interpreter, and deployment image.
+The minimum-version tests check project and lock agreement, not new advisories.
+CI installation uses `uv sync --locked` so a stale lock fails instead of silently
+ignoring changed project requirements; this does not discover new advisories.
+Nothing here changes a deployment or publishes a package.
+
 ## urllib3 update on 10 October 2026
 
 The optional lock selects urllib3 2.8.0, replacing 2.7.0, with a uv resolution
@@ -37,7 +81,7 @@ Existing environments are not upgraded by merely pulling the changed lock.
 
 ## Accelerate remains unresolved
 
-Rechecked on **13 October 2026**: the advisory still reports no patched release.
+Rechecked on **3 November 2026**: the advisory still reports no patched release.
 The dependency was not upgraded or the alert dismissed on the assumption of a fix.
 
 [GHSA-4j2p-28q2-5m79](https://github.com/advisories/GHSA-4j2p-28q2-5m79)
@@ -103,7 +147,7 @@ through this adapter. The [upstream discussion](https://github.com/huggingface/a
 places the dispute around the trust boundary for checkpoint inputs. Do not infer
 a fixed release from an advisory's version-range cutoff or a closed issue.
 
-The GitHub alert review found six open default-branch Bench alerts: five concern
+The **13 October 2026** GitHub alert review found six open default-branch Bench alerts: five concern
 HTTP-library versions already updated in this branch's lock, and one concerns
 Accelerate. Scope returned no open dependency alerts in that review. Neither
 result certifies runtime safety, and no alert was dismissed or remotely changed.

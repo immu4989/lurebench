@@ -57,7 +57,7 @@
     "Per-language and per-channel recall with minimum cell suppression",
     "Attack-query budget and time-to-evasion"
   ],
-  "computational_requirements": "The receipt validator and conformance kit require Python 3.10 or later and no accelerator, model download, API key, or network connection. Detector and attack execution requirements depend on the evaluated implementation. Private detectors may be evaluated through an offline OCI container boundary.",
+  "computational_requirements": "The receipt validator and conformance kit require Python 3.11 or later and no accelerator, model download, API key, or network connection. Detector and attack execution requirements depend on the evaluated implementation. Private detectors may be evaluated through an offline OCI container boundary.",
   "usage_rights": "Apache License 2.0 for the LureBench and LureScope implementations and project-authored documentation. Users remain responsible for rights to evaluation data, detector artifacts, and third-party attack models."
 }
 

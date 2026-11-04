@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Callable, Dict, Mapping, Optional, Sequence
 
 from . import __version__
@@ -741,6 +743,22 @@ def _validate_runtime_decision(
     return dict(decision)
 
 
+class RuntimeCapacityExceeded(RuntimeError):
+    """The v1 receipt ceiling was reached before this decision was evaluated."""
+
+    def __init__(self):
+        super().__init__("runtime v1 decision capacity is exhausted")
+
+
+@dataclass(frozen=True)
+class _RuntimeState:
+    used_nonces: frozenset[str] = frozenset()
+    last_request_sequence: Mapping[str, int] = field(default_factory=lambda: MappingProxyType({}))
+    stopped_runs: frozenset[str] = frozenset()
+    receipt_sequence: int = 0
+    previous_receipt_sha256: Optional[str] = None
+
+
 @dataclass
 class RuntimePDP:
     """Stateful, side-effect-free policy decision point with receipt chaining."""
@@ -749,11 +767,33 @@ class RuntimePDP:
     engine_id: str = "lurepermit-runtime-reference"
     engine_version: str = RUNTIME_VERSION
     engine_artifact_sha256: Optional[str] = None
-    _used_nonces: set[str] = field(default_factory=set, init=False, repr=False)
-    _last_request_sequence: Dict[str, int] = field(default_factory=dict, init=False, repr=False)
-    _stopped_runs: set[str] = field(default_factory=set, init=False, repr=False)
-    _receipt_sequence: int = field(default=0, init=False, repr=False)
-    _previous_receipt_sha256: Optional[str] = field(default=None, init=False, repr=False)
+    _state: _RuntimeState = field(default_factory=_RuntimeState, init=False, repr=False)
+    _state_lock: Any = field(default_factory=threading.Lock, init=False, repr=False, compare=False)
+
+    @property
+    def receipt_count(self) -> int:
+        return self._state.receipt_sequence
+
+    # Read-only compatibility views of private state, never mutable histories.
+    @property
+    def _used_nonces(self):
+        return self._state.used_nonces
+
+    @property
+    def _last_request_sequence(self):
+        return self._state.last_request_sequence
+
+    @property
+    def _stopped_runs(self):
+        return self._state.stopped_runs
+
+    @property
+    def _receipt_sequence(self):
+        return self._state.receipt_sequence
+
+    @property
+    def _previous_receipt_sha256(self):
+        return self._state.previous_receipt_sha256
 
     def __post_init__(self) -> None:
         self.profile = validate_runtime_profile(self.profile)
@@ -768,6 +808,13 @@ class RuntimePDP:
         *,
         decided_at: Optional[str] = None,
     ) -> tuple[Dict[str, Any], Dict[str, Any]]:
+        with self._state_lock:
+            return self._decide(value, decided_at=decided_at)
+
+    def _decide(self, value, *, decided_at):
+        state = self._state
+        if state.receipt_sequence >= MAX_RUNTIME_REQUESTS:
+            raise RuntimeCapacityExceeded()
         envelope = validate_runtime_request(value, self.profile)
         decision_time = decided_at or _now()
         _timestamp(decision_time, "runtime decision.decided_at")
@@ -779,31 +826,25 @@ class RuntimePDP:
         run_id = request["run_id"]
         if requested - decided > clock_skew or decided - requested > maximum_age:
             decision_value = ("stop", "request_expired")
-        elif envelope["nonce"] in self._used_nonces:
+        elif envelope["nonce"] in state.used_nonces:
             decision_value = ("block", "request_replay_denied")
-        elif run_id in self._stopped_runs:
+        elif run_id in state.stopped_runs:
             decision_value = ("block", "post_stop_activity_denied")
-        elif request["sequence"] <= self._last_request_sequence.get(run_id, 0):
+        elif request["sequence"] <= state.last_request_sequence.get(run_id, 0):
             decision_value = ("block", "request_replay_denied")
         else:
             decision_value = _runtime_policy_decision(envelope, self.profile)
-        self._used_nonces.add(envelope["nonce"])
-        self._last_request_sequence[run_id] = max(
-            request["sequence"], self._last_request_sequence.get(run_id, 0)
-        )
         decision = {
             "request_id": request["request_id"],
             "sequence": request["sequence"],
             "decision": decision_value[0],
             "reason_code": decision_value[1],
         }
-        if decision["decision"] == "stop":
-            self._stopped_runs.add(run_id)
-        self._receipt_sequence += 1
+        next_sequence = state.receipt_sequence + 1
         receipt = {
             "schema": RECEIPT_SCHEMA,
             "schema_version": 1,
-            "receipt_id": f"receipt-{self._receipt_sequence:06d}",
+            "receipt_id": f"receipt-{next_sequence:06d}",
             "issued_at": decision_time,
             "correlation_id": envelope["correlation_id"],
             "nonce": envelope["nonce"],
@@ -817,17 +858,27 @@ class RuntimePDP:
             },
             "decision": decision,
             "chain": {
-                "sequence": self._receipt_sequence,
-                "previous_receipt_sha256": self._previous_receipt_sha256,
+                "sequence": next_sequence,
+                "previous_receipt_sha256": state.previous_receipt_sha256,
             },
         }
         validated_receipt = validate_runtime_receipt(
             receipt,
             envelope,
-            previous_receipt_sha256=self._previous_receipt_sha256,
-            expected_sequence=self._receipt_sequence,
+            previous_receipt_sha256=state.previous_receipt_sha256,
+            expected_sequence=next_sequence,
         )
-        self._previous_receipt_sha256 = _sha256(_canonical(validated_receipt))
+        digest = _sha256(_canonical(validated_receipt))
+        sequences = dict(state.last_request_sequence)
+        sequences[run_id] = max(request["sequence"], sequences.get(run_id, 0))
+        # Prepare every allocation and receipt check before publishing one
+        # immutable state snapshot. A later persistence/response failure is
+        # still uncertain; this is not a durable transaction or rollback.
+        self._state = _RuntimeState(
+            state.used_nonces | {envelope["nonce"]}, MappingProxyType(sequences),
+            state.stopped_runs | ({run_id} if decision["decision"] == "stop" else set()),
+            next_sequence, digest,
+        )
         return decision, validated_receipt
 
 

@@ -11,7 +11,7 @@ One schema. Three evaluation regimes. Honest answers about what survives deploym
 [![PyPI](https://img.shields.io/pypi/v/lurebench?color=2a78d6)](https://pypi.org/project/lurebench/)
 ![Version](https://img.shields.io/badge/version-0.11.0-57f2c1)
 ![License](https://img.shields.io/badge/license-Apache_2.0-2a78d6)
-![Python](https://img.shields.io/badge/python-3.10%2B-1baf7a)
+![Python](https://img.shields.io/badge/python-3.11%2B-1baf7a)
 ![Generators](https://img.shields.io/badge/generators-DeepSeek_·_GLM_·_Mistral-eda100)
 ![LureEval conformance](https://img.shields.io/badge/LureEval_conformance-12%2F12-1baf7a)
 ![LureBoundary](https://img.shields.io/badge/LureBoundary-14_safe_trajectories-7b61ff)

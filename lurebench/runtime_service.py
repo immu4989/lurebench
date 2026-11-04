@@ -4,19 +4,23 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import math
 import os
+import socket
 import socketserver
 import stat
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from .permit import _canonical, loads_strict_json
 from .runtime import (
+    MAX_RUNTIME_REQUESTS,
     RECEIPT_SCHEMA,
     REQUEST_SCHEMA,
+    RuntimeCapacityExceeded,
     RuntimePDP,
     load_runtime_profile,
     validate_runtime_request,
@@ -25,6 +29,26 @@ from .runtime import (
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_REQUEST_JSON_NODES = 4096
 REQUEST_BODY_TIMEOUT_SECONDS = 5.0
+DEFAULT_MAX_CONNECTIONS = 16
+DEFAULT_DECISION_WAIT_SECONDS = 1.0
+
+
+def _decision_limit(value: int) -> int:
+    if type(value) is not int or not 1 <= value <= MAX_RUNTIME_REQUESTS:
+        raise ValueError(f"max_decisions must be an integer from 1 through {MAX_RUNTIME_REQUESTS}")
+    return value
+
+
+def _connection_limit(value: int) -> int:
+    if type(value) is not int or not 1 <= value <= 256:
+        raise ValueError("max_connections must be an integer from 1 through 256")
+    return value
+
+
+def _decision_wait(value: float) -> float:
+    if type(value) not in (int, float) or not 0 <= value <= 30 or not math.isfinite(value):
+        raise ValueError("decision_wait_seconds must be finite and between 0 and 30")
+    return float(value)
 
 
 def runtime_openapi() -> Dict[str, Any]:
@@ -65,7 +89,10 @@ def runtime_openapi() -> Dict[str, Any]:
                         "415": {"description": "Unsupported content type or encoding"},
                         "417": {"description": "Expect is not supported"},
                         "500": {"description": "Internal decision error; outcome may be uncertain"},
-                        "503": {"description": "Runtime unavailable; outcome may be uncertain"},
+                        "503": {"description": (
+                            "Runtime busy or exhausted before evaluation, or unavailable "
+                            "with uncertain outcome"
+                        )},
                     },
                 }
             },
@@ -105,6 +132,20 @@ class RuntimeDecisionUnavailable(RuntimeError):
         super().__init__("runtime decision service requires operator recovery")
 
 
+class RuntimeDecisionBusy(RuntimeError):
+    """This request did not acquire the decision lock or enter the engine."""
+
+    def __init__(self):
+        super().__init__("runtime decision admission is busy")
+
+
+class RuntimeDecisionExhausted(RuntimeError):
+    """Planned session exhaustion, not an authorization or a storage error."""
+
+    def __init__(self):
+        super().__init__("runtime decision budget is exhausted; operator review required")
+
+
 def _log_metadata(info: os.stat_result) -> tuple:
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns,
             info.st_mode, info.st_nlink)
@@ -117,16 +158,21 @@ def _check_log_file(info: os.stat_result) -> None:
 
 
 class RuntimeDecisionApplication:
-    def __init__(self, pdp: RuntimePDP, receipt_log: Optional[Path] = None):
+    def __init__(self, pdp: RuntimePDP, receipt_log: Optional[Path] = None, *,
+                 decision_wait_seconds: float = DEFAULT_DECISION_WAIT_SECONDS,
+                 max_decisions: int = MAX_RUNTIME_REQUESTS):
+        self._max_decisions = _decision_limit(max_decisions)
+        self._decision_wait_seconds = _decision_wait(decision_wait_seconds)
+        if pdp.receipt_count != 0:
+            raise ValueError("a runtime application requires an unused runtime decision engine")
         self.pdp = pdp
         self.receipt_log = Path(receipt_log).absolute() if receipt_log is not None else None
         self._lock = threading.Lock()
         self._unavailable = threading.Event()
+        self._exhausted = threading.Event()
         self._failure_reason = "ready"
         self._log_snapshot = None
         if self.receipt_log is not None:
-            if self.pdp._receipt_sequence != 0 or self.pdp._previous_receipt_sha256 is not None:
-                raise ValueError("a new receipt log requires an unused runtime decision engine")
             if self.receipt_log.exists() or self.receipt_log.is_symlink():
                 raise FileExistsError(f"{self.receipt_log} already exists")
             if self.receipt_log.parent.is_symlink() or not self.receipt_log.parent.is_dir():
@@ -148,11 +194,25 @@ class RuntimeDecisionApplication:
                 os.close(descriptor)
 
     def readiness(self) -> Dict[str, Any]:
-        """Snapshot of the failure latch, not a live disk or progress probe."""
+        """Snapshot of failure/exhaustion state, not a live disk or progress probe."""
+        evaluated = self.pdp.receipt_count
         unavailable = self._unavailable.is_set()
-        return {"ready": not unavailable, "status": "unavailable" if unavailable else "ready",
-                "reason": self._failure_reason if unavailable else "ready",
+        exhausted = self._exhausted.is_set() or evaluated >= self._max_decisions
+        ready = not unavailable and not exhausted
+        reason = self._failure_reason if unavailable else (
+            "decision_limit_reached" if exhausted else "ready")
+        return {"ready": ready, "status": "ready" if ready else "unavailable",
+                "reason": reason,
+                "decision_budget": {"limit": self._max_decisions, "evaluated": evaluated,
+                                    "remaining": max(0, self._max_decisions - evaluated)},
                 "receipt_logging": self.receipt_log is not None, "executes_actions": False}
+
+    def _check_admission(self) -> None:
+        if self._unavailable.is_set():
+            raise RuntimeDecisionUnavailable()
+        if self._exhausted.is_set() or self.pdp.receipt_count >= self._max_decisions:
+            self._exhausted.set()
+            raise RuntimeDecisionExhausted()
 
     def _fail(self, reason: str, error: BaseException) -> None:
         self._failure_reason = reason
@@ -202,9 +262,12 @@ class RuntimeDecisionApplication:
         if len(payload) > MAX_REQUEST_BYTES:
             raise OverflowError("runtime request exceeds 64 KiB")
         value = loads_strict_json(payload, max_nodes=MAX_REQUEST_JSON_NODES)
-        with self._lock:
-            if self._unavailable.is_set():
-                raise RuntimeDecisionUnavailable()
+        self._check_admission()
+        if not self._lock.acquire(timeout=self._decision_wait_seconds):
+            self._check_admission()
+            raise RuntimeDecisionBusy()
+        try:
+            self._check_admission()
             # Ordinary malformed input must not latch a service failure. Once
             # validated input enters the stateful engine, errors are uncertain.
             validate_runtime_request(value, self.pdp.profile)
@@ -215,6 +278,9 @@ class RuntimeDecisionApplication:
                     self._fail("receipt_log_failed", exc)
             try:
                 decision, receipt = self.pdp.decide(value)
+            except RuntimeCapacityExceeded:
+                self._exhausted.set()
+                raise RuntimeDecisionExhausted() from None
             except BaseException as exc:
                 self._fail("decision_state_uncertain", exc)
             if self.receipt_log is not None:
@@ -222,6 +288,10 @@ class RuntimeDecisionApplication:
                     self._append_receipt(receipt)
                 except BaseException as exc:
                     self._fail("receipt_log_failed", exc)
+            if self.pdp.receipt_count >= self._max_decisions:
+                self._exhausted.set()
+        finally:
+            self._lock.release()
         return {
             "decision": decision,
             "receipt": receipt,
@@ -241,6 +311,10 @@ class _Handler(BaseHTTPRequestHandler):
 
     def send_error(self, code, message=None, explain=None) -> None:
         # Framework messages may contain request lines, methods, or header data.
+        # Older supported Python versions keep their HTTP/0.9 fallback until a
+        # valid version is parsed, which otherwise suppresses all JSON headers.
+        if self.request_version == "HTTP/0.9":
+            self.request_version = "HTTP/1.0"
         self._json(code, {"error": "invalid_http_request"})
 
     def _json(self, status: int, value: Any) -> None:
@@ -341,6 +415,10 @@ class _Handler(BaseHTTPRequestHandler):
             return
         try:
             result = self.server.application.decide(payload)  # type: ignore[attr-defined]
+        except RuntimeDecisionBusy:
+            self._json(503, {"error": "runtime_busy"})
+        except RuntimeDecisionExhausted:
+            self._json(503, {"error": "runtime_exhausted"})
         except RuntimeDecisionUnavailable:
             self._json(503, {"error": "runtime_unavailable"})
         except OverflowError:
@@ -358,7 +436,49 @@ class _Handler(BaseHTTPRequestHandler):
         return
 
 
-class _UnixHTTPServer(socketserver.UnixStreamServer):
+class _BoundedThreadingMixIn(socketserver.ThreadingMixIn):
+    # Shutdown does not promise to interrupt or join a stalled decision/write.
+    daemon_threads = True
+    block_on_close = False
+
+    def __init__(self, *args, max_connections=DEFAULT_MAX_CONNECTIONS, **kwargs):
+        self._connection_slots = threading.BoundedSemaphore(_connection_limit(max_connections))
+        self._admission_failed = threading.Event()
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        if (self._admission_failed.is_set()
+                or not self._connection_slots.acquire(blocking=False)):
+            # No parsing, body buffering, response write, or worker allocation
+            # at capacity. A closed connection is never authorization to act.
+            self.shutdown_request(request)
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            # An interrupted start can already have created a worker. Do not
+            # release its slot speculatively or allow more admissions. Only a
+            # worker's finally block releases it; recovery needs a new server.
+            self._admission_failed.set()
+            self.shutdown_request(request)
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._connection_slots.release()
+
+
+class _TCPHTTPServer(_BoundedThreadingMixIn, HTTPServer):
+    pass
+
+
+class _IPv6HTTPServer(_TCPHTTPServer):
+    address_family = socket.AF_INET6
+
+
+class _UnixHTTPServer(_BoundedThreadingMixIn, socketserver.UnixStreamServer):
     allow_reuse_address = False
 
     def server_bind(self) -> None:
@@ -373,9 +493,15 @@ def serve_runtime(
     port: int = 8765,
     unix_socket: Optional[Path] = None,
     receipt_log: Optional[Path] = None,
+    max_connections: int = DEFAULT_MAX_CONNECTIONS,
+    decision_wait_seconds: float = DEFAULT_DECISION_WAIT_SECONDS,
+    max_decisions: int = MAX_RUNTIME_REQUESTS,
 ) -> None:
     """Serve until interrupted; network mode is restricted to a loopback IP."""
 
+    max_connections = _connection_limit(max_connections)
+    decision_wait_seconds = _decision_wait(decision_wait_seconds)
+    max_decisions = _decision_limit(max_decisions)
     socket_path = Path(unix_socket) if unix_socket is not None else None
     if socket_path is not None:
         if socket_path.exists() or socket_path.is_symlink():
@@ -393,11 +519,13 @@ def serve_runtime(
             raise ValueError("runtime service port is invalid")
     profile = load_runtime_profile(profile_path)
     if socket_path is not None:
-        server = _UnixHTTPServer(str(socket_path), _Handler)
+        server = _UnixHTTPServer(str(socket_path), _Handler, max_connections=max_connections)
     else:
-        server = ThreadingHTTPServer((host, port), _Handler)
+        server_type = _IPv6HTTPServer if address.version == 6 else _TCPHTTPServer
+        server = server_type((host, port), _Handler, max_connections=max_connections)
     try:
-        application = RuntimeDecisionApplication(RuntimePDP(profile), receipt_log)
+        application = RuntimeDecisionApplication(RuntimePDP(profile), receipt_log,
+            decision_wait_seconds=decision_wait_seconds, max_decisions=max_decisions)
     except Exception:
         server.server_close()
         if socket_path is not None:
