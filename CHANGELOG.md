@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Runtime request heads now have a combined 16 KiB wire-byte budget and a
+  five-second total deadline before framework parsing. Trickle progress cannot
+  renew the deadline. Incomplete/oversized/expired heads never reach policy or
+  health evaluation; prefetched body bytes are preserved. HTTP/0.9 is refused,
+  and fixed errors close the connection without reflecting input.
+
 - Runtime sessions enforce the existing 512-receipt ceiling before evaluation;
   `--max-decisions` can lower it. Exhaustion returns a distinct fixed 503 and
   health budget without clearing replay history. Receipt preparation publishes

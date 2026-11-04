@@ -7,8 +7,21 @@
   },
   "servers": [{"url": "http://127.0.0.1:8765"}],
   "paths": {
-    "/health": {"get": {"responses": {"200": {"description": "Ready"}, "503": {"description": "Runtime unavailable; operator recovery required"}}}},
-    "/openapi.json": {"get": {"responses": {"200": {"description": "OpenAPI document"}}}},
+    "/health": {"get": {"responses": {
+      "200": {"description": "Ready"},
+      "400": {"description": "Malformed or incomplete request head"},
+      "408": {"description": "Request head deadline exceeded"},
+      "414": {"description": "Request line exceeds the 16 KiB head budget"},
+      "431": {"description": "Request head exceeds byte or field-count limits"},
+      "503": {"description": "Runtime unavailable; operator recovery required"}
+    }}},
+    "/openapi.json": {"get": {"responses": {
+      "200": {"description": "OpenAPI document"},
+      "400": {"description": "Malformed or incomplete request head"},
+      "408": {"description": "Request head deadline exceeded"},
+      "414": {"description": "Request line exceeds the 16 KiB head budget"},
+      "431": {"description": "Request head exceeds byte or field-count limits"}
+    }}},
     "/v1/decide": {
       "post": {
         "description": "Evaluate one LurePermit runtime request without executing it.",
@@ -16,11 +29,13 @@
         "responses": {
           "200": {"description": "Bound decision and hash-chained receipt", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DecisionResponse"}}}},
           "400": {"description": "Malformed or unsupported request"},
-          "408": {"description": "Request body deadline exceeded"},
+          "408": {"description": "Request head or body deadline exceeded"},
           "411": {"description": "Content-Length required"},
           "413": {"description": "Request exceeds 64 KiB"},
+          "414": {"description": "Request line exceeds the 16 KiB head budget"},
           "415": {"description": "Unsupported content type or encoding"},
           "417": {"description": "Expect is not supported"},
+          "431": {"description": "Request head exceeds byte or field-count limits"},
           "500": {"description": "Internal decision error; outcome may be uncertain"},
           "503": {"description": "Runtime busy or exhausted before evaluation, or unavailable with uncertain outcome"}
         }

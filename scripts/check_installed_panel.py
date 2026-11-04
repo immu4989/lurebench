@@ -117,6 +117,31 @@ def check(root: Path) -> None:
             or json.loads(body) != {"error": "invalid_http_request"}):
         raise ValueError("installed runtime malformed-version response lost HTTP framing")
 
+    for wire, expected in (
+        (b'GET /health HTTP/1.1\r\nX-PRIVATE_INSTALLED: ' + b'x' * 20000 + b'\r\n\r\n', 431),
+        (b'GET /health HTTP/1.1\r\n', 400),
+        (b'GET /health\r\n\r\n', 400),
+    ):
+        connection = HttpConnection(wire)
+        _Handler(connection, ('127.0.0.1', 1), SimpleNamespace())
+        output = bytes(connection.output)
+        if int(output.split(b' ', 2)[1]) != expected or b'PRIVATE_INSTALLED' in output:
+            raise ValueError('installed runtime head preflight failed')
+
+    clock = [0.]
+
+    class LateHead(io.BytesIO):
+        def read1(self, size=-1):
+            clock[0] = 6.
+            return super().read1(size)
+
+    connection = HttpConnection(b'')
+    connection.input = LateHead(b'GET /health HTTP/1.1\r\n\r\n')
+    with patch('lurebench.runtime_service.time.monotonic', side_effect=lambda: clock[0]):
+        _Handler(connection, ('127.0.0.1', 1), SimpleNamespace())
+    if int(connection.output.split(b' ', 2)[1]) != 408:
+        raise ValueError('installed runtime head deadline admitted late input')
+
     with _TCPHTTPServer(('127.0.0.1', 0), _Handler, bind_and_activate=False,
                         max_connections=1) as server:
         closed = []

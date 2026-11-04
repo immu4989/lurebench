@@ -146,6 +146,33 @@ deployments still need OS/container isolation and authenticated workload identit
 
 ### HTTP admission and failure handling
 
+Before framework parsing, the complete request line plus header section has a
+**16 KiB wire-byte budget** and a **five-second total read deadline**, shared by
+GET/HEAD/POST and all paths. A terminating blank line is required. The byte budget
+includes line endings and the blank line, not prefetched body bytes. The deadline
+starts when the handler begins collecting the head; byte/line progress does not
+restart it. These are pilot defaults, not standards-mandated thresholds.
+
+An oversized aggregate head returns 431 `request_head_too_large`; a request line
+alone exceeding the same budget returns 414 `request_line_too_large`. Expiration
+returns 408 `request_head_timeout`. Incomplete heads at EOF return 400
+`incomplete_request_head`; other read errors return 400 `request_head_unavailable`.
+An empty EOF simply closes. Each is before readiness, policy evaluation, nonce
+consumption, or receipt logging; failures do not poison application readiness.
+Responses are fixed/redacted and close the connection, but delivery is not
+guaranteed if the peer disconnects or continues writing. HEAD errors omit bodies
+once its complete request line is recognized. Versionless/HTTP-0.9 requests are
+unsupported instead of returning raw unframed JSON.
+
+Collection uses bounded `read1` calls with a decreasing timeout, then replays the
+complete head into the existing HTTP parser. Any body prefix is preserved exactly;
+body collection has its own subsequent deadline. The framework's header-count
+and syntax checks still apply. LF-only lines remain accepted as by the framework;
+this is not a replacement general-purpose HTTP parser or a request-smuggling
+certification. The [Python stream contract](https://docs.python.org/3.13/library/io.html#io.BufferedReader.read1)
+and [431 status semantics](https://www.rfc-editor.org/rfc/rfc6585.html#section-5)
+inform this bounded preflight.
+
 The source-branch HTTP endpoint accepts a single decimal `Content-Length` and
 one `Content-Type: application/json` header. Media-type parameters are tolerated,
 but the body must be strict UTF-8 JSON. Duplicate length or content headers,
@@ -160,9 +187,10 @@ Body reads have a five-second total deadline measured after header admission,
 using a monotonic clock. Partial arrival does not restart this deadline. A body
 that ends before its declared length returns 400; expiration returns 408.
 Neither reaches the decision engine or appends a receipt. Socket operations have
-a separate five-second idle timeout, including header reads. That idle timeout
-is not a total header deadline. Separate worker/admission bounds are described
-below; decision/storage execution duration remains unbounded.
+a separate five-second idle timeout; the head deadline above additionally bounds
+total header collection. Separate worker/admission bounds are described below;
+decision/storage execution duration remains unbounded. Neither read deadline
+is an end-to-end response-time guarantee or cancellation of running decisions.
 
 Every response closes the connection. Pipelining and persistent connections
 are not supported; unread bytes are not interpreted as another request.
@@ -215,8 +243,9 @@ Unix requests are no longer processed serially in the accept loop. A health
 request can progress during an in-flight write if a worker slot is available.
 Health has no reserved capacity and remains a failure-latch snapshot: a 200
 does not prove that storage is progressing, another decision can be admitted,
-or capacity is available. Slow header senders can occupy every slot; there is
-still no total header deadline. Use an external gateway and process supervisor.
+or capacity is available. Slow/repeated senders can still occupy every slot
+within the head/body budgets. Use an external gateway and process supervisor;
+there is no fair per-client admission, transport-wide rate cap, or denial-of-service guarantee.
 
 Worker-start failures/interruption stop further transport admission. A failed
 start can already have created a worker, so its slot is not speculatively

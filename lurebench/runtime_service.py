@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import ipaddress
 import json
 import math
@@ -29,6 +30,8 @@ from .runtime import (
 MAX_REQUEST_BYTES = 64 * 1024
 MAX_REQUEST_JSON_NODES = 4096
 REQUEST_BODY_TIMEOUT_SECONDS = 5.0
+MAX_REQUEST_HEAD_BYTES = 16 * 1024
+REQUEST_HEAD_TIMEOUT_SECONDS = 5.0
 DEFAULT_MAX_CONNECTIONS = 16
 DEFAULT_DECISION_WAIT_SECONDS = 1.0
 
@@ -63,9 +66,19 @@ def runtime_openapi() -> Dict[str, Any]:
         "paths": {
             "/health": {"get": {"responses": {
                 "200": {"description": "Ready"},
+                "400": {"description": "Malformed or incomplete request head"},
+                "408": {"description": "Request head deadline exceeded"},
+                "414": {"description": "Request line exceeds the 16 KiB head budget"},
+                "431": {"description": "Request head exceeds byte or field-count limits"},
                 "503": {"description": "Runtime unavailable; operator recovery required"},
             }}},
-            "/openapi.json": {"get": {"responses": {"200": {"description": "OpenAPI document"}}}},
+            "/openapi.json": {"get": {"responses": {
+                "200": {"description": "OpenAPI document"},
+                "400": {"description": "Malformed or incomplete request head"},
+                "408": {"description": "Request head deadline exceeded"},
+                "414": {"description": "Request line exceeds the 16 KiB head budget"},
+                "431": {"description": "Request head exceeds byte or field-count limits"},
+            }}},
             "/v1/decide": {
                 "post": {
                     "description": "Evaluate one LurePermit runtime request without executing it.",
@@ -83,11 +96,13 @@ def runtime_openapi() -> Dict[str, Any]:
                             },
                         },
                         "400": {"description": "Malformed or unsupported request"},
-                        "408": {"description": "Request body deadline exceeded"},
+                        "408": {"description": "Request head or body deadline exceeded"},
                         "411": {"description": "Content-Length required"},
                         "413": {"description": "Request exceeds 64 KiB"},
+                        "414": {"description": "Request line exceeds the 16 KiB head budget"},
                         "415": {"description": "Unsupported content type or encoding"},
                         "417": {"description": "Expect is not supported"},
+                        "431": {"description": "Request head exceeds byte or field-count limits"},
                         "500": {"description": "Internal decision error; outcome may be uncertain"},
                         "503": {"description": (
                             "Runtime busy or exhausted before evaluation, or unavailable "
@@ -301,13 +316,139 @@ class RuntimeDecisionApplication:
         }
 
 
+class _RequestHeadRejected(Exception):
+    def __init__(self, status, code):
+        self.status = status
+        self.code = code
+        super().__init__(code)
+
+
+class _PrefetchedRequestReader:
+    """Replay a complete head and any body prefix before reading the socket.
+
+    Only the two operations used by this single-request handler are supported.
+    The underlying stream is borrowed and remains owned by the handler.
+    """
+
+    def __init__(self, prefix, stream):
+        self.prefix = io.BytesIO(prefix)
+        self.stream = stream
+
+    def readline(self, size=-1):
+        # The complete request head is already present; framework header
+        # parsing must never restart an unbounded socket readline.
+        return self.prefix.readline(size)
+
+    def read1(self, size=-1):
+        value = self.prefix.read(size)
+        return value if value else self.stream.read1(size)
+
+    def close(self):
+        self.prefix.close()
+
+
 class _Handler(BaseHTTPRequestHandler):
     server_version = "LurePermitRuntime/1.0"
-    # Bounds idle socket operations, not total header time or worker concurrency.
+    # Idle socket operations are separate from the total head/body budgets.
     timeout = 5.0
+
+    def _read_request_head(self) -> Optional[bytes]:
+        deadline = time.monotonic() + REQUEST_HEAD_TIMEOUT_SECONDS
+        data = bytearray()
+        line_start = 0
+        first_line_end = None
+        try:
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise TimeoutError('request head deadline exceeded')
+                self.connection.settimeout(remaining)
+                # One underlying read per iteration; at most one byte past
+                # the head bound is requested to distinguish exact-size input.
+                chunk = self.rfile.read1(min(4096, MAX_REQUEST_HEAD_BYTES + 1 - len(data)))
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('request head deadline exceeded')
+                if not chunk:
+                    if not data:
+                        return None
+                    raise _RequestHeadRejected(400, 'incomplete_request_head')
+                data.extend(chunk)
+                while True:
+                    end = data.find(b'\n', line_start)
+                    if end < 0:
+                        break
+                    end += 1
+                    if first_line_end is None:
+                        first_line_end = end
+                        words = data[:end].split(maxsplit=1)
+                        self.command = 'HEAD' if words and words[0] == b'HEAD' else None
+                    elif data[line_start:end] in (b'\n', b'\r\n'):
+                        if end > MAX_REQUEST_HEAD_BYTES:
+                            raise _RequestHeadRejected(431, 'request_head_too_large')
+                        # Preserve bytes after the blank line as an exact body
+                        # prefix; they do not count toward the head budget.
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError('request head deadline exceeded')
+                        return bytes(data)
+                    line_start = end
+                if len(data) > MAX_REQUEST_HEAD_BYTES:
+                    if first_line_end is None or first_line_end > MAX_REQUEST_HEAD_BYTES:
+                        raise _RequestHeadRejected(414, 'request_line_too_large')
+                    raise _RequestHeadRejected(431, 'request_head_too_large')
+        finally:
+            self.connection.settimeout(self.timeout)
+
+    def _reject_request_head(self, status, code):
+        self.close_connection = True
+        try:
+            self._json(status, {'error': code})
+        except OSError:
+            # A peer may already have closed. Never resume parsing or route a
+            # request merely because the fixed rejection could not be sent.
+            pass
+
+    def handle_one_request(self):
+        # Head failure can precede the framework's initialization of these
+        # response attributes. Never retain or reflect a partial request line.
+        self.requestline = ''
+        self.request_version = 'HTTP/1.0'
+        self.command = None
+        try:
+            prefix = self._read_request_head()
+        except _RequestHeadRejected as exc:
+            self._reject_request_head(exc.status, exc.code)
+            return
+        except TimeoutError:
+            self._reject_request_head(408, 'request_head_timeout')
+            return
+        except OSError:
+            self._reject_request_head(400, 'request_head_unavailable')
+            return
+        if prefix is None:
+            self.close_connection = True
+            return
+        stream = self.rfile
+        replay = _PrefetchedRequestReader(prefix, stream)
+        self.rfile = replay
+        try:
+            super().handle_one_request()
+        finally:
+            self.rfile = stream
+            replay.close()
 
     def version_string(self) -> str:
         return self.server_version
+
+    def parse_request(self):
+        if not super().parse_request():
+            return False
+        major = int(self.request_version.partition('/')[2].partition('.')[0])
+        if major == 0:
+            # The typed JSON service requires an HTTP status line and headers.
+            self.request_version = 'HTTP/1.0'
+            self._json(400, {'error': 'invalid_http_request'})
+            return False
+        return True
 
     def send_error(self, code, message=None, explain=None) -> None:
         # Framework messages may contain request lines, methods, or header data.

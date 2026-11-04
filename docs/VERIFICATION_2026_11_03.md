@@ -242,3 +242,62 @@ Logs and verification archives: `/private/tmp/lure-push-20261104.BAkBgj`.
 This verification prepares the pending changes for the user's requested branch
 push. It does not publish a release, deploy the service, merge into `main`, or
 establish that all dependency alerts have been resolved.
+
+## Complete HTTP request-head admission — 4 November 2026
+
+Three baseline tests returned HTTP 200 where rejection was required: a
+synthetic slow trickle exceeded five seconds, a 20 KiB header reached health,
+and EOF before the terminating blank line still reached health. The existing
+socket idle timeout and framework per-line/count limits did not impose the
+project's new total head deadline or aggregate byte ceiling.
+
+All paths now collect a complete request head before framework parsing, with
+a 16 KiB wire-byte budget and five-second total monotonic deadline. Collection
+requests at most 4 KiB per read and at most one sentinel byte beyond the head
+budget. It then replays the complete head and any prefetched body prefix;
+subsequent body bytes are preserved exactly and retain their separate deadline.
+Oversized lines/heads, expiration, incomplete EOF, and transport read errors
+have fixed 414/431/408/400 responses before policy or readiness work. HTTP/0.x
+is refused, rather than returning unframed JSON. Existing framework syntax
+and header-count checks remain in place.
+
+Forty new tests cover exact byte boundaries, many small headers, wire-byte
+counting, field-count limits, five read-fragment sizes with CRLF/LF line endings,
+full-size body preservation, ignored pipelined data, EOF/read/write failures,
+HEAD body suppression, normalized HTTP/1 versions, separate head/body deadlines,
+and final-chunk expiry. Three real IPv4/IPv6/private-Unix tests verify total
+deadline closure and subsequent worker-slot recovery. A client that continues
+writing after close can legitimately observe TCP reset; delivery of an error
+response is not guaranteed. No request content is reflected by these errors.
+
+LureScope adds five independent rejection cases for head-error objects
+substituted for receipts, including repaired artifact hashes. Historical
+receipt schemas/identities and stateful decision semantics are unchanged.
+
+Full suites: **2,317 passed, 40 skipped** in LureBench on Python 3.11 and 3.13;
+**1,506 passed** in paired LureScope; **107 browser tests passed**. Distinct total:
+**3,930 passed**. Existing dependency warnings remain (Bench 5/15 by interpreter,
+Scope 16). Ruff, whitespace, 26 producer pins, 10 independent authority artifacts,
+and static stamps pass. Offline archives build; 158/167 exact authority sources
+and 19 browser source inputs pass archive checks. Installed core checks pass on
+Python 3.11/3.12/3.13 with optional imports forbidden, including oversized,
+incomplete, versionless, and late request heads. Installed model/proof,
+authentication/upload, and browser checks also pass outside the checkout.
+
+Artifacts and logs: `/private/tmp/lure-head-20261104.Dx6rnl`.
+The control is not a general-purpose HTTP parser, process-memory bound, fair
+admission policy, guaranteed response latency, or prevention of all denial of
+service. It does not cancel engine/storage work or reserve health capacity.
+See [HTTP admission and references](RUNTIME_AGENT_AUTHORIZATION.md#http-admission-and-failure-handling).
+At completion of this verification, these changes were local; no commit, push,
+release, or deployment had occurred.
+
+### Requested branch-push verification
+
+Before the subsequent user-requested push, the full suites were rerun:
+LureBench Python 3.13 **2,317 passed, 40 skipped**, paired LureScope Python 3.12
+**1,506 passed**, and browser **107 passed**. Existing dependency warnings
+remain. Ruff, whitespace, producer pins, independent authority artifacts, and
+static stamps pass. Both feature branches match their fetched remote tips before
+committing. Logs: `/private/tmp/lure-push-verify-20261104.dN5UAF`.
+This prepares branch publication, not a merge, package release, or deployment.
