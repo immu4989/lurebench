@@ -301,3 +301,116 @@ remain. Ruff, whitespace, producer pins, independent authority artifacts, and
 static stamps pass. Both feature branches match their fetched remote tips before
 committing. Logs: `/private/tmp/lure-push-verify-20261104.dN5UAF`.
 This prepares branch publication, not a merge, package release, or deployment.
+
+## Unix-socket lifecycle ownership — 4 November 2026
+
+Five initial regressions failed against the prior implementation: shutdown and
+application-startup failure deleted replacement files; activation failure and
+application interruption left the service's socket behind; a mode-0755 parent
+was admitted. All reproductions used synthetic entries in owned temporary
+directories, not user sockets or services.
+
+Unix startup now requires an existing mode-0700 directory owned by the effective
+UID, opened without following the final component. A retained non-inheritable
+directory descriptor anchors no-follow entry inspection and cleanup. Binding
+captures socket identity/metadata, then sets mode 0600 before listening. Existing
+entries are refused; observed replacements or metadata changes are not reclaimed.
+Cleanup ownership is transferred once, including concurrent/repeated close, and
+the original directory remains the target after a rename. Activation/application
+failures and interruption close resources. Cleanup failure retains the original
+exception with a note; CLI errors expose the fixed cleanup notice, and an
+interruption with failed cleanup returns exit 2 rather than silent success.
+
+The **54 new tests** cover the initial failures, replacement files/directories/
+symlinks/sockets, dangling and pre-existing entries, private-parent mode/owner
+checks, relative paths and changed working directories, parent replacement,
+permission and bind collisions, metadata changes, missing paths, platform
+capability refusal and the no-follow-chmod fallback, concurrent/idempotent close,
+descriptor closure after cleanup failure, primary-error preservation, and CLI
+interruption/error reporting. A real Unix HTTP health request verifies successful
+service, cleanup, and restart. Installed-wheel checks independently exercise
+private socket mode, normal cleanup, replacement preservation, and parent refusal.
+
+Final full suites pass **2,371 tests with 40 skips** in LureBench on both Python
+3.11 and 3.13, **1,506** in paired LureScope on Python 3.12, and **107** browser
+tests: **3,984 distinct passed tests**. Existing dependency warnings remain
+(Bench 5/15; Scope 16). Ruff, whitespace, 26 producer pins, 10 independent
+authority artifacts, static stamps, offline builds, 158/167 exact wheel sources,
+and 19 browser archive inputs pass. Installed core checks pass on Python
+3.11/3.12/3.13 with optional imports forbidden; installed model/proof,
+authentication/upload, and browser checks pass outside the checkout.
+
+Verification is local macOS evidence, not a Linux execution claim. Docker's
+daemon socket was unavailable, so Linux runtime verification remains pending.
+A first overlapping Scope build/test attempt failed because pytest discovered
+the backend's temporary source-distribution tree, creating import mismatches
+and racing archive collection of bytecode. That generated tree was moved to
+the verification directory, retained rather than deleted. Sequential full tests
+and a fresh offline build pass. Future workflow isolation remains a separate
+improvement; this result does not claim the discovery collision was fixed.
+
+Logs, built/installed packages, and retained failed-build artifacts:
+`/private/tmp/lure-unix-20261104.LuV629`.
+This is not atomic compare-and-unlink, protection from malicious same-UID or
+privileged mutation, validation of directory ACLs/mounts, or termination of
+already-running daemon workers. Uncertain setup or cleanup can leave an entry
+for operator inspection. See [ownership and recovery boundaries](RUNTIME_AGENT_AUTHORIZATION.md#unix-socket-ownership-and-cleanup).
+All changes from this milestone remain local and uncommitted; no push, release,
+deployment, or schema/receipt-identity change occurred.
+
+## Source-test reproduction and archive gates — 4 November 2026
+
+The preceding concurrent build/test failure was reproduced with synthetic
+generated package trees: default pytest discovery imported their `conftest.py`
+in both repositories. Both default-discovery tests failed before configuration
+changed, while explicit test selection already worked. Default discovery now
+starts at `tests/`; documentation checks enumerate the reviewed first-party
+roots rather than walking backend staging trees. Explicit paths still work.
+
+A standard-library source checker now compares selected reproduction inputs to
+the checkout without extracting or executing members. It requires the matching
+package/version root and exact source bytes, rejects duplicates/noncanonical
+paths, links/special/sparse entries and configured transient/credential filenames,
+and caps compressed size, member size/count, and declared expanded bytes. It
+checks 553 LureBench and 506 companion inputs, including test fixtures, scripts,
+schemas, public documentation/assets and workflow definitions. This is not
+publisher authentication, comprehensive secret scanning, or a parser sandbox
+for arbitrary untrusted compressed input.
+
+CI now runs the archive gate and the full suite from a locally built source
+distribution outside the checkout. The existing read-only release build also
+checks source and wheel contents before handing artifacts to publishing jobs;
+no publishing permissions were added. CONTRIBUTING documents trusted-local-build
+reproduction and the limits of default discovery/concurrent builds.
+
+The companion archive audit found missing test fixtures/helpers, workflows,
+public scorecard data and linked blog content. Its repaired archive passes the
+full suite; its wheel now includes the scorecard JSONL, and negative wheel tests
+enforce scorecard/pilot data bytes. Across both repositories this milestone adds
+**82 tests** (40 producer, 42 consumer), covering default/explicit discovery,
+documentation scope, missing/stale/duplicate/unsafe archive entries, size/count
+budgets, source symlinks, corrupt archives, and workflow gate wiring.
+
+Checkout suites: **2,411 passed, 40 skipped** in LureBench on Python 3.11 and 3.13;
+**1,548 passed** in paired LureScope; browser **107 passed**. Distinct checkout
+total: **4,066 passed**. From extracted archives: **2,405 passed, 46 skipped**
+in LureBench and **1,548 passed** in LureScope. The six additional producer skips
+are existing tests for deliberately unbundled `data/full` shards, not omitted
+test modules; total collected cases are unchanged. Existing optional-reference
+and dependency skips/warnings remain. Both producer and consumer imports were
+confirmed to resolve inside the extracted source roots, using the provisioned
+test environments rather than claiming a hermetic dependency installation.
+
+The actual overlapping LureScope build/full-test run now passes. Ruff, whitespace,
+offline lock consistency, 26 producer pins, 10 independent authority artifacts,
+static stamps, 158/174 exact wheel inputs and 19 browser archive inputs pass.
+Installed core checks pass on Python 3.11/3.12/3.13 with optional imports forbidden;
+installed model/proof, authentication/upload and browser checks pass. The installed
+scorecard sample matches the reviewed source bytes. No dependency versions changed.
+
+Logs, source archives/extracted trees, wheels and isolated installation:
+`/private/tmp/lure-source-20261104.qo1H9R`.
+Results are local macOS execution evidence; the changed GitHub workflows have
+not run remotely, and the prior Linux-runtime verification gap remains. All
+new changes, including the preceding Unix lifecycle milestone, remain local
+and uncommitted. No push, release, merge or deployment occurred in this milestone.

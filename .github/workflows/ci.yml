@@ -50,6 +50,16 @@ jobs:
       - name: Check packaged authority code and evidence
         if: matrix.python-version == '3.12'
         run: uv run --frozen python scripts/check_mandate_wheel.py dist/*.whl --package lurebench
+      - name: Check source-distribution reproduction inputs
+        if: matrix.python-version == '3.12'
+        run: uv run --frozen python scripts/check_source_distribution.py dist/lurebench-*.tar.gz --package lurebench
+      - name: Run tests from the source distribution
+        if: matrix.python-version == '3.12'
+        run: |
+          source_test_root="$(mktemp -d)"
+          tar -xzf dist/lurebench-*.tar.gz --strip-components=1 -C "$source_test_root"
+          cd "$source_test_root"
+          "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest -q
       - name: Verify installed authority CLI outside the checkout
         if: matrix.python-version == '3.12'
         run: |

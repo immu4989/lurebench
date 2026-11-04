@@ -2529,10 +2529,17 @@ def _cmd_permit_serve(args: argparse.Namespace) -> int:
             max_decisions=args.max_decisions,
         )
         return 0
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as exc:
+        if getattr(exc, '_runtime_cleanup_failed', False):
+            print('! Runtime cleanup failed; inspect the dedicated socket directory.',
+                  file=sys.stderr)
+            return 2
         return 0
     except (FileExistsError, FileNotFoundError, OSError, RuntimeError, ValueError) as exc:
         print(f"! {exc}", file=sys.stderr)
+        if getattr(exc, '_runtime_cleanup_failed', False):
+            print('! Runtime cleanup failed; inspect the dedicated socket directory.',
+                  file=sys.stderr)
         return 2
 
 

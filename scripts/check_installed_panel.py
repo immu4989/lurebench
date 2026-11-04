@@ -1,7 +1,8 @@
 """Exercise installed panel comparison/reproduction using standard-library fixtures.
 
 Run outside the checkout with ``python -I -S`` after installing a trusted local
-wheel into --installed-root. No providers, model libraries, or network are used.
+wheel into --installed-root. No providers, model libraries, or external network
+are used. Unix lifecycle checks bind sockets only in owned temporary directories.
 """
 
 from __future__ import annotations
@@ -65,6 +66,7 @@ def check(root: Path) -> None:
         RuntimeDecisionUnavailable,
         _Handler,
         _TCPHTTPServer,
+        _UnixHTTPServer,
     )
     from lurebench.schema import Lure, save_jsonl
 
@@ -153,6 +155,29 @@ def check(root: Path) -> None:
                 raise ValueError("installed runtime lost pre-worker capacity rejection")
         finally:
             server._connection_slots.release()
+
+    with tempfile.TemporaryDirectory(prefix='lru-') as directory:
+        target = Path(directory) / 's'
+        with _UnixHTTPServer(str(target), _Handler):
+            if not target.is_socket() or target.stat().st_mode & 0o777 != 0o600:
+                raise ValueError('installed Unix socket lost private permission setup')
+        if target.exists():
+            raise ValueError('installed Unix socket did not clean its owned entry')
+        with _UnixHTTPServer(str(target), _Handler):
+            target.rename(Path(directory) / 'original')
+            target.write_bytes(b'synthetic replacement')
+        if target.read_bytes() != b'synthetic replacement':
+            raise ValueError('installed Unix cleanup removed a replacement')
+        Path(directory).chmod(0o755)
+        try:
+            try:
+                _UnixHTTPServer(str(Path(directory) / 'other'), _Handler)
+            except ValueError:
+                pass
+            else:
+                raise ValueError('installed Unix socket admitted a non-private parent')
+        finally:
+            Path(directory).chmod(0o700)
 
     with tempfile.TemporaryDirectory(prefix="lure-runtime-audit-install-") as directory:
         profile = default_runtime_profile()

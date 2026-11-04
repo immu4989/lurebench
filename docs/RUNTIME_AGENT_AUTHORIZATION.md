@@ -129,7 +129,8 @@ lurebench permit-serve \
   --receipt-log receipts.jsonl
 ```
 
-For a local shared socket:
+For a local same-UID socket, provision `/run/lurepermit` as a dedicated directory
+owned by the service's effective UID with mode `0700` before starting:
 
 ```bash
 lurebench permit-serve \
@@ -143,6 +144,54 @@ uses `fsync` after each receipt. `/openapi.json` and the packaged
 [`lurepermit-runtime-openapi-v1.json`](../spec/lurepermit-runtime-openapi-v1.json)
 describe the API. Socket/file permissions are local access controls; production
 deployments still need OS/container isolation and authenticated workload identity.
+
+### Unix-socket ownership and cleanup
+
+Unix mode requires an existing **mode-0700 directory owned by the service's
+effective UID**. The final parent component must not be a symlink; the platform
+must support no-follow directory opening and directory-relative filesystem
+operations. Existing socket, file, directory, and symlink entries are refused,
+including dangling symlinks. Abstract/NUL socket names and `..` components are
+unsupported. Relative socket paths are anchored at startup, without changing
+the process working directory or umask. The service does not create, chmod, or
+remove the parent directory. This is a compatibility change: a shared or
+mode-0755 parent that previously worked must be replaced with a dedicated private
+directory, not broadly relaxed permissions elsewhere.
+
+The server retains a non-inheritable directory descriptor, checks the parent
+identity around binding, and records the socket's inode and metadata. It sets
+socket mode `0600` before listening. On shutdown or activation/application
+failure, including interruption, cleanup compares a no-follow metadata snapshot
+relative to that descriptor and unlinks only the matching entry. Observed
+replacement files, sockets, symlinks, changed socket metadata, and missing paths
+are not adopted or removed. If the directory is renamed, cleanup remains anchored
+to the original directory rather than following a newly created pathname.
+Repeated cleanup never reacquires ownership of a later entry.
+
+Uncertain setup, changed permissions, or failed cleanup can leave an entry for
+operator inspection. Cleanup releases the listening socket and directory
+descriptor even if unlink fails; a primary startup error is retained with a
+cleanup note. CLI interruption with a cleanup failure exits `2`, not silent
+success. Do not blindly delete an existing socket to restart: establish which
+process owns it and whether the previous service and its workers have stopped.
+Cleanup does not terminate active daemon workers or recover uncertain receipts.
+
+This is **not atomic compare-and-unlink** or isolation from a malicious process
+with the same UID, a privileged actor, or an administrator changing the directory
+during startup. Directory-relative bind is not available through the portable
+socket API, and metadata checking plus unlink/chmod is not one atomic operation.
+Keep the directory's ancestors, mounts, and ACLs under trusted administration;
+mode bits alone do not validate ACLs or certify filesystem behavior. No-follow
+chmod is used when supported, with the private-directory requirement retained
+on platforms that lack it. If isolation between untrusted local workloads is
+required, use distinct identities and OS/container controls.
+
+The design uses [Python directory-relative filesystem operations](https://docs.python.org/3.13/library/os.html#files-and-directories)
+and the [socketserver lifecycle](https://docs.python.org/3.13/library/socketserver.html#socketserver.BaseServer.server_close).
+The [Linux Unix-socket documentation](https://man7.org/linux/man-pages/man7/unix.7.html)
+also distinguishes directory access controls from nonportable socket-file
+permission behavior. These references do not establish a cross-platform
+security certification.
 
 ### HTTP admission and failure handling
 

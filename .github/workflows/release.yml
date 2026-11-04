@@ -39,6 +39,8 @@ jobs:
       - name: Build and verify distributions
         run: |
           uv build
+          python scripts/check_source_distribution.py dist/lurebench-*.tar.gz --package lurebench
+          python scripts/check_mandate_wheel.py dist/*.whl --package lurebench
           uvx --from twine==7.0.0 twine check dist/*
       - name: Store distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

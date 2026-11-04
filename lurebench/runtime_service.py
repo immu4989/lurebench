@@ -619,12 +619,145 @@ class _IPv6HTTPServer(_TCPHTTPServer):
     address_family = socket.AF_INET6
 
 
+def _close_runtime_server(server, failure=None):
+    try:
+        server.server_close()
+    except OSError:
+        if failure is None:
+            raise
+        failure._runtime_cleanup_failed = True
+        failure.add_note('Runtime cleanup failed; inspect the dedicated socket directory.')
+
+
+class _UnixSocketPath:
+    """Own one socket entry relative to a retained private-directory descriptor.
+
+    Conditional unlink is not atomic on POSIX. The directory and its ancestors
+    must remain controlled by the operator; same-UID/privileged mutation is not
+    an isolation boundary. Observed replacements are never adopted or removed.
+    """
+
+    def __init__(self, address):
+        raw = os.fspath(address)
+        if (not isinstance(raw, str) or not raw or '\x00' in raw or raw.endswith('/')
+                or '..' in Path(raw).parts or not Path(raw).name):
+            raise ValueError('Unix socket requires an unambiguous filesystem pathname')
+        if (not hasattr(os, 'O_DIRECTORY') or not hasattr(os, 'O_NOFOLLOW')
+                or any(call not in os.supports_dir_fd for call in (os.stat, os.chmod, os.unlink))):
+            raise NotImplementedError('Unix socket requires directory-relative filesystem support')
+        self.path = Path(os.path.abspath(raw))
+        self._close_lock = threading.Lock()
+        self._bound = None
+        self._fd = os.open(self.path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            parent = os.fstat(self._fd)
+            self._parent_identity = (parent.st_dev, parent.st_ino)
+            self._check_parent()
+            try:
+                self._stat()
+            except FileNotFoundError:
+                pass
+            else:
+                raise FileExistsError('Unix socket pathname already exists')
+        except BaseException:
+            os.close(self._fd)
+            self._fd = None
+            raise
+
+    @staticmethod
+    def _private_directory(info):
+        return (stat.S_ISDIR(info.st_mode) and info.st_uid == os.geteuid()
+                and stat.S_IMODE(info.st_mode) == 0o700)
+
+    @staticmethod
+    def _stamp(info):
+        return (info.st_dev, info.st_ino, info.st_mode, info.st_uid, info.st_gid,
+                info.st_nlink, info.st_mtime_ns, info.st_ctime_ns)
+
+    def _stat(self):
+        return os.stat(self.path.name, dir_fd=self._fd, follow_symlinks=False)
+
+    def _check_parent(self):
+        current = os.stat(self.path.parent, follow_symlinks=False)
+        held = os.fstat(self._fd)
+        if (not self._private_directory(current) or not self._private_directory(held)
+                or (current.st_dev, current.st_ino) != self._parent_identity):
+            raise ValueError('Unix socket parent must remain a private owned mode-0700 directory')
+
+    def capture_bound(self):
+        self._check_parent()
+        info = self._stat()
+        if not stat.S_ISSOCK(info.st_mode) or info.st_uid != os.geteuid() or info.st_nlink != 1:
+            raise ValueError('Unix socket binding does not match a single owned socket')
+        self._bound = self._stamp(info)
+
+    def restrict_bound(self):
+        self._check_parent()
+        before = self._stat()
+        if self._bound is None or self._stamp(before) != self._bound:
+            raise ValueError('Unix socket pathname changed before permission setup')
+        # Some supported POSIX/Python combinations lack no-follow chmod. The
+        # private directory is required on every platform, not just that fallback.
+        options = {'dir_fd': self._fd}
+        if os.chmod in os.supports_follow_symlinks:
+            options['follow_symlinks'] = False
+        os.chmod(self.path.name, 0o600, **options)
+        after = self._stat()
+        if ((after.st_dev, after.st_ino) != (before.st_dev, before.st_ino)
+                or not stat.S_ISSOCK(after.st_mode) or after.st_uid != os.geteuid()
+                or after.st_nlink != 1 or stat.S_IMODE(after.st_mode) != 0o600):
+            raise ValueError('Unix socket pathname changed during permission setup')
+        self._bound = self._stamp(after)
+        self._check_parent()
+
+    def close(self):
+        with self._close_lock:
+            descriptor, self._fd = self._fd, None
+            expected, self._bound = self._bound, None
+        if descriptor is None:
+            return
+        try:
+            if expected is None or not self._private_directory(os.fstat(descriptor)):
+                return
+            try:
+                current = os.stat(self.path.name, dir_fd=descriptor, follow_symlinks=False)
+            except FileNotFoundError:
+                return
+            if self._stamp(current) == expected:
+                os.unlink(self.path.name, dir_fd=descriptor)
+        finally:
+            os.close(descriptor)
+
+
 class _UnixHTTPServer(_BoundedThreadingMixIn, socketserver.UnixStreamServer):
     allow_reuse_address = False
 
+    def __init__(self, address, handler, bind_and_activate=True, **kwargs):
+        self._socket_path = None
+        super().__init__(address, handler, bind_and_activate=False, **kwargs)
+        if bind_and_activate:
+            try:
+                self.server_bind()
+                self.server_activate()
+            except BaseException as failure:
+                _close_runtime_server(self, failure)
+                raise
+
     def server_bind(self) -> None:
+        if self._socket_path is not None:
+            raise ValueError('Unix socket server cannot bind twice')
+        self._socket_path = _UnixSocketPath(self.server_address)
+        self.server_address = str(self._socket_path.path)
         super().server_bind()
-        os.chmod(self.server_address, 0o600)
+        self._socket_path.capture_bound()
+        self._socket_path.restrict_bound()
+
+    def server_close(self):
+        try:
+            if self._socket_path is not None:
+                self._socket_path.close()
+        finally:
+            super().server_close()
 
 
 def serve_runtime(
@@ -644,12 +777,7 @@ def serve_runtime(
     decision_wait_seconds = _decision_wait(decision_wait_seconds)
     max_decisions = _decision_limit(max_decisions)
     socket_path = Path(unix_socket) if unix_socket is not None else None
-    if socket_path is not None:
-        if socket_path.exists() or socket_path.is_symlink():
-            raise FileExistsError(f"{socket_path} already exists")
-        if socket_path.parent.is_symlink() or not socket_path.parent.is_dir():
-            raise ValueError("Unix socket parent must be a regular local directory")
-    else:
+    if socket_path is None:
         try:
             address = ipaddress.ip_address(host)
         except ValueError as exc:
@@ -667,15 +795,10 @@ def serve_runtime(
     try:
         application = RuntimeDecisionApplication(RuntimePDP(profile), receipt_log,
             decision_wait_seconds=decision_wait_seconds, max_decisions=max_decisions)
-    except Exception:
-        server.server_close()
-        if socket_path is not None:
-            socket_path.unlink(missing_ok=True)
-        raise
-    server.application = application  # type: ignore[attr-defined]
-    try:
+        server.application = application  # type: ignore[attr-defined]
         server.serve_forever()
-    finally:
-        server.server_close()
-        if socket_path is not None:
-            socket_path.unlink(missing_ok=True)
+    except BaseException as failure:
+        _close_runtime_server(server, failure)
+        raise
+    else:
+        _close_runtime_server(server)

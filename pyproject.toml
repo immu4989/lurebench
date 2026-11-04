@@ -169,6 +169,10 @@ packages = ["lurebench"]
 "conformance/luremandate-sequence-v1" = "lurebench/conformance_data/luremandate-sequence-v1"
 "conformance/luremandate-transitions-v1" = "lurebench/conformance_data/luremandate-transitions-v1"
 
+[tool.pytest.ini_options]
+# Do not collect generated source-distribution trees or ad-hoc experiments.
+testpaths = ["tests"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

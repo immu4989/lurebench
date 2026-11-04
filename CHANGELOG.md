@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Default test discovery is limited to `tests/`; documentation checks use
+  first-party roots, avoiding generated source-tree collisions. CI now checks
+  source-archive reproduction inputs and runs the suite from the built archive.
+  The read-only release build validates source and wheel contents before upload.
+
+- Unix runtime sockets require an owned mode-0700 parent directory. Startup
+  refuses existing entries and records the bound socket before setting mode
+  0600/listening. Descriptor-relative cleanup preserves observed replacements
+  and covers activation/application failure and interruption. Cleanup errors
+  release descriptors and are not silently reported as successful CLI shutdown.
+
 - Runtime request heads now have a combined 16 KiB wire-byte budget and a
   five-second total deadline before framework parsing. Trickle progress cannot
   renew the deadline. Incomplete/oversized/expired heads never reach policy or
