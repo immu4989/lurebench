@@ -16,6 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 class ForbidOptionalImports(importlib.abc.MetaPathFinder):
@@ -54,7 +55,86 @@ def check(root: Path) -> None:
     from lurebench.detectors.tfidf import TfidfLogisticDetector
     from lurebench.diskcache import CacheReadError
     from lurebench.harness import collect_scores, run
+    from lurebench.permit import build_permit_request
+    from lurebench.receipts import loads_strict_json
+    from lurebench.runtime import RuntimePDP, build_runtime_request, default_runtime_profile
+    from lurebench.runtime_service import (
+        RuntimeDecisionApplication,
+        RuntimeDecisionUnavailable,
+        _Handler,
+    )
     from lurebench.schema import Lure, save_jsonl
+
+    if loads_strict_json(b'{"a":[0]}', max_nodes=4) != {"a": [0]}:
+        raise ValueError("installed JSON decoder changed bounded values")
+    for payload in (b'[0,1,2,3]', b'0.' + b'0' * 5000):
+        try:
+            loads_strict_json(payload, max_nodes=4)
+        except ValueError:
+            pass
+        else:
+            raise ValueError("installed JSON decoder lost complexity admission")
+
+    class HttpConnection:
+        def __init__(self, wire):
+            self.input = io.BytesIO(wire)
+            self.output = bytearray()
+
+        def makefile(self, *args, **kwargs):
+            return self.input
+
+        def sendall(self, payload):
+            self.output.extend(payload)
+
+        def settimeout(self, value):
+            pass
+
+    for headers, payload, expected in (
+        (b'Content-Length: 2\r\n', b'{}', 200),
+        (b'Content-Length: 2\r\nContent-Length: 2\r\n', b'{}', 400),
+        (b'Content-Length: 9\r\n', b'{}', 400),
+        (b'Content-Length: 45\r\n', b'{"PRIVATE_INSTALLED":1,"PRIVATE_INSTALLED":2}', 400),
+    ):
+        connection = HttpConnection(b'POST /v1/decide HTTP/1.1\r\n' + headers
+                                    + b'Content-Type: application/json\r\n\r\n' + payload)
+        server = SimpleNamespace(application=SimpleNamespace(decide=loads_strict_json))
+        _Handler(connection, ('127.0.0.1', 1), server)
+        response = bytes(connection.output)
+        if (int(response.split(b' ', 2)[1]) != expected or b'PRIVATE_INSTALLED' in response
+                or b'Connection: close' not in response):
+            raise ValueError("installed runtime HTTP framing/redaction failed")
+
+    with tempfile.TemporaryDirectory(prefix="lure-runtime-audit-install-") as directory:
+        profile = default_runtime_profile()
+        log = Path(directory) / 'receipts.jsonl'
+        application = RuntimeDecisionApplication(RuntimePDP(profile), log)
+
+        def runtime_request(sequence):
+            return json.dumps(build_runtime_request(build_permit_request(sequence=sequence),
+                profile=profile, correlation_id=f'installed-{sequence}',
+                nonce=f'installed-nonce-{sequence}')).encode()
+
+        application.decide(runtime_request(1))
+        with patch('lurebench.runtime_service.os.fsync', side_effect=OSError('synthetic sync fault')):
+            try:
+                application.decide(runtime_request(2))
+            except RuntimeDecisionUnavailable:
+                pass
+            else:
+                raise ValueError("installed runtime returned a decision after sync failure")
+        preserved = log.read_bytes()
+        try:
+            application.decide(runtime_request(3))
+        except RuntimeDecisionUnavailable:
+            pass
+        else:
+            raise ValueError("installed runtime resumed after uncertain audit persistence")
+        if log.read_bytes() != preserved or application.readiness()['ready']:
+            raise ValueError("installed runtime modified failed evidence or lost its failure latch")
+        connection = HttpConnection(b'GET /health HTTP/1.1\r\n\r\n')
+        _Handler(connection, ('127.0.0.1', 1), SimpleNamespace(application=application))
+        if int(connection.output.split(b' ', 2)[1]) != 503:
+            raise ValueError("installed runtime health ignored its failure latch")
 
     if binomial_cdf(40000, 100000, .5) != 0.:
         raise ValueError("installed binomial recurrence retained a subnormal plateau")

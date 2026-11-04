@@ -25,6 +25,10 @@ or absolute source paths. Basenames and hashes can still be sensitive.
 - Directory-relative, no-follow opens on POSIX; regular files only. Symlinks,
   directories, and FIFOs are rejected without waiting on FIFO writers.
 - Bounded header lengths before allocation; strict JSON without duplicate keys.
+- Before JSON object decoding: at most 128 container levels, 4,096 characters
+  per unquoted token, and 4,500,000 header nodes (containers, values, and keys).
+  Index files use the general 1,000,000-node budget. The larger header budget
+  accommodates high-rank tensor maps within the independent byte/count bounds.
 - Supported byte-aligned dtypes; exact shape/byte relationships; contiguous
   tensor ranges without holes, overlaps, or unindexed suffixes.
 - Aggregate shard bytes (32 GiB default; configurable up to 1 TiB), at most

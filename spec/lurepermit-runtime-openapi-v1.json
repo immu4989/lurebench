@@ -7,7 +7,7 @@
   },
   "servers": [{"url": "http://127.0.0.1:8765"}],
   "paths": {
-    "/health": {"get": {"responses": {"200": {"description": "Ready"}}}},
+    "/health": {"get": {"responses": {"200": {"description": "Ready"}, "503": {"description": "Runtime unavailable; operator recovery required"}}}},
     "/openapi.json": {"get": {"responses": {"200": {"description": "OpenAPI document"}}}},
     "/v1/decide": {
       "post": {
@@ -16,7 +16,13 @@
         "responses": {
           "200": {"description": "Bound decision and hash-chained receipt", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DecisionResponse"}}}},
           "400": {"description": "Malformed or unsupported request"},
-          "413": {"description": "Request exceeds 64 KiB"}
+          "408": {"description": "Request body deadline exceeded"},
+          "411": {"description": "Content-Length required"},
+          "413": {"description": "Request exceeds 64 KiB"},
+          "415": {"description": "Unsupported content type or encoding"},
+          "417": {"description": "Expect is not supported"},
+          "500": {"description": "Internal decision error; outcome may be uncertain"},
+          "503": {"description": "Runtime unavailable; outcome may be uncertain"}
         }
       }
     }

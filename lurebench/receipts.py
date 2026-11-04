@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from .calibration import clopper_pearson_upper
+from .json_limits import MAX_JSON_NODES, check_json_structure, finite_json_float
 
 STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 PREDICATE_TYPE = "https://github.com/immu4989/lurebench/spec/lureeval-receipt/v1"
@@ -78,30 +79,12 @@ class VerifiedReceipt:
     key_ids: Tuple[str, ...]
 
 
-def _check_json_nesting(text: str) -> None:
-    """Bound structural depth before the platform JSON decoder allocates it."""
-    depth = 0
-    in_string = escaped = False
-    for character in text:
-        if in_string:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                in_string = False
-        elif character == '"':
-            in_string = True
-        elif character in "[{":
-            depth += 1
-            if depth > 128:
-                raise ValueError("JSON nesting exceeds 128 container levels")
-        elif character in "]}":
-            depth -= 1
+def loads_strict_json(payload: bytes, *, max_nodes: int = MAX_JSON_NODES) -> Any:
+    """Decode bounded-complexity UTF-8 JSON, rejecting ambiguous/nonfinite values.
 
-
-def loads_strict_json(payload: bytes) -> Any:
-    """Decode UTF-8 JSON while rejecting duplicate keys and non-finite constants."""
+    Callers must separately bound payload bytes; max_nodes counts object keys,
+    containers, and scalar values, including duplicates before rejection.
+    """
 
     def object_no_duplicates(pairs: Sequence[Tuple[str, Any]]) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
@@ -114,20 +97,14 @@ def loads_strict_json(payload: bytes) -> Any:
     def reject_constant(value: str) -> None:
         raise ValueError(f"non-standard JSON constant: {value}")
 
-    def finite_float(value: str) -> float:
-        number = float(value)
-        if not math.isfinite(number):
-            raise ValueError("JSON number exceeds finite floating-point range")
-        return number
-
     try:
         text = payload.decode("utf-8")
-        _check_json_nesting(text)
+        check_json_structure(text, max_nodes=max_nodes)
         return json.loads(
             text,
             object_pairs_hook=object_no_duplicates,
             parse_constant=reject_constant,
-            parse_float=finite_float,
+            parse_float=finite_json_float,
         )
     except (UnicodeDecodeError, json.JSONDecodeError, RecursionError) as exc:
         raise ValueError("artifact is not strict UTF-8 JSON") from exc

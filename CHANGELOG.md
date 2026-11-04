@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+- Runtime audit failures latch the application unavailable. Log replacement,
+  external mutation, non-private/non-regular files, and append/flush/sync/close
+  failures withhold decisions and prevent subsequent engine work. Expanded
+  `/health` reports the failure latch and logging mode; ordinary bad inputs do
+  not disable the service. Partial evidence is preserved for operator recovery,
+  not silently rolled back, repaired, or reused after restart.
+
+- The local runtime HTTP service rejects duplicate/ambiguous framing, encoded
+  bodies, unsupported expectations, and truncated uploads before decisions.
+  Body reads have a five-second total deadline; responses close the connection
+  and redact validation, framework, and processing errors. This remains a
+  loopback/Unix-socket pilot, not a production HTTP server or a transactionally
+  durable decision store.
+
+- Strict evidence JSON rejects excessive node counts and numeric-token lengths
+  before object decoding, alongside the existing depth and ambiguity checks.
+  Runtime requests have a tighter 4,096-node budget; Safetensors headers retain
+  a dedicated large-tensor budget. Previously accepted high-complexity inputs
+  may now be rejected; no artifact bytes or identities are rewritten.
+
 - Statistical acceptance no longer adds serialization tolerance to risk limits.
   Reported and recomputed p-values and upper bounds must satisfy the unrelaxed
   confidence/FPR criteria. Numerically contradictory selector results fail

@@ -23,6 +23,9 @@ MAX_INDEX_BYTES = 4 * 1024 * 1024
 MAX_HEADER_BYTES = 8 * 1024 * 1024
 MAX_SHARDS = 1024
 MAX_TENSORS = 100_000
+# Up to 42 nodes per rank-32 tensor, with room for bounded metadata. The
+# independent 8 MiB header limit still applies before this specialized budget.
+MAX_HEADER_JSON_NODES = 4_500_000
 DEFAULT_MAX_TOTAL_BYTES = 32 * 1024**3
 DTYPE_BYTES = {
     "BOOL": 1, "U8": 1, "I8": 1, "U16": 2, "I16": 2,
@@ -90,7 +93,7 @@ def _regular(root_fd: int, name: str, maximum: int) -> Iterator[tuple[Any, os.st
 def _header_tensors(payload: bytes, data_size: int) -> set[str]:
     if not payload.startswith(b"{"):
         raise ValueError("Safetensors header must start with an object")
-    header = loads_strict_json(payload)
+    header = loads_strict_json(payload, max_nodes=MAX_HEADER_JSON_NODES)
     if not isinstance(header, dict) or not 1 <= len(header) <= MAX_TENSORS + 1:
         raise ValueError("Safetensors header must contain a bounded tensor map")
     metadata = header.pop("__metadata__", {})

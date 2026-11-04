@@ -11,6 +11,20 @@ This is a research-pilot control and evidence contract. It is not a credential,
 policy-enforcement proxy, compliance result, or claim that every action was
 mediated.
 
+The local runtime service accepts at most 64 KiB per decision request and checks
+JSON complexity before decoding or entering the decision engine: 4,096 nodes,
+128 container levels, and 4,096 characters per unquoted token. Each object key,
+container, and scalar value counts as one node. Excess complexity raises a
+validation error (HTTP 400) without appending a decision receipt. These are
+per-request limits, not concurrent-connection, timeout, or process-memory limits.
+
+The shared `loads_strict_json` evidence reader defaults to 1,000,000 nodes;
+callers retain their own byte limits. Previously accepted high-complexity
+documents may now be rejected. Existing duplicate-key, UTF-8, and finite-number
+requirements remain in force, and no stored evidence is rewritten. JSON resource
+limits are permitted by [RFC 8259 section 9](https://www.rfc-editor.org/rfc/rfc8259.html#section-9);
+the particular budgets are project choices, not a compliance guarantee.
+
 ## Why this exists
 
 Recent primary guidance converges on a system-level problem:
@@ -126,6 +140,97 @@ uses `fsync` after each receipt. `/openapi.json` and the packaged
 [`lurepermit-runtime-openapi-v1.json`](../spec/lurepermit-runtime-openapi-v1.json)
 describe the API. Socket/file permissions are local access controls; production
 deployments still need OS/container isolation and authenticated workload identity.
+
+### HTTP admission and failure handling
+
+The source-branch HTTP endpoint accepts a single decimal `Content-Length` and
+one `Content-Type: application/json` header. Media-type parameters are tolerated,
+but the body must be strict UTF-8 JSON. Duplicate length or content headers,
+comma-combined lengths, signed/nondecimal lengths, and folded headers return
+400 before decision evaluation. A missing length returns 411; a body over
+64 KiB returns 413. All `Transfer-Encoding` headers are rejected with 400;
+chunked upload is not supported by this narrow service. Only absent or a single
+`Content-Encoding: identity` is accepted; other encodings return 415.
+`Expect`, including `100-continue`, returns 417 without reading the body.
+
+Body reads have a five-second total deadline measured after header admission,
+using a monotonic clock. Partial arrival does not restart this deadline. A body
+that ends before its declared length returns 400; expiration returns 408.
+Neither reaches the decision engine or appends a receipt. Socket operations have
+a separate five-second idle timeout, including header reads. That idle timeout
+is not a total header deadline. Concurrent connections, thread counts, and
+decision/storage execution duration are not bounded by these controls.
+
+Every response closes the connection. Pipelining and persistent connections
+are not supported; unread bytes are not interpreted as another request.
+HTTP errors use fixed JSON codes rather than echoing submitted keys, request
+lines, identifiers, or exception details. Direct Python callers retain their
+validation exceptions. Framework parse/method errors are also redacted;
+unsupported HEAD requests have no response body.
+
+The caller must fail closed on any transport or processing failure. HTTP 503
+with `runtime_unavailable` means the application has latched a storage or uncertain
+decision-state failure and requires operator recovery. HTTP 500 remains the
+handler's fallback for unexpected errors outside that guarded application flow.
+A processing failure or lost response can occur after in-memory replay/receipt
+state changes; do not automatically retry or treat an absent response as an
+allowed operation.
+
+This application profile intentionally rejects ambiguous framing identified in
+[RFC 9112 section 6.3](https://www.rfc-editor.org/rfc/rfc9112.html#section-6.3).
+It is not a general HTTP/1.1 implementation or a request-smuggling certificate.
+Python explicitly [does not recommend `http.server` for production](https://docs.python.org/3.13/library/http.server.html).
+Keep this pilot on loopback or a protected Unix socket, behind separately
+managed authentication, isolation, concurrency limits, and operational supervision.
+
+### Audit failure and operator recovery
+
+Use a dedicated, unused `RuntimePDP` with each logged application. Do not share
+it between application instances or invoke it directly while the service owns
+it. A new receipt log refuses an engine that has already produced receipts.
+The application serializes its own decisions and appends under one lock.
+
+The receipt log must remain a single-link regular file, private on POSIX. The
+application records its device/inode, size, timestamps, mode, and link count at
+creation and after each successful append. Changes observed before evaluation,
+on opening, or after writing reject the operation. Log rotation, external
+writers, truncation, permission changes, hard links, symlinks, and replacement
+are unsupported. Parent directories and ancestors must remain trusted; metadata
+checks are not cryptographic verification of all file bytes or an atomic
+filesystem snapshot.
+
+A receipt is returned only after a complete write, flush, `fsync`, close, and
+final file check. If serialization or any persistence step fails, the application
+latches `receipt_log_failed`, withholds the result, and rejects subsequent
+admitted decisions before entering the engine. Waiting requests cannot pass the
+latch. An unexpected error after validated input enters the stateful engine
+latches `decision_state_uncertain`, including in memory-only mode. Malformed
+JSON and ordinary request-validation failures do not latch either failure.
+Interruptions during guarded work set the latch before propagating the interrupt.
+
+`GET /health` returns 503 after a latched failure; its body exposes only `ready`,
+`status`, a fixed `reason`, `receipt_logging`, and `executes_actions: false`.
+The expanded 200 response reports the same fields with `reason: ready`.
+`RuntimeDecisionApplication.readiness()` provides the same non-blocking snapshot.
+It does not probe disk health, discover external edits before the next operation,
+or detect a stalled write. Memory-only mode can report ready with
+`receipt_logging: false`; it makes no persistence claim.
+
+There is no reset endpoint or automatic repair. Restoring the file, retrying,
+or disabling logging does not clear the instance's latch. Preserve partial or
+complete uncertain log bytes, stop protected operations, and investigate the
+failure with the associated requests and trusted external evidence. Do not
+truncate a partial tail or restart against a fresh log merely to regain a green
+health check. Reconcile the audit chain and replay history before explicitly
+establishing a new runtime context. The service does not restore state on restart,
+rollback a decision, or provide an exactly-once/crash-atomic transaction. Response
+loss after persistence also remains an uncertain delivery outcome.
+
+[Python's `fsync` documentation](https://docs.python.org/3.13/library/os.html#os.fsync)
+requires flushing buffered output first. The
+[write system-call documentation](https://man7.org/linux/man-pages/man2/write.2.html)
+explains partial writes. These motivate the checked append and fail-stop policy;
+they do not establish end-to-end crash durability across filesystems or hardware.
 
 ## Integrate an enforcement point
 
