@@ -41,6 +41,7 @@ def check(root: Path) -> None:
     sys.meta_path.insert(0, ForbidOptionalImports())
     sys.path.insert(0, str(root))
     from lurebench import cli, leaderboard
+    from lurebench.boundary_container import BoundaryContainerMonitor
     from lurebench.calibration import (
         DetectorBinding,
         binomial_cdf,
@@ -49,8 +50,10 @@ def check(root: Path) -> None:
         validate_calibration_configuration,
     )
     from lurebench.cli import main
+    from lurebench.container_lifecycle import OWNER_LABEL
     from lurebench.detectors.binoculars import BinocularsDetector
     from lurebench.detectors.cache import CachedDetector
+    from lurebench.detectors.container import ContainerDetector
     from lurebench.detectors.llama_guard import LlamaGuardDetector
     from lurebench.detectors.moderation import CATEGORIES, OpenAIModerationDetector
     from lurebench.detectors.tfidf import TfidfLogisticDetector
@@ -69,6 +72,56 @@ def check(root: Path) -> None:
         _UnixHTTPServer,
     )
     from lurebench.schema import Lure, save_jsonl
+
+    identity = 'sha256:' + 'a' * 64
+    reference = 'installed-probe:dev'
+    for runtime_name in ('docker', 'podman'):
+        inspected = identity if runtime_name == 'docker' else identity.removeprefix('sha256:')
+        for adapter_class in (ContainerDetector, BoundaryContainerMonitor):
+            state = {'exists': False}
+            identifier = 'b' * 64
+
+            def control(command, *, inspected=inspected, state=state,
+                        identifier=identifier, **kwargs):
+                if command[1:3] == ['image', 'inspect']:
+                    output = inspected
+                elif command[1] == 'create':
+                    state.update(exists=True, command=command)
+                    state['name'] = command[command.index('--name') + 1]
+                    state['owner'] = command[command.index('--label') + 1].split('=', 1)[1]
+                    output = identifier
+                elif command[1:3] == ['container', 'inspect']:
+                    output = json.dumps({'id': identifier, 'name': state['name'],
+                                         'image': inspected, 'owner': state['owner']})
+                elif command[1:3] == ['container', 'ls']:
+                    output = identifier if state['exists'] else ''
+                elif command[1:3] == ['container', 'rm']:
+                    if command[-1] != identifier:
+                        raise ValueError('installed OCI cleanup selected an unexpected container')
+                    state['exists'] = False
+                    output = identifier
+                else:
+                    raise ValueError('installed OCI control used an unexpected operation')
+                return SimpleNamespace(stdout=output + '\n')
+
+            with (patch('shutil.which', return_value='/synthetic/runtime'),
+                  patch('subprocess.run', side_effect=control),
+                  patch('subprocess.Popen', return_value=SimpleNamespace()) as launch):
+                adapter = adapter_class(reference, runtime=runtime_name, allow_mutable_image=True)
+                adapter._start()
+                command = state['command']
+                if adapter.image_id != identity or command[-1] != inspected:
+                    raise ValueError('installed OCI adapter lost its admitted image binding')
+                if not command[command.index('--label') + 1].startswith(OWNER_LABEL + '='):
+                    raise ValueError('installed OCI container lacks an ownership marker')
+                if command[command.index('--pull') + 1] != 'never':
+                    raise ValueError('installed OCI adapter enabled implicit image pulls')
+                if launch.call_args.args[0] != [runtime_name, 'start', '--attach',
+                                                '--interactive', identifier]:
+                    raise ValueError('installed OCI adapter attached to an unexpected container')
+                adapter.close()
+                if state['exists']:
+                    raise ValueError('installed OCI adapter left its owned container behind')
 
     if loads_strict_json(b'{"a":[0]}', max_nodes=4) != {"a": [0]}:
         raise ValueError("installed JSON decoder changed bounded values")

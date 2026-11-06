@@ -4,6 +4,17 @@ These findings describe this source branch, not an already-published release.
 Dependency resolution is not runtime reachability analysis or a security
 certification. The core harness has no required third-party dependencies.
 
+## Companion visualization review — 4 November 2026
+
+LureScope's optional visualization stack previously locked Pillow 12.3.0 through
+Matplotlib. Its reviewed source branch now requires and locks Pillow 13.0.0+ for
+the `viz` extra and adds real synthetic PNG compatibility checks. The reviewed
+LureBench lock contains no Pillow package; no imaging requirement was added here.
+This does not assess arbitrary user-selected plugins or environments. See the
+companion [dependency review](https://github.com/immu4989/lurescope/blob/feat/lurepermit-lurerange/docs/DEPENDENCY_SECURITY.md)
+for advisory scope, installation instructions and unreleased-status limits.
+The unresolved Accelerate assessment below is separate and unchanged.
+
 ## Security baseline refresh on 3 November 2026
 
 This unreleased source branch requires **Python 3.11 or newer**. Python 3.10

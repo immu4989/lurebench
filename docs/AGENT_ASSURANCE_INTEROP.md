@@ -12,15 +12,18 @@ a deployment.
 
 ## 1. Language-independent OCI monitors
 
-Build the reference monitor locally, then identify its immutable runtime digest:
+Build the reference monitor locally, then inspect its local runtime image ID:
 
 ```bash
 docker build -t lureboundary-monitor:local examples/boundary-monitor
 docker image inspect lureboundary-monitor:local --format '{{.Id}}'
 ```
 
-For reportable evaluations, tag or address the same local image using an
-immutable `name@sha256:<digest>` reference:
+For reportable evaluations, obtain the immutable registry manifest/index
+reference from your controlled distribution workflow and make that exact image
+available locally. A local `.Id` is not a registry digest; do not paste it after
+an arbitrary registry name or try to create a digest reference with `docker tag`.
+Use the independently resolved `name@sha256:<digest>` reference:
 
 ```bash
 lurebench boundary-eval \
@@ -63,8 +66,11 @@ detection windows, and acceptance thresholds never cross the container boundary.
 `--timeout` covers writing, flushing, and reading together, including monitors
 that never read stdin. A failed exchange invalidates the monitor instance. CLI
 termination and pipe cleanup use separate bounded waits; incomplete cleanup is
-an error, not a successful evaluation. Runtime startup and daemon-managed
-container lifetimes still need external supervision. The shared transport uses
+an error, not a successful evaluation. Creation is now separate from startup;
+owned container ID/image/name/label checks precede execution and force-removal,
+with confirmed absence required before publishing. Uncertain creation or daemon
+cleanup retains recovery state and cannot become an evaluation report. External
+supervision is still required for process/host failure. The shared transport uses
 the same [deadline and cleanup contract](CONTAINER_DETECTORS.md#runtime-isolation)
 as detector containers, with the boundary protocol's own 256 KiB response cap.
 
@@ -72,6 +78,11 @@ The container report records the runtime image ID and evaluator-controlled
 isolation settings. Image identity alone does not authenticate a vendor; pair it
 with independently verified build provenance when organizational identity
 matters.
+
+The adapter launches the full image ID inspected at admission, never a second
+lookup of the supplied tag. Podman IDs are normalized to the existing evidence
+format; a new image still requires a new declared artifact and assurance plan.
+See [execution identity and historical-evidence limits](CONTAINER_DETECTORS.md#inspected-identity-is-the-execution-target).
 
 ## 2. LureCoverage: test whether the monitor can see the boundary
 

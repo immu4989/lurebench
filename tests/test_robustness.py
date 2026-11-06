@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 import pytest
 
 from lurebench.attacks.base import Attack
@@ -157,3 +159,30 @@ def test_cached_research_script_preserves_unknown_outcomes_without_provider_call
     cache["f1|attack"] = True
     with pytest.raises(ValueError):
         summarize(sample, cache, "attack")
+
+
+def test_logical_bounds_are_exact_over_every_small_missing_outcome_completion():
+    for size in range(5):
+        for values in itertools.product([0.1, 0.9, None], repeat=size):
+            scores = iter([0.9] * size + list(values))
+
+            class Detector:
+                def score(self, lure, scores=scores):
+                    return next(scores)
+
+            report = run_robustness(Detector(), _corpus()[:size], _NoOpAttack())
+            assert report.n_detected_clean == size
+            assert report.n_abstained_after == values.count(None)
+            if not size:
+                assert report.attack_success_rate is None
+                assert report.attack_success_rate_lower is None
+                assert report.attack_success_rate_upper is None
+                continue
+            completions = []
+            for fill in itertools.product([0.1, 0.9], repeat=values.count(None)):
+                replacements = iter(fill)
+                completed = [next(replacements) if value is None else value for value in values]
+                completions.append(sum(value < 0.5 for value in completed) / size)
+            assert report.attack_success_rate_lower == min(completions)
+            assert report.attack_success_rate_upper == max(completions)
+            assert (report.attack_success_rate is None) == (None in values)

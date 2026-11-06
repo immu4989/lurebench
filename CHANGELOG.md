@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- OCI adapters create and verify a uniquely owned container before attachment,
+  then verify ownership, force-remove its exact ID and confirm absence on close.
+  Daemon control budgets, uncertain-creation recovery, primary-error preservation
+  and concurrent-operation refusal prevent silent CLI-only cleanup. No report
+  is published after unconfirmed teardown; anonymous owned volumes are removed
+  without pruning images, named volumes, or unrelated containers.
+
+- OCI detector/monitor runs launch the full image ID inspected at admission,
+  including restarts, rather than re-resolving a mutable tag. Podman's full
+  bare-hex IDs normalize to the existing report format. Explicit boolean
+  development opt-in and finite numeric resource inputs are validated before
+  inspection. Real Docker retagging regressions now run in the container CI job.
+
 - Default test discovery is limited to `tests/`; documentation checks use
   first-party roots, avoiding generated source-tree collisions. CI now checks
   source-archive reproduction inputs and runs the suite from the built archive.

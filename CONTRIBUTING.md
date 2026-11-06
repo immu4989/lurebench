@@ -79,6 +79,35 @@ and [setuptools source inclusion](https://setuptools.pypa.io/en/latest/userguide
 A new detector should come with a test that at least constructs it (or asserts a
 clean error when its extra is absent) and runs it over the sample shard.
 
+### Real container identity regression
+
+The normal Python suite uses deterministic Docker/Podman command-contract tests.
+Additional tests require explicit Docker opt-in and the reviewed synthetic
+fixtures below; they are not real fraud detectors or benchmark-quality monitors.
+The existing Linux container CI job builds and runs them automatically.
+
+```bash
+docker build --pull=false --network none --build-arg PROBE_SCORE=0.125 --tag lurebench-identity-probe:original tests/fixtures/container-identity
+docker build --pull=false --network none --build-arg PROBE_SCORE=0.875 --tag lurebench-identity-probe:replacement tests/fixtures/container-identity
+LUREBENCH_TEST_DOCKER=1 uv run pytest -q tests/test_container_identity_docker.py
+```
+
+Choose unused tags; `LUREBENCH_IDENTITY_ORIGINAL` and
+`LUREBENCH_IDENTITY_REPLACEMENT` override the two fixture names. Image building
+can resolve the pinned base through the configured builder; the test itself
+uses only already-present images, with `--pull never`. It retags a unique
+temporary alias after adapter construction, checks response markers and the
+daemon's actual `.Image`, then verifies restart and deliberate new admission.
+It also sends SIGSTOP only to its owned synthetic workload and verifies both
+normal close and response timeout remove the daemon container despite TERM being
+unable to complete. The test wrapper adds a separate ownership label for fixture
+cleanup; it does not change production image selection or isolation options.
+Cleanup only removes that alias and exact ownership-labelled synthetic
+containers; it never prunes or deletes the supplied fixture/base images. Do not
+run the check against unreviewed images or a shared untrusted daemon. Podman's
+CLI format is contract-tested separately; this Docker check is not Podman
+runtime verification.
+
 ## Adding a detector: checklist
 
 1. Subclass `Detector`, set `name` and `task` (`fraud` or `provenance`).

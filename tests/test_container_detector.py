@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from oci_stub import FakeRuntime
 
 from lurebench.cli import main
 from lurebench.detectors import container
@@ -81,18 +82,12 @@ class _FakeProcess:
 
 def _install_fake_runtime(monkeypatch, *, score: float | None = 0.75):
     processes: list[_FakeProcess] = []
-    monkeypatch.setattr(container.shutil, "which", lambda runtime: f"/usr/bin/{runtime}")
-
-    def inspect(*args, **kwargs):
-        return container.subprocess.CompletedProcess(args[0], 0, stdout=IMAGE_ID + "\n", stderr="")
-
-    def launch(command, **kwargs):
+    def launch(command, identity):
         process = _FakeProcess(command, score)
         processes.append(process)
         return process
 
-    monkeypatch.setattr(container.subprocess, "run", inspect)
-    monkeypatch.setattr(container.subprocess, "Popen", launch)
+    FakeRuntime(lambda _: IMAGE_ID, launch).install(monkeypatch)
     return processes
 
 
@@ -131,7 +126,7 @@ def test_container_runtime_is_hardened_and_never_pulls(monkeypatch):
     detector.score(_sensitive_lure())
 
     command = processes[0].command
-    assert command[:3] == ["docker", "run", "--rm"]
+    assert command[:2] == ["docker", "create"]
     for expected in (
         ["--pull", "never"],
         ["--network", "none"],
@@ -143,7 +138,7 @@ def test_container_runtime_is_hardened_and_never_pulls(monkeypatch):
         position = command.index(expected[0])
         assert command[position : position + 2] == expected
     assert "--read-only" in command
-    assert PINNED_IMAGE == command[-1]
+    assert IMAGE_ID == command[-1]
     assert "--volume" not in command
     assert "--env" not in command
 
@@ -287,8 +282,9 @@ def test_protocol_failure_is_not_an_abstention_or_a_published_report(monkeypatch
     assert processes[0].stdin.closed
 
 
-def test_container_cli_report_validates_against_published_schema(monkeypatch, tmp_path):
-    _install_fake_runtime(monkeypatch)
+@pytest.mark.parametrize('engine', ['docker', 'podman'])
+def test_container_cli_report_validates_against_published_schema(monkeypatch, tmp_path, engine):
+    processes = _install_fake_runtime(monkeypatch)
     output = tmp_path / "evaluation.json"
 
     result = main(
@@ -298,6 +294,8 @@ def test_container_cli_report_validates_against_published_schema(monkeypatch, tm
             str(SAMPLES),
             "--image",
             PINNED_IMAGE,
+            "--runtime",
+            engine,
             "--out",
             str(output),
         ]
@@ -310,6 +308,9 @@ def test_container_cli_report_validates_against_published_schema(monkeypatch, tm
     )
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(report)
     assert report["image_id"] == IMAGE_ID
+    assert report['image_reference'] == PINNED_IMAGE
+    assert processes[0].command[-1] == (
+        IMAGE_ID if engine == 'docker' else IMAGE_ID.removeprefix('sha256:'))
     assert report["dataset"]["record_count"] == 16
     assert report["dataset"]["ground_truth_transmitted"] is False
     assert report["dataset"]["original_record_ids_transmitted"] is False

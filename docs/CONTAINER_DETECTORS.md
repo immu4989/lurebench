@@ -68,26 +68,92 @@ exchanges and malformed responses permanently invalidate that adapter instance;
 create a new detector for a deliberate new run, rather than retrying a failed
 session and risking acceptance of an old response.
 
-Cleanup signals the local runtime CLI before closing its pipes, waits up to one
-second, escalates to kill with another one-second wait, and waits at most one more
-second for the I/O worker. Those cleanup waits are additional to `--timeout`.
-An unreaped process or still-blocked worker raises an explicit cleanup error;
-the failed instance retains its handle for another cleanup attempt, not scoring.
-The detector and boundary-monitor CLIs finish cleanup before printing or writing
-evaluation reports. Cleanup failure leaves no new report and exits nonzero.
-See Python's [subprocess lifecycle rules](https://docs.python.org/3/library/subprocess.html).
+The adapter creates a stopped container with a unique name and ownership label,
+then verifies its full container ID, admitted image ID, name and ownership marker
+before starting an attached, interactive session. It no longer depends on
+`docker run --rm` or CLI termination to remove a daemon-managed workload.
 
-Serialization, runtime startup, OS scheduling, and daemon-managed containers are
-not covered by a hard wall-clock guarantee. Stopping the CLI does not establish
-that the daemon removed its container: `--rm` applies when the container exits.
-Use an external job deadline and runtime-level lifecycle supervision, especially
-for processes that ignore termination or descendants that retain pipes. The
-evaluator is a sequential protocol client, not a multi-tenant execution service.
+Cleanup rechecks those ownership fields, force-removes **only that full container
+ID**, and confirms its absence with a successful runtime query. This is immediate
+workload termination (SIGKILL), not a graceful application checkpoint. Associated
+anonymous volumes are removed; images, named volumes, and unrelated containers
+are not targets. No prune, broad removal filter, name-based removal, daemon socket
+mount, or shell command is used. An already-absent known ID is safe to close;
+a different container reusing its name is never adopted.
+
+Creation/identity verification share a **10-second control-command budget**;
+daemon cleanup has a separate shared 10-second budget. CLI/pipe cleanup is still
+attempted when daemon cleanup fails: signal the CLI, wait up to one second,
+escalate to kill with another one-second wait, then wait at most one more second
+for its I/O worker. These budgets are additional to the request/response timeout.
+An unreaped CLI or still-blocked worker is also an explicit cleanup error.
+
+Malformed or ambiguous runtime metadata, daemon errors/timeouts, ownership
+mismatch, or unconfirmed removal fail closed. A timed-out creation can complete
+later at the daemon: an empty lookup is **not** proof of successful cleanup when
+no container ID was confirmed. The failed adapter retains its unique recovery
+name/marker and handles; a later `close()` may clean a verified late arrival,
+but scoring cannot resume. Errors name the recovery container. The original
+protocol/startup/context exception is preserved with a cleanup note if cleanup
+also fails. Concurrent adapter operations are rejected before lazy startup;
+callers must coordinate completion before attempting cleanup again.
+
+The detector and boundary-monitor CLIs finish cleanup before printing or writing
+evaluation reports. Failed or uncertain cleanup leaves no new report and exits
+nonzero. See Docker's [create](https://docs.docker.com/reference/cli/docker/container/create/),
+[start](https://docs.docker.com/reference/cli/docker/container/start/), and
+[removal](https://docs.docker.com/reference/cli/docker/container/rm/) semantics,
+[Podman removal](https://docs.podman.io/en/latest/markdown/podman-rm.1.html), and
+Python's [subprocess lifecycle rules](https://docs.python.org/3/library/subprocess.html).
+
+These checks require a stable, trusted runtime/daemon connection and calling
+process. Do not change Docker contexts, connection settings, or runtime stores
+mid-run. Serialization, process creation, OS scheduling and daemon behavior are
+not covered by a hard wall-clock guarantee. Process death, host failure or a
+compromised daemon can still leave uncertain resources; use an external job
+supervisor and inspect the reported ownership marker after such failures. The
+ownership label is not remote attestation or protection against daemon admins.
+The evaluator is a sequential client, not a multi-tenant execution service.
 
 This substantially narrows the interface; it is not a VM or a proof of perfect
 isolation. The JSON evaluation record preserves the runtime image ID, dataset
 SHA-256, isolation settings, task, threshold, abstentions, and metrics. Its
 strict schema is [`spec/container-evaluation-v1.schema.json`](../spec/container-evaluation-v1.schema.json).
+
+### Inspected identity is the execution target
+
+Both detector and boundary-monitor adapters resolve the local image once at
+construction, then launch **that full image ID**, not the supplied tag. The
+original `image_reference` remains a provenance label; `image_id` is the admitted
+execution target. Retagging between inspection and first use, or between close
+and restart, cannot select another image. If the admitted image disappears, the
+run fails without pulling, re-resolving, or falling back to the current tag.
+A new adapter deliberately performs a new admission.
+
+Docker's prefixed ID and Podman's documented full bare-hex ID are handled without
+shortening either. Reports keep the existing `sha256:<64 lowercase hex>` form;
+the boundary evaluation's `monitor.artifact_sha256` contains the same 64 hex
+characters without the prefix. There is no receipt/schema migration.
+
+`--allow-mutable-image` remains a development-only opt-in, not permission for an
+image to drift during a run. Python callers must pass an actual boolean, not
+`"false"`, `1`, or other truthy objects. CPU/timeout settings require bounded
+non-boolean real numbers; invalid types, non-finite numbers, and oversized
+integers fail before image inspection.
+
+The runtime, daemon connection/image store, and calling process remain trusted.
+This is not remote attestation, protection against a compromised daemon, or
+vendor authentication. A local image ID is not interchangeable with a registry
+manifest/index digest: do not turn `.Id` into `name@sha256:...`. The current
+[OCI specification](https://github.com/opencontainers/image-spec/blob/main/config.md#imageid)
+explicitly leaves ImageID interpretation to implementations. See also
+[Docker's ID/digest distinction](https://docs.docker.com/reference/cli/docker/image/ls/#list-image-digests---digests)
+and [Podman's inspection format](https://docs.podman.io/en/latest/markdown/podman-image-inspect.1.html).
+
+Earlier mutable-tag runs may have executed a different image than the recorded
+ID if a tag moved after inspection. A hash/signature on such a report cannot
+repair that provenance gap. Re-run affected evidence with the fixed producer;
+do not silently rewrite historical reports or preregistered plans.
 
 The dataset digest comes from the same bounded read that validates the evaluated
 records, including comments and original line endings. Invalid, empty, symlinked,

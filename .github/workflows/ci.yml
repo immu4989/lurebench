@@ -102,3 +102,9 @@ jobs:
           --image lurebench-reference-detector:ci
           --allow-mutable-image
           --out /tmp/container-evaluation.json
+      - name: Build synthetic image-identity fixtures
+        run: |
+          docker build --pull=false --network none --build-arg PROBE_SCORE=0.125 --tag lurebench-identity-probe:original tests/fixtures/container-identity
+          docker build --pull=false --network none --build-arg PROBE_SCORE=0.875 --tag lurebench-identity-probe:replacement tests/fixtures/container-identity
+      - name: Verify inspected image identity survives tag reassignment
+        run: LUREBENCH_TEST_DOCKER=1 uv run --frozen pytest -q tests/test_container_identity_docker.py

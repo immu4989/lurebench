@@ -414,3 +414,249 @@ Results are local macOS execution evidence; the changed GitHub workflows have
 not run remotely, and the prior Linux-runtime verification gap remains. All
 new changes, including the preceding Unix lifecycle milestone, remain local
 and uncommitted. No push, release, merge or deployment occurred in this milestone.
+
+## Admitted OCI image identity and Linux verification — 4 November 2026
+
+Both adapters previously inspected a local image ID but launched the original
+reference later. Two real Docker reproductions failed: after a synthetic tag
+was moved from image A to image B between construction and first use, the
+detector returned B's score and the boundary monitor returned B's marker while
+their recorded ID still named A. These were owned synthetic fixtures, not
+third-party detectors or live attacks. An initial deterministic regression set
+also failed 44 cases covering identity drift and invalid admission types.
+
+The adapters now share local image inspection/validation and launch the admitted
+full ID, including after a clean close/restart. A removed image fails without
+tag fallback or implicit pulls. Podman's documented bare 64-hex `.Id` is
+normalized to the existing prefixed evidence format and passed back to Podman
+as a full native ID. Four additional pre-fix Podman contract cases failed.
+Development opt-in requires an actual boolean; CPU/timeout values reject
+booleans, wrong types, non-finite numbers, and oversized integers before
+inspection. CLI report schemas and artifact digest bindings are unchanged.
+
+The 89 new deterministic tests cover Docker/Podman command shapes, full ID
+normalization, retag/restart behavior, removal without fallback, inspection
+failure, malformed IDs, resource/override validation, and CI wiring. Existing
+CLI schema tests now cover both runtimes' native inspection output. Two new
+opt-in real Docker tests check response markers and daemon `.Image` for initial
+execution and restart, then verify a newly admitted adapter selects B. Both pass
+from the checkout and again from the installed wheel outside the checkout.
+The existing container CI job now builds the synthetic fixtures and runs those
+tests; remote CI has not run these unpushed changes. Two consumer regressions
+confirm a same-name changed/omitted artifact cannot alter a bound evidence bundle.
+
+Full checkout suites: **2,502 passed, 42 skipped** on Python 3.11 and 3.13;
+paired LureScope **1,550 passed**; browser **107 passed**. Of the 42 producer
+skips, 40 are the existing optional/reference skips and two are the opt-in Docker
+tests, which passed separately. Across checkout Python/browser and explicit
+Docker runs, **4,161 distinct tests pass**; this milestone adds 95 test cases.
+Extracted archives pass **2,496/48** (producer passes/skips) and **1,550**
+consumer tests; six additional producer skips cover deliberately unbundled
+datasets. Existing dependency warnings remain; no dependency versions changed.
+
+Docker Desktop 29.6.1 is now available. A cached Linux Python 3.11 image running
+as UID/GID 65532, with no network, read-only source/test-dependency mounts,
+dropped capabilities and temporary test storage, passes **242 focused tests**:
+identity admission, real pipe deadlines, HTTP request-head limits, runtime
+capacity, and all 54 Unix lifecycle tests. This closes the earlier Unix-platform
+execution gap, not a claim that the entire optional-dependency suite ran on
+Linux. The test runner reused pure-Python pytest dependencies; no model or
+provider workload was run. Podman is not installed, so its actual runtime remains
+unverified despite the documented-format and command-contract regressions.
+
+Offline builds, unchanged locks, 558/506 exact source inputs, 159/174 wheel
+inputs, 19 browser archive inputs, producer pins, independent authority artifacts,
+static stamps and browser checks pass. Installed core checks pass on Python
+3.11/3.12/3.13 with optional imports forbidden, now including both OCI adapters;
+installed model/proof, auth/upload and browser checks pass as well.
+
+Artifacts and logs: `/private/tmp/lure-oci-20261104.ySttcb`. Local synthetic
+images were built from the cached base with a per-command legacy-builder setting
+to avoid registry resolution; no global Docker settings changed. Tests remove
+only their unique temporary aliases and ownership-checked containers; the two
+fixture images are retained. No pre-existing image or container was deleted.
+All new changes remain local and uncommitted. This is execution-target binding
+under a trusted caller/runtime, not remote attestation, vendor authentication,
+daemon containment, or retroactive repair of earlier mutable-tag evidence.
+See [identity semantics and primary references](CONTAINER_DETECTORS.md#inspected-identity-is-the-execution-target).
+
+## Ownership-checked daemon lifecycle — 4 November 2026
+
+Four new real-Docker regressions failed against the prior cleanup: normal close
+and response timeout, for each adapter, left a daemon workload behind after its
+synthetic PID 1 was stopped with SIGSTOP. Reaping the attached CLI did not remove
+that workload. The fixtures are owned synthetic protocol responders, not live
+attacks or third-party models; their independent cleanup removed the leftovers.
+
+Both adapters now create a uniquely named and labelled stopped container, verify
+its full ID, admitted image, name and ownership marker, then attach/start by ID.
+Close verifies ownership again, force-removes only the exact full ID and associated
+anonymous volumes, and requires a successful absence query. It never removes by
+name, prunes resources, or removes images/named volumes. A timed-out create with
+no confirmed ID retains uncertain recovery state even when a lookup is empty;
+a later close can clean a verified late arrival, but evaluation cannot resume.
+
+Creation/verification and daemon cleanup each share a separate ten-second command
+budget. CLI/pipe cleanup is attempted even after daemon-control failure. Original
+startup, protocol and context exceptions retain priority, with recovery notes
+when cleanup also fails. Concurrent adapter operations are refused before lazy
+startup. The CLIs do not publish evaluation reports after uncertain teardown.
+
+The new deterministic suite passes **82 cases**, covering Docker/Podman control
+contracts, identity/ownership mismatch, malformed metadata, ambiguous lookup,
+uncertain/late creation, interruption, control failures, false removal replies,
+shared deadlines, retry-only cleanup, concurrency, context errors and both CLIs'
+report suppression. Four added real-Docker tests cover SIGSTOP cleanup. All six
+real-Docker tests, including the preceding tag-drift cases, pass from both the
+checkout and the isolated installed wheel. One final verification attempt failed
+at fixture inspection; a separate read-only inspection and a rerun succeeded.
+That first error is retained in the logs; its underlying cause was not established.
+
+Full checkout: **2,584 passed, 46 skipped** on Python 3.11 and 3.13; paired
+LureScope **1,550 passed**; browser **107 passed**. Six producer skips are the
+explicit Docker cases verified separately; 40 are existing optional/reference
+skips. Combined distinct passed count is **4,247**. This milestone adds 86 cases.
+Extracted-source suites pass **2,578/52** producer passes/skips and **1,550**
+consumer tests; the six extra producer skips concern deliberately unbundled
+datasets. Existing dependency warnings remain. Linux Python 3.11 passes all
+**324 focused tests**, including the new lifecycle suite, with no network,
+unprivileged execution, and read-only source/test-dependency mounts.
+
+Offline builds and unchanged locks, 561/506 exact source inputs, 160/174 wheel
+inputs, 19 browser archive inputs, 26 producer pins, 10 independent authority
+artifacts and static stamps pass. Installed producer core checks pass Python
+3.11/3.12/3.13 with optional imports blocked; installed consumer model/proof,
+authentication/upload and browser checks pass. Post-test runtime queries found
+no test-owned containers or temporary tag aliases; supplied fixture images and
+unrelated resources remain untouched. Artifacts: `/private/tmp/lure-lifecycle-20261104.m2ySvP`.
+
+These are trusted-runtime lifecycle checks, not hard wall-clock guarantees,
+daemon-admin isolation, or remote cleanup attestation. Runtime connections must
+remain stable; process/host failure still requires external supervision. Actual
+Podman execution and remote CI remain unverified. No dependency version, report
+schema, historical receipt, release or deployment changed. All new work remains
+local and uncommitted; nothing was pushed in this milestone.
+
+## Companion visualization dependency verification — 4 November 2026
+
+The companion's approved GitHub lookup found 41 Pillow alerts whose fixed version
+is 13.0.0. Its optional Matplotlib stack now requires that Pillow floor in the
+`viz` extra and locks 13.0.0; only that dependency version changed. LureBench's
+reviewed lock has no Pillow entry and was not modified. A companion wheel-metadata
+check and an offline resolver rejection of `pillow<13` confirm the floor applies
+to the built optional extra, without adding imaging to its default API graph.
+No alert was dismissed, and this does not resolve the separate Accelerate issue.
+
+Three manifest/graph/CI tests and three real synthetic rendering cases were
+added to the companion. Its full paired suite passes **1,556 tests each** on
+Python 3.11/3.12/3.13 in isolated locked dev/viz environments. Without visualization
+dependencies, **1,553 pass and 3 intentionally skip**. These are compatibility
+checks, not provider experiments, refreshed benchmark numbers, exploit tests or
+claims about deployed systems. Source-only rendering helpers are tested from
+the checkout and extracted source archive, not falsely claimed to ship in wheels.
+
+Producer checkout passes **2,584/46** and extracted source **2,578/52** passes/skips;
+the six extra archive skips concern unbundled datasets. Consumer extracted source
+passes **1,556**, browser **107**. Distinct Python/browser passes total **4,247**,
+excluding unchanged prior real-Docker checks and repeated interpreter runs.
+Ruff, whitespace, offline builds/locks, 561/508 exact source inputs, 160/174 wheel
+inputs, consumer pins/independence/static gates and installed checks pass. Producer
+installed core still runs with optional imports forbidden. Existing warnings
+remain. Artifacts: `/private/tmp/lure-pillow-20261104.TT0wcu`.
+All new work remains local and uncommitted; no push, release, deployment, default
+API-environment update or remote CI run occurred.
+
+## Companion scorecard outcome accounting — 4 November 2026
+
+LureScope's research scorecards now follow the producer's existing missing-outcome
+semantics: abstentions remain unknown, incomplete eligible cohorts have a null
+primary evasion rate with logical completion bounds, and no clean catches means
+no rate. Invalid scores, missing result entries and ambiguous panels fail closed.
+Counts and coverage are explicit in Markdown and gray masked chart cells. These
+bounds are not confidence intervals; different clean-catch cohorts are not a
+ranking of overall detector quality. Historical scorecards and provider caches
+remain unchanged; the complete bundled sample retains its previous numeric rates.
+
+The producer adds one exhaustive regression enumerating 121 outcome patterns and
+all binary completions, with no production measurement change. The companion adds
+64 outcome and two rendering cases; 39 baseline cases failed before its fix.
+Producer checkout: **2,585 passed, 46 skipped**; extracted source: **2,579/52**,
+including six extra unbundled-data skips. Companion final default suite:
+**1,617 passed, 5 intentional viz skips**; final extracted-source dev/viz suite:
+**1,622 passed**. Its focused selection passes **77** on Python 3.11/3.13, and its
+browser suite **107**. Distinct Python/browser passes total **4,314**, without
+multiplying interpreter repeats or adding unchanged earlier Docker runs.
+
+Offline locks/builds, Ruff/whitespace, 561/511 exact source inputs, 160/175 wheel
+inputs, browser packaging, pins, authority independence and static checks pass.
+Installed producer core runs with optional imports forbidden; installed companion
+model/proof, authentication/upload and browser checks pass. Its installed new
+standard-library measurement helper passes with site packages disabled on Python
+3.11/3.12/3.13. Final rebuilt wheels retain the tested member bytes; only verification
+documentation changes in the final source archives. Existing warnings remain.
+Artifacts: `/private/tmp/lure-scorecard-20261104.dEwJXf`.
+No provider call, historical evidence rewrite, dependency update, push, merge,
+release, deployment or remote CI run occurred. All new work remains local.
+
+## Companion whole-file cohort admission — 4 November 2026
+
+The consumer's scorecard loaders now validate the complete bounded regular-file
+input before sampling; 62 regressions failed against the prior permissive paths.
+The 107 new cases cover exact labels, ambiguous/non-finite JSON, excluded/trailing
+records, selection parameters, resource limits, source/ordered-cohort commitments,
+no-call preflight and preservation of outputs after failure. The producer's schema,
+Hub loading, data, production code and evidence identities are unchanged here.
+
+The consumer admits the existing 2,056-record core/test input and preserves both
+loaders' record selection/order at limits 0, 1 and 120 (cross-model phishing cap 50).
+Its new `--validate-corpus` command succeeds on the sample and core inputs without
+provider calls. Counts and unsalted digests are not privacy protection, signatures,
+label verification or a representative-sampling guarantee. Historical reports and
+caches were not rewritten, and no new benchmark performance claim was produced.
+
+Producer checkout passes **2,585/46**, extracted source **2,579/52** passes/skips.
+Consumer checkout/extracted dev-viz suites pass **1,729**; default checkout
+**1,724/5** passes/skips. Browser **107**; distinct paired Python/browser passes
+**4,421**. Consumer focused scorecard checks pass **184** on Python 3.11/3.13.
+Ruff/whitespace, offline locks/builds, 561/514 exact source inputs, 160/176 wheel
+inputs, consumer pins/independence/static/browser gates and installed checks pass.
+Its installed corpus helper runs with site packages disabled on 3.11/3.12/3.13.
+Final wheel member bytes remain unchanged from the tested candidates; only
+verification documents change in final source archives. Prior Docker tests were
+not rerun and are not added to the count. Existing warnings remain.
+Artifacts: `/private/tmp/lure-cohort-20261104.gTXhWV`.
+No dependency updates, paid work, pushes, releases, deployments or remote CI runs
+occurred; all new work remains local and uncommitted.
+
+## Companion cache replay and push verification — 6 November 2026
+
+The companion cross-model driver now starts its portable baseline correctly,
+binds versioned score/paraphrase caches to declared experiment configuration and
+implementation/runtime identities, and offers explicit no-key cache-only replay.
+It rejects legacy/mismatched caches before provider construction, validates fresh
+outputs, shares duplicate text work without dropping input observations, and
+bounds parallel admission. Cache files publish independently with private atomic
+replacement; this is not provider attestation, a multi-file transaction or a
+concurrent-writer guarantee. No producer production code changed in this cache
+milestone. The companion adds 77 cache cases; eight initial regressions failed
+against its earlier implementation. Historical evidence remains unchanged.
+
+Final producer checkout passes **2,585 with 46 skips**, and extracted source
+**2,579/52** passes/skips, including six additional unbundled-data skips. Consumer
+checkout and extracted-source suites pass **1,806** with visualization enabled;
+browser **107**. Distinct paired Python/browser passes total **4,498**. Consumer
+focused scorecard checks pass **261 each** on Python 3.11 and 3.13 against its
+locked public producer. Existing warnings remain; no provider calls ran.
+
+Ruff/whitespace, offline locks/builds, 561/517 exact source inputs, 160/177 wheel
+inputs, consumer pins/independence/static/browser gates and installed checks pass.
+Installed producer core runs with optional imports blocked; the new installed
+consumer cache helper runs with site packages disabled on Python 3.11/3.12/3.13.
+Final rebuilt wheels retain the tested member bytes; only verification documents
+change in the final source archives. Prior Docker checks were not rerun or added
+to these counts. Artifacts: `/private/tmp/lure-push-20261106.hj5OhJ`.
+
+This is local pre-push verification of the accumulated feature-branch changes,
+not evidence of a main-branch merge, release, deployment or remote CI success.
+Earlier milestone notes describe their historical state. The continuous
+improvement goal remains paused.

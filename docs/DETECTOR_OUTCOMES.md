@@ -28,6 +28,15 @@ that a provider has kept its backend unchanged.
 `DetectorAbstainedError` when the detector abstains. Previously it returned zero.
 Callers must explicitly decide how to handle an unavailable prediction.
 
+The companion's unreleased research scorecards now use the same missing-outcome
+principle: partial attacked outcomes have no point estimate, with explicit
+counts/coverage and logical completion bounds. No eligible clean catches means
+no evasion rate, not zero. Both repositories exhaustively check small-cohort
+binary completions against their reported bounds. See the companion
+[versioned measurement contract](https://github.com/immu4989/lurescope/blob/feat/lurepermit-lurerange/docs/SCORECARD_MEASUREMENT.md).
+This does not rewrite historical scorecards, authenticate legacy caches, or
+change the producer's existing robustness report schema.
+
 ## Moderation category contract
 
 The moderation adapter consumes one standalone text result using the 13-category
@@ -333,3 +342,19 @@ to export a policy after abstentions rather than silently calibrating a selected
 subset. Policy construction also rejects duplicate/ambiguous record IDs. Unique IDs
 do not prove independent observations; near-duplicates, common senders/campaigns,
 selection bias, and dataset reuse still require study design and audit.
+
+## Companion research cohort admission
+
+The unreleased LureScope scorecard CLIs now validate the complete bounded local
+corpus before applying fraud limits or phishing caps. Their `--validate-corpus`
+mode needs no keys, does not evaluate detectors or read caches, and prints source
+and ordered-selection commitments without changing output files. Ambiguous JSON,
+non-integer labels and invalid excluded records cannot silently alter the sample.
+This is a lightweight research contract, not the producer's full `Lure` schema.
+
+Source-order and historical typology-cap/id-order selection remain deterministic,
+not random sampling. Duplicate IDs/text remain distinct positional observations,
+unlike policy construction's unique-ID requirement above. Digests identify bytes
+and selection, not authenticity, privacy, label correctness, independence or
+operational performance. Producer schemas, dataset identities, Hub loading and
+published evidence are unchanged by this companion intake change.

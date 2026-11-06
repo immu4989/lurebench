@@ -9,13 +9,20 @@ host mounts, Linux capabilities, or writable root filesystem.
 from __future__ import annotations
 
 import json
-import math
 import re
 import shutil
 import subprocess
+import threading
 from typing import Any, Dict, Optional
 
+from ..container_image import inspect_local_image
 from ..container_io import JsonLineSession
+from ..container_lifecycle import (
+    OwnedContainer,
+    cleanup_after_failure,
+    close_adapter,
+    exclusive_operation,
+)
 from ..receipts import loads_strict_json
 from ..schema import Lure
 from .base import Detector
@@ -49,6 +56,8 @@ class ContainerDetector(Detector):
             raise RuntimeError(f"{runtime} executable was not found")
         if not isinstance(image, str) or not _IMAGE.fullmatch(image):
             raise ValueError("container image reference contains unsupported characters")
+        if not isinstance(allow_mutable_image, bool):
+            raise ValueError("allow_mutable_image must be a boolean")
         if not allow_mutable_image and not _DIGEST_IMAGE.fullmatch(image):
             raise ValueError(
                 "container image must be pinned as name@sha256:<64 hex>; "
@@ -56,11 +65,12 @@ class ContainerDetector(Detector):
             )
         if task not in {"fraud", "provenance"}:
             raise ValueError("task must be fraud or provenance")
-        if not math.isfinite(timeout_seconds) or not 0.1 <= timeout_seconds <= 300:
+        if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float))
+                or not 0.1 <= timeout_seconds <= 300):
             raise ValueError("timeout_seconds must be between 0.1 and 300")
         if not isinstance(memory, str) or not _MEMORY.fullmatch(memory):
             raise ValueError("memory must look like 512m or 1g")
-        if not math.isfinite(cpus) or not 0.1 <= cpus <= 32:
+        if isinstance(cpus, bool) or not isinstance(cpus, (int, float)) or not 0.1 <= cpus <= 32:
             raise ValueError("cpus must be between 0.1 and 32")
 
         self.image = image
@@ -74,32 +84,19 @@ class ContainerDetector(Detector):
         self._session: Optional[JsonLineSession] = None
         self._failed = False
         self._counter = 0
+        self._operation_lock = threading.RLock()
+        self._container = None
         self.image_id = self._inspect_image()
         self.name = f"container:{self.image_id}"
 
     def _inspect_image(self) -> str:
-        try:
-            result = subprocess.run(
-                [self.runtime, "image", "inspect", "--format", "{{.Id}}", self.image],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-        except (subprocess.SubprocessError, OSError) as exc:
-            raise RuntimeError(
-                "container image is not available locally; LureBench never pulls it implicitly"
-            ) from exc
-        image_id = result.stdout.strip()
-        if not re.fullmatch(r"sha256:[a-f0-9]{64}", image_id):
-            raise RuntimeError("container runtime returned an invalid immutable image id")
-        return image_id
+        return inspect_local_image(self.runtime, self.image)
 
     def _start(self) -> subprocess.Popen[str]:
-        command = [
-            self.runtime,
-            "run",
-            "--rm",
+        if self._container is not None:
+            raise RuntimeError('container cleanup must complete before another start')
+        self._container = OwnedContainer(self.runtime, self.image_id)
+        command = self._container.create([
             "--interactive",
             "--pull",
             "never",
@@ -118,8 +115,7 @@ class ContainerDetector(Detector):
             f"{self.cpus:g}",
             "--tmpfs",
             "/tmp:rw,noexec,nosuid,size=16m",
-            self.image,
-        ]
+        ])
         try:
             return subprocess.Popen(
                 command,
@@ -162,6 +158,7 @@ class ContainerDetector(Detector):
             return None
         raise ValueError("detector container response violates the v1 allowlist")
 
+    @exclusive_operation
     def score(self, lure: Lure) -> Optional[float]:
         if self._failed:
             raise RuntimeError("detector container failed; create a new detector for a new run")
@@ -175,41 +172,32 @@ class ContainerDetector(Detector):
             "channel": lure.channel,
         }
         encoded = json.dumps(request, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n"
-        if self._process is None:
-            self._process = self._start()
-        if self._process.poll() is not None:
-            self._failed = True
-            self.close()
-            raise RuntimeError("detector container exited before scoring completed")
-        self._counter += 1
-        if self._session is None:
-            self._session = JsonLineSession(self._process, label="detector container")
         try:
+            if self._process is None:
+                self._process = self._start()
+            if self._process.poll() is not None:
+                raise RuntimeError("detector container exited before scoring completed")
+            self._counter += 1
+            if self._session is None:
+                self._session = JsonLineSession(self._process, label="detector container")
             raw = self._session.exchange(
                 encoded,
                 timeout=self.timeout_seconds, max_chars=MAX_RESPONSE_BYTES + 1,
             )
             return self._parse_response(raw, request_id)
-        except BaseException:
-            self._failed = True
-            self.close()
+        except BaseException as failure:
+            cleanup_after_failure(self, failure)
             raise
 
+    @exclusive_operation
     def close(self) -> None:
-        if self._process is None:
-            return
-        if self._session is None:
-            self._session = JsonLineSession(self._process, label="detector container")
-        try:
-            self._session.close()
-        except BaseException:
-            self._failed = True
-            raise
-        self._process = None
-        self._session = None
+        close_adapter(self, 'detector container')
 
     def __enter__(self) -> "ContainerDetector":
         return self
 
-    def __exit__(self, *_: object) -> None:
-        self.close()
+    def __exit__(self, _kind, failure, _traceback) -> None:
+        if failure is None:
+            self.close()
+        else:
+            cleanup_after_failure(self, failure)

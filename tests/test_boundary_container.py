@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from oci_stub import FakeRuntime
 
-from lurebench import boundary_container
 from lurebench.boundary import run_boundary_evaluation
 from lurebench.boundary_container import PROTOCOL, BoundaryContainerMonitor
 from lurebench.cli import main
@@ -70,21 +70,12 @@ class _Process:
 
 def _fake_runtime(monkeypatch):
     processes = []
-    monkeypatch.setattr(boundary_container.shutil, "which", lambda value: f"/usr/bin/{value}")
-    monkeypatch.setattr(
-        boundary_container.subprocess,
-        "run",
-        lambda *args, **kwargs: boundary_container.subprocess.CompletedProcess(
-            args[0], 0, stdout=IMAGE_ID + "\n", stderr=""
-        ),
-    )
-
-    def launch(command, **kwargs):
+    def launch(command, identity):
         process = _Process(command)
         processes.append(process)
         return process
 
-    monkeypatch.setattr(boundary_container.subprocess, "Popen", launch)
+    FakeRuntime(lambda _: IMAGE_ID, launch).install(monkeypatch)
     return processes
 
 
@@ -162,8 +153,9 @@ def test_container_response_and_image_contract_fail_closed(monkeypatch):
     monitor.close()
 
 
-def test_container_cli_emits_schema_valid_isolation_evidence(monkeypatch, tmp_path):
-    _fake_runtime(monkeypatch)
+@pytest.mark.parametrize('engine', ['docker', 'podman'])
+def test_container_cli_emits_schema_valid_isolation_evidence(monkeypatch, tmp_path, engine):
+    processes = _fake_runtime(monkeypatch)
     evaluation = tmp_path / "evaluation.json"
     conformance = tmp_path / "container.json"
     assert (
@@ -172,6 +164,8 @@ def test_container_cli_emits_schema_valid_isolation_evidence(monkeypatch, tmp_pa
                 "boundary-eval",
                 "--image",
                 PINNED,
+                "--runtime",
+                engine,
                 "--out",
                 str(evaluation),
                 "--container-report",
@@ -184,6 +178,11 @@ def test_container_cli_emits_schema_valid_isolation_evidence(monkeypatch, tmp_pa
     schema = json.loads(Path("spec/agent-boundary-container-evaluation-v1.schema.json").read_text())
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(report)
+    assert report['image_id'] == IMAGE_ID
+    assert report['image_reference'] == PINNED
+    assert report['evaluation']['monitor']['artifact_sha256'] == IMAGE_ID.removeprefix('sha256:')
+    assert processes[0].command[-1] == (
+        IMAGE_ID if engine == 'docker' else IMAGE_ID.removeprefix('sha256:'))
     assert report["privacy"] == {
         "ground_truth_transmitted": False,
         "scenario_identifiers_transmitted": False,
